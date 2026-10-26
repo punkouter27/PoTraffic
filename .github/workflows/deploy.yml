@@ -11,11 +11,11 @@ permissions:
 
 env:
   DOTNET_VERSION: '10.0.x'
-  AZURE_WEBAPP_NAME: potraffic-api-win
+  AZURE_WEBAPP_NAME: potraffic-api-win2
   AZURE_RESOURCE_GROUP: PoTraffic
   API_PROJECT_PATH: src/PoTraffic.API/PoTraffic.API.csproj
   UNIT_TEST_PATH: tests/PoTraffic.UnitTests/PoTraffic.UnitTests.csproj
-  PRODUCTION_URL: https://potraffic-api-win.azurewebsites.net
+  PRODUCTION_URL: https://potraffic-api-win2.azurewebsites.net
   DOTNET_NOLOGO: 'true'
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
 

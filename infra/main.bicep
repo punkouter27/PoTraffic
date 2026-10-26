@@ -4,9 +4,9 @@
 // Naming convention enforced:
 //   resourceGroup        = PoTraffic
 //   appService (web app) = app-potraffic-{app}-{env}-{region}-{seq} (target shape). Current
-//                          deployment is `potraffic-api-win` (legacy, retained for continuity);
+//                          deployment is `potraffic-api-win2` (legacy, retained for continuity);
 //                          new environments should adopt the target shape.
-//   Key Vault            = kv-poshared                                (in PoShared RG, reused across all Po* apps)
+//   Key Vault            = kv-poshared2                                (in PoShared RG, reused across all Po* apps)
 //   Managed Identity     = mi-poshared-*                              (in PoShared RG)
 //
 // No connection strings anywhere. All secrets come from Key Vault via
@@ -17,7 +17,7 @@ targetScope = 'resourceGroup'
 @description('App Service (web app) name. MUST follow app-potraffic-api-{env}-{region}-{seq}.')
 @minLength(10)
 @maxLength(60)
-param webAppName string = 'potraffic-api-win'
+param webAppName string = 'potraffic-api-win2'
 
 @description('Region — MUST match the App Service Plan region.')
 param location string = 'westus2'
@@ -32,13 +32,13 @@ param sharedIdentityId string
 param sharedIdentityClientId string
 
 @description('Key Vault URI in PoShared. PoTraffic reads all secrets from here — no connection strings.')
-param keyVaultUri string = 'https://kv-poshared.vault.azure.net/'
+param keyVaultUri string = 'https://kv-poshared2.vault.azure.net/'
 
 @description('Key Vault name, derived from URI, for role assignment scope.')
 param keyVaultName string = last(split(keyVaultUri, '/'))
 
 @description('Existing storage account (same resource group) holding the PoTraffic tables. Referenced, not created.')
-param storageAccountName string = 'potrafficstorage'
+param storageAccountName string = 'potrafficstorage2'
 
 resource web 'Microsoft.Web/sites@2024-04-01' = {
   name: webAppName
@@ -143,7 +143,7 @@ resource saSystemAssignedTableContrib 'Microsoft.Authorization/roleAssignments@2
 output defaultHostName string = web.properties.defaultHostName
 output principalId string = web.identity.principalId
 output kvRoleAssignmentId string = webKvSecretsUser.id
-// Reports false for the live app: production is `potraffic-api-win`, which predates the
+// Reports false for the live app: production is `potraffic-api-win2`, which predates the
 // `app-potraffic-*` convention. Left as an honest signal rather than relaxed to match — the
 // name is what CI deploys to (see .github/workflows/deploy.yml), and renaming an App Service
 // means a new hostname, so this stays false until someone decides to migrate.

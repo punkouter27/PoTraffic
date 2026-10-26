@@ -66,15 +66,15 @@ Step '4/5' 'Checking `az login` status...'
 try {
     $azAccount = (& az account show --query "name" -o tsv 2>$null).Trim()
     if ([string]::IsNullOrWhiteSpace($azAccount)) {
-        Warn 'Not logged in. Run `az login` to access Key Vault (kv-poshared).'
+        Warn 'Not logged in. Run `az login` to access Key Vault (kv-poshared2).'
     } else {
         Ok "Logged in to subscription: $azAccount"
         try {
-            $kv = (& az keyvault show --name kv-poshared --query "name" -o tsv 2>$null).Trim()
+            $kv = (& az keyvault show --name kv-poshared2 --query "name" -o tsv 2>$null).Trim()
             if ($kv) { Ok "Key Vault accessible: $kv" }
-            else { Warn 'Key Vault kv-poshared not visible — verify your access policies.' }
+            else { Warn 'Key Vault kv-poshared2 not visible — verify your access policies.' }
         } catch {
-            Warn 'Key Vault kv-poshared not accessible — verify your access policies.'
+            Warn 'Key Vault kv-poshared2 not accessible — verify your access policies.'
         }
     }
 } catch {
