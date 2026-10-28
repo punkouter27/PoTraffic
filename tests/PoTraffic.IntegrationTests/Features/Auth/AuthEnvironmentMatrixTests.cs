@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using PoTraffic.IntegrationTests.Helpers;
 
 namespace PoTraffic.IntegrationTests.Features.Auth;
@@ -52,8 +53,16 @@ public sealed class DevelopmentAuthMatrixTests : BaseIntegrationTest
 
 public sealed class ProductionAuthMatrixTests : BaseIntegrationTest
 {
+    // Placeholders for the settings Production refuses to start without (Program.cs).
     protected override void ConfigureHost(IWebHostBuilder builder) =>
-        builder.UseEnvironment("Production");
+        builder.UseEnvironment("Production")
+            .ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["KeyVault:Uri"] = "https://placeholder.vault.azure.net/",
+                ["GoogleMaps:ApiKey"] = "placeholder",
+                ["ExternalAuth:Microsoft:ClientId"] = "placeholder",
+                ["ExternalAuth:Microsoft:ClientSecret"] = "placeholder",
+            }));
 
     [SkipUnlessAzuriteAvailable]
     public async Task Production_Is_MicrosoftOnly_GuestEndpointAbsent()

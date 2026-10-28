@@ -96,6 +96,24 @@ try
 
     WebApplication app = builder.Build();
 
+    // Production refuses to start without what it cannot work without: the vault (App Service
+    // setting KeyVault__Uri), the one traffic provider and the only sign-in (both from the vault).
+    if (app.Environment.IsProduction())
+    {
+        string[] missing = [.. new[] { "KeyVault:Uri", "GoogleMaps:ApiKey", "ExternalAuth:Microsoft:ClientId", "ExternalAuth:Microsoft:ClientSecret" }
+            .Where(key => string.IsNullOrWhiteSpace(app.Configuration[key]))];
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Missing required production configuration: {string.Join(", ", missing)}");
+    }
+
+    // X-Commit lets the deploy confirm which build is answering (`curl -sI /health/live`).
+    string commit = PoPlatform.Version.Split('+') is [_, var sha] ? sha : "unknown";
+    app.Use((context, next) =>
+    {
+        context.Response.Headers["X-Commit"] = commit;
+        return next(context);
+    });
+
     // Must run before HTTPS redirection / auth so downstream middleware sees the forwarded
     // scheme, host, and client IP rather than the proxy's.
     app.UseForwardedHeaders();
