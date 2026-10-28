@@ -36,11 +36,11 @@ public sealed class ExecutePollCommandHandler(
         // 1. Load Route + active MonitoringSession for today
         EntityRoute? route = db.Routes
             .FirstOrDefault(r => r.Id == cmd.RouteId
-                && r.MonitoringStatus != (int)MonitoringStatus.Deleted);
+                && r.MonitoringStatus == (int)MonitoringStatus.Active);
 
         if (route is null)
         {
-            logger.LogWarning("ExecutePollCommand: Route {RouteId} not found or deleted", cmd.RouteId);
+            logger.LogWarning("ExecutePollCommand: Route {RouteId} not found, deleted or paused", cmd.RouteId);
             return false;
         }
 

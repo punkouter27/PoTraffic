@@ -39,8 +39,10 @@ img, svg, video {
 
 /* Form controls do not inherit the page font by default. Radzen's icon buttons
    (.rzi — toast/dialog close) are excluded: vendor.css sits in a cascade layer, so
-   this unlayered rule beat their icon font and "close" rendered as a word. */
-button:not(.rzi), input, select, textarea {
+   this unlayered rule beat their icon font and "close" rendered as a word.
+   :where() keeps it at zero specificity: being unlayered is enough to beat vendor.css,
+   and any class rule (.pt-bottom-nav-link's size and colour) must still beat it. */
+:where(button:not(.rzi), input, select, textarea) {
     font: inherit;
     color: inherit;
 }

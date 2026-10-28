@@ -17,7 +17,8 @@ public sealed record CreateWindowCommand(
     TimeOnly StartTime,
     TimeOnly EndTime,
     byte DaysOfWeekMask,
-    string? TimeZoneId = null);
+    string? TimeZoneId = null,
+    WindowId? ReplacesWindowId = null);
 
 public sealed record CreateWindowResult(
     bool IsSuccess,
@@ -66,9 +67,15 @@ public sealed class CreateWindowCommandHandler
         if (!_db.OwnsRoute(cmd.RouteId, cmd.UserId, excludeDeleted: true))
             return new CreateWindowResult(false, RouteErrorCodes.NotFound, null);
 
+        // Editing a schedule swaps the window in the same save that adds the new one, so a
+        // rejected or failed save leaves the old schedule in place rather than none at all.
+        MonitoringWindow? replaced = cmd.ReplacesWindowId is { } oldId
+            ? _db.MonitoringWindows.FirstOrDefault(w => w.Id == oldId && w.RouteId == cmd.RouteId && w.IsActive)
+            : null;
+
         // Only one active window per route is supported
         bool activeWindowExists = _db.MonitoringWindows
-            .Any(w => w.RouteId == cmd.RouteId && w.IsActive);
+            .Any(w => w.RouteId == cmd.RouteId && w.IsActive && w != replaced);
 
         if (activeWindowExists)
             return new CreateWindowResult(false, "WINDOW_ALREADY_ACTIVE", null);
@@ -90,6 +97,8 @@ public sealed class CreateWindowCommandHandler
         // so an edited schedule vanished from the route page and the next save hit 409.
         _db.Routes.First(r => r.Id == cmd.RouteId).Windows.Add(window);
         _db.Add(window);
+        if (replaced is not null)
+            replaced.IsActive = false;
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation("MonitoringWindow {WindowId} created for route {RouteId}", window.Id, cmd.RouteId);

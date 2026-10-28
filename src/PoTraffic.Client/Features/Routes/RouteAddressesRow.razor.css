@@ -1,0 +1,7 @@
+.pt-route-addresses-edit {
+    padding-block: var(--pt-space-2);
+}
+
+.pt-route-addresses-edit ::deep .rz-button + .rz-button {
+    margin-left: var(--pt-space-2);
+}

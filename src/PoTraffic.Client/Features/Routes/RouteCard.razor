@@ -263,7 +263,7 @@
         _checking = true;
         try
         {
-            if (await CheckNow.RunAsync(Http, NotificationService, Route.Id.Value))
+            if (await CheckNow.RunAsync(Http, NotificationService, Route.Id.Value) is not null)
                 await OnRefresh.InvokeAsync();
         }
         finally { _checking = false; }

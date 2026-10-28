@@ -1,0 +1,98 @@
+@using System.Net.Http.Json
+@using PoTraffic.Shared.Constants
+@inject HttpClient Http
+
+@* The route's two addresses as a settings row, editable in place: a typo or a move across
+   town no longer means deleting the commute and losing its schedule. Only an address that
+   changed is looked up again (each lookup is billed). *@
+@if (!_editing)
+{
+    <div class="pt-setting-row">
+        <span class="pt-setting-label">Addresses</span>
+        <span class="pt-setting-value">@Origin → @Destination</span>
+        <RadzenButton Text="Edit" Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="StartEditing" />
+    </div>
+}
+else
+{
+    <div class="pt-route-addresses-edit">
+        <RadzenFormField Text="From" class="pt-w-100 pt-mb-1">
+            <AddressAutocomplete @bind-Value="_origin" Placeholder="e.g. Home or 1600 Amphitheatre Pkwy" />
+        </RadzenFormField>
+        <RadzenFormField Text="To" class="pt-w-100 pt-mb-2">
+            <AddressAutocomplete @bind-Value="_destination" Placeholder="e.g. Work or 1 Apple Park Way" />
+        </RadzenFormField>
+        @if (_error is not null)
+        {
+            <div class="pt-field-error pt-mb-2" role="alert">@_error</div>
+        }
+        <RadzenButton Text="Save addresses" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Small"
+                      Click="SaveAsync" IsBusy="_saving" />
+        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="@(() => _editing = false)" />
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid RouteId { get; set; }
+    [Parameter, EditorRequired] public string Origin { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Destination { get; set; } = string.Empty;
+
+    /// <summary>Fired after a successful save so the page can reload the route.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private bool _editing;
+    private bool _saving;
+    private string _origin = string.Empty;
+    private string _destination = string.Empty;
+    private string? _error;
+
+    private void StartEditing()
+    {
+        _origin = Origin;
+        _destination = Destination;
+        _error = null;
+        _editing = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_origin) || string.IsNullOrWhiteSpace(_destination))
+        {
+            _error = "Enter both addresses.";
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{RouteId}/addresses",
+                new SetRouteAddressesRequest(_origin.Trim(), _destination.Trim()),
+                AppJsonContext.Default.SetRouteAddressesRequest);
+            if (resp.IsSuccessStatusCode)
+            {
+                _editing = false;
+                await OnSaved.InvokeAsync();
+                return;
+            }
+
+            string? errorCode = null;
+            if (resp.Content.Headers.ContentType?.MediaType == "application/json")
+            {
+                var body = await resp.Content.ReadFromJsonAsync(AppJsonContext.Default.JsonElement);
+                errorCode = body.TryGetProperty("error", out var prop) ? prop.GetString() : null;
+            }
+            _error = errorCode switch
+            {
+                RouteErrorCodes.AddressNotFound => "We couldn't find that address. Please check and try again.",
+                RouteErrorCodes.SameCoordinates => "Origin and destination resolve to the same location. Please use different addresses.",
+                RouteErrorCodes.MapsKeyMissing => "Maps integration is not configured on the server.",
+                _ => "Couldn't save the addresses. Please try again."
+            };
+        }
+        catch { _error = "Unable to connect. Please try again."; }
+        finally { _saving = false; }
+    }
+}

@@ -99,7 +99,7 @@
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="UserDailyUsageDto" Property="LastLoginAt" Title="Last Login" Width="11rem">
                                 <Template Context="u">
-                                    @(u.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")
+                                    @(u.LastLoginAt?.ToLocalTime().ToString("MMM d, h:mm tt") ?? "—")
                                 </Template>
                             </RadzenDataGridColumn>
                         </Columns>
@@ -122,7 +122,7 @@
                                     <dt>Polls today</dt><dd>@u.TodayPollCount</dd>
                                     <dt>Est. cost</dt><dd>@u.TodayEstimatedCostUsd.ToString("C4")</dd>
                                     <dt>Locale</dt><dd>@u.Locale</dd>
-                                    <dt>Last login</dt><dd>@(u.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</dd>
+                                    <dt>Last login</dt><dd>@(u.LastLoginAt?.ToLocalTime().ToString("MMM d, h:mm tt") ?? "—")</dd>
                                     <dt>Daily limit</dt>
                                     <dd>
                                         <RadzenNumeric TValue="int?" Value="@u.DailySessionQuota" Min="1" Max="200"

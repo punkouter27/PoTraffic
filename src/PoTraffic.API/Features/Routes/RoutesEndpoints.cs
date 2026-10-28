@@ -48,6 +48,27 @@ public static class RoutesEndpoints
             bool found = await handler.Handle(new SetRouteNameCommand(routeId, ctx.User.GetUserId(), body.Name), CancellationToken.None);
             return found ? Results.NoContent() : Results.NotFound();
         });
+        // Fix a typo or follow a move without losing the schedule. Geocodes only what changed.
+        group.MapPut("{routeId:guid}/addresses", async (
+            RouteId routeId, HttpContext ctx, SetRouteAddressesHandler handler, [FromBody] SetRouteAddressesRequest body) =>
+        {
+            SetRouteAddressesResult result = await handler.Handle(
+                new SetRouteAddressesCommand(routeId, ctx.User.GetUserId(), body.OriginAddress, body.DestinationAddress),
+                CancellationToken.None);
+            return result.ErrorCode switch
+            {
+                null => Results.NoContent(),
+                RouteErrorCodes.NotFound => Results.NotFound(),
+                _ => Results.UnprocessableEntity(new { error = result.ErrorCode }),
+            };
+        }).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
+        // Pause keeps the schedule and history but stops polling; resume re-arms it.
+        group.MapPut("{routeId:guid}/paused", async (
+            RouteId routeId, HttpContext ctx, SetRoutePausedHandler handler, [FromBody] SetRoutePausedRequest body) =>
+        {
+            bool found = await handler.Handle(new SetRoutePausedCommand(routeId, ctx.User.GetUserId(), body.Paused), CancellationToken.None);
+            return found ? Results.NoContent() : Results.NotFound();
+        });
         return app;
     }
 

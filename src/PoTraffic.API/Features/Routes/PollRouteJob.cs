@@ -55,12 +55,12 @@ public sealed class PollRouteJob
 
         try
         {
-            // Stop the chain when the route was deleted mid-poll — a soft-deleted route
-            // must never keep consuming provider quota.
+            // Stop the chain when the route was deleted or paused mid-poll — neither may keep
+            // consuming provider quota. Resume re-arms a fresh chain.
             EntityRoute? route = db.Routes.FirstOrDefault(r => r.Id == routeId);
-            if (route is null || route.MonitoringStatus == (int)MonitoringStatus.Deleted)
+            if (route is null || route.MonitoringStatus != (int)MonitoringStatus.Active)
             {
-                _logger.LogInformation("PollRouteJob: route {RouteId} is gone or deleted — polling chain stopped", routeId);
+                _logger.LogInformation("PollRouteJob: route {RouteId} is gone, deleted or paused — polling chain stopped", routeId);
                 return;
             }
 

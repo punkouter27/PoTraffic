@@ -142,7 +142,7 @@ public sealed class BackgroundSchedulerService : BackgroundService
 
         List<EntityRoute> monitored = db.Routes
             .Where(r => r.JobChainId != null
-                && r.MonitoringStatus != (int)MonitoringStatus.Deleted)
+                && r.MonitoringStatus == (int)MonitoringStatus.Active)
             .ToList();
 
         int rearmed = 0;

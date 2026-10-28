@@ -8,9 +8,6 @@ public enum AdvancedPanel
     /// <summary>The route drawn on a map, on the route page.</summary>
     Map,
 
-    /// <summary>The week-by-quarter-hour grid (and its 3D view), on the route page.</summary>
-    Heatmap,
-
     /// <summary>What rain and snow cost the route, on the route page.</summary>
     Weather,
 

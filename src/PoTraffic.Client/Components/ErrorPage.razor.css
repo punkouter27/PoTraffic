@@ -15,3 +15,9 @@
 .pt-error-page ::deep .pt-error-page-icon {
     color: var(--pt-fg-faint);
 }
+
+/* The header is an inline-size container, so it has no width of its own to offer:
+   centred in this column it collapsed to its narrowest word. Stretch it instead. */
+.pt-error-page ::deep .pt-page-header {
+    align-self: stretch;
+}

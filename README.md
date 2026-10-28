@@ -82,6 +82,14 @@ traffic samples at configured intervals until the window closes. Samples are
 stored in Table Storage and used to build baseline travel-time bands per route
 and time slot.
 
+On a route's Schedule tab a user can edit the schedule (swapped in one save, so a
+rejected edit keeps the old one), change the addresses (only a changed address is
+geocoded again; history is kept), and pause or resume monitoring (paused keeps the
+schedule and history but stops the poll chain; Stop only ends today's session). The
+sample commute's history is generated, so it never counts toward spend, admin usage or
+the fleet volatility chart. With mock providers on, address suggestions are canned and
+free.
+
 Cost controls, all editable by administrators on the Admin page (System Config tab, or
 `PUT /api/admin/configuration/{key}`):
 

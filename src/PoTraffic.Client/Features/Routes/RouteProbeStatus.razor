@@ -17,7 +17,7 @@
     <span class="pt-probe-cell">
         <span class="pt-probe-dot @(next.Live ? "pt-probe-dot-green" : "pt-probe-dot-amber")" aria-hidden="true"></span>
         <span class="pt-probe-label">
-            @(LatestProbe is null ? "Not checked yet" : $"Checked {FormatAgo(LatestProbe.PolledAtDateTime)}")
+            @LastCheckedText()
             <span class="pt-probe-sep">·</span>
             @if (next.CountdownTargetUtc is { } target)
             {
@@ -56,20 +56,40 @@
     /// </summary>
     [Parameter] public MonitoringWindowDto? ArmedWindow { get; set; }
 
+    /// <summary>Monitoring is paused: no sample is coming until the user resumes it.</summary>
+    [Parameter] public bool Paused { get; set; }
+
     /// <summary>Fired after a successful check so the parent can refresh from the wire.</summary>
     [Parameter] public EventCallback OnProbeCompleted { get; set; }
 
     private bool _checking;
+
+    /// <summary>
+    /// The last Check now on this page. It stores no sample (FR-016), so without this the chip
+    /// kept saying "Not checked yet" right after a check.
+    /// </summary>
+    private (DateTime AtLocal, int Minutes)? _manualCheck;
 
     private async Task CheckNowAsync()
     {
         _checking = true;
         try
         {
-            if (await CheckNow.RunAsync(Http, NotificationService, RouteId))
+            if (await CheckNow.RunAsync(Http, NotificationService, RouteId) is { } result)
+            {
+                _manualCheck = (DateTime.Now, TextFormatting.Minutes(result.DurationSeconds));
                 await OnProbeCompleted.InvokeAsync();
+            }
         }
         finally { _checking = false; }
+    }
+
+    /// <summary>The newer of the last recorded sample and this page's last Check now.</summary>
+    private string LastCheckedText()
+    {
+        if (_manualCheck is { } check && (LatestProbe is null || check.AtLocal > LatestProbe.PolledAtDateTime))
+            return $"Checked {FormatAgo(check.AtLocal)} · {check.Minutes} min";
+        return LatestProbe is null ? "Not checked yet" : $"Checked {FormatAgo(LatestProbe.PolledAtDateTime)}";
     }
 
     /// <param name="Detail">Text when there is no countdown to run.</param>
@@ -117,6 +137,9 @@
     {
         get
         {
+            if (Paused)
+                return new NextSampleInfo("paused", Live: false);
+
             if (Session is not { State: SessionState.Active } session)
                 return ArmedStartText() is { } armed
                     ? new NextSampleInfo(armed, Live: false)
@@ -133,7 +156,7 @@
 
                 DateTime openLocal = nextOpen.ToLocalTime().DateTime;
                 string when = openLocal.Date == DateTime.Now.Date ? "today" : openLocal.ToString("ddd");
-                return new NextSampleInfo($"next {when} {openLocal:HH:mm}", Live: false);
+                return new NextSampleInfo($"next {when} {LocalTimeFormatter.Clock(openLocal)}", Live: false);
             }
 
             if (schedule.NextPollExpectedUtc is not { } nextPoll)
@@ -153,6 +176,6 @@
         if (ago < TimeSpan.FromMinutes(1)) return "just now";
         if (ago < TimeSpan.FromHours(1)) return $"{(int)ago.TotalMinutes} min ago";
         if (ago < TimeSpan.FromHours(6)) return $"{(int)ago.TotalHours} h ago";
-        return whenLocal.ToString("MMM d, HH:mm");
+        return whenLocal.ToString("MMM d, h:mm tt");
     }
 }

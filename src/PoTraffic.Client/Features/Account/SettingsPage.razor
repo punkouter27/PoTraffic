@@ -178,7 +178,7 @@
                         <RadzenProgressBar Value="@QuotaPercent" ShowValue="false"
                                            ProgressBarStyle="@QuotaStyle" aria-label="Daily quota used" />
                         <p class="pt-settings-meta pt-mt-2">
-                            Resets at @_quota.ResetsAtUtc.ToLocalTime().ToString("HH:mm").
+                            Resets at @LocalTimeFormatter.Clock(_quota.ResetsAtUtc.ToLocalTime().DateTime).
                             @if (_quota.PollsToday > 0)
                             {
                                 <text>
@@ -269,8 +269,7 @@
     [
         (AdvancedPanel.Sparklines, "Card sparklines", "A 24-hour trend line on each commute card."),
         (AdvancedPanel.Map, "Route map", "The drive drawn on real roads, tinted by today's traffic."),
-        (AdvancedPanel.Heatmap, "Weekly pattern", "Every weekday hour by hour, with a 3D view — on the commute's History tab."),
-        (AdvancedPanel.Weather, "Weather impact", "What rain, snow and fog cost this commute — on the History tab."),
+        (AdvancedPanel.Weather, "Weather impact", "What rain, snow and fog cost this commute — on its own Weather tab."),
     ];
 
     // Whitelist matches the server-side validator.

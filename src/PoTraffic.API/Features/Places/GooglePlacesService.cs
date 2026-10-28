@@ -11,10 +11,13 @@ namespace PoTraffic.API.Features.Places;
 /// BFF proxy to the Google Places Autocomplete API (#9). The Google key stays server-side
 /// (reuses <c>GoogleMaps:ApiKey</c>); the client only ever sees address suggestions. Failures
 /// and a missing key degrade gracefully to an empty list so free-text entry still works.
+/// With mock providers on (Testing, or <c>Features:UseMockProviders</c>) it answers with canned
+/// suggestions instead, so the dropdown can be exercised locally without a key or a bill.
 /// </summary>
 public sealed class GooglePlacesService(
     HttpClient http,
     IConfiguration config,
+    FeatureFlags flags,
     TableStorageContext db,
     ILogger<GooglePlacesService> logger)
 {
@@ -23,8 +26,14 @@ public sealed class GooglePlacesService(
 
     public async Task<IReadOnlyList<PlaceSuggestionDto>> AutocompleteAsync(string? input, CancellationToken ct)
     {
+        if (input is null || input.Trim().Length < MinInputLength)
+            return [];
+
+        if (flags.UseMockProviders)
+            return MockSuggestions(input.Trim());
+
         string? key = config["GoogleMaps:ApiKey"];
-        if (string.IsNullOrWhiteSpace(key) || input is null || input.Trim().Length < MinInputLength)
+        if (string.IsNullOrWhiteSpace(key))
             return [];
 
         string url = $"{AutocompleteUrl}?input={Uri.EscapeDataString(input.Trim())}&types=address&key={key}";
@@ -48,6 +57,14 @@ public sealed class GooglePlacesService(
             return [];
         }
     }
+
+    /// <summary>The typed text completed into a few plausible cities; free, and never billed.</summary>
+    private static IReadOnlyList<PlaceSuggestionDto> MockSuggestions(string input) =>
+    [
+        new($"{input}, Seattle, WA, USA", "mock-seattle"),
+        new($"{input}, Portland, OR, USA", "mock-portland"),
+        new($"{input}, San Francisco, CA, USA", "mock-san-francisco"),
+    ];
 
     private sealed record PlacesResponse(
         [property: JsonPropertyName("status")] string Status,

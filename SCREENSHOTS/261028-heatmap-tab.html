@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heatmap tab before/after</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1a1d23; --muted:#5b6270; --line:#dde1e7; --add:#1f8a3b; --chg:#b45309; }
+@media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1d2026; --fg:#e8eaee; --muted:#9aa1ad; --line:#2d313a; --add:#4ade80; --chg:#fbbf24; } }
+* { box-sizing: border-box; }
+body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+main { max-width:1200px; margin:0 auto; }
+h1 { margin:0 0 4px; font-size:26px; }
+.lede { color:var(--muted); margin:0 0 28px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:24px; }
+h2 { margin:0 0 8px; font-size:18px; }
+ul { margin:0 0 14px; padding-left:20px; }
+.tag { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:4px; margin-right:6px; }
+.add { color:var(--add); border:1px solid var(--add); }
+.chg { color:var(--chg); border:1px solid var(--chg); }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.pair.narrow { grid-template-columns:repeat(2, minmax(0, 300px)); }
+figure { margin:0; }
+figcaption { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:4px; text-transform:uppercase; }
+img { width:100%; border:1px solid var(--line); border-radius:6px; display:block; }
+.note { color:var(--muted); font-size:13px; margin-top:10px; }
+@media (max-width:700px) { .pair, .pair.narrow { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Route page: Heatmap tab</h1>
+<p class="lede">2026-10-28. Shown on the sample commute. "Before" is commit 81e21b7 with default settings.</p>
+
+<section>
+<h2>Tabs</h2>
+<ul>
+<li><span class="tag add">new</span>A Heatmap tab on every commute, always shown: all seven days down the side in 15-minute slots (96 rows, midnight to midnight), with the 3D view toggle.</li>
+<li><span class="tag chg">changed</span>The "Weekly pattern" switch is gone from Settings → Advanced panels. Weather impact moves to its own Weather tab, still behind its switch. The old History tab is gone.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before (default settings)</figcaption><img src="261028-heatmap-tab/before-route.png" alt="Route page before: Overview tab only"></figure>
+<figure><figcaption>After</figcaption><img src="261028-heatmap-tab/after-heatmap.png" alt="Route page after: Heatmap tab open"></figure>
+</div>
+</section>
+
+<section>
+<h2>On a phone</h2>
+<div class="pair narrow">
+<figure><figcaption>Before (?tab=heatmap falls back to Overview)</figcaption><img src="261028-heatmap-tab/before-heatmap-mobile.png" alt="Phone before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-heatmap-tab/after-heatmap-mobile.png" alt="Phone after"></figure>
+</div>
+</section>
+</main>
+</body>
+</html>

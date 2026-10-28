@@ -1,4 +1,5 @@
 @page "/dashboard"
+@attribute [Authorize]
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.DTOs.History
 @using PoTraffic.Shared.DTOs.Account
@@ -263,13 +264,16 @@ else
     }
 
     /// <summary>
-    /// A search matches the name or either address — what the card shows. "Monitoring"
-    /// counts the sample as such, as the card's own colour does: it has history and never
-    /// shows the Paused flag.
+    /// "Monitoring" counts the sample as such, as the card's own colour does: it has history
+    /// and never shows the Paused flag.
     /// </summary>
+    private static bool IsMonitoring(RouteDto route) =>
+        route.MonitoringStatus == MonitoringStatus.Active || route.IsSample;
+
+    /// <summary>A search matches the name or either address — what the card shows.</summary>
     private bool MatchesToolbar(RouteDto route)
     {
-        bool monitoring = route.MonitoringStatus == MonitoringStatus.Active || route.IsSample;
+        bool monitoring = IsMonitoring(route);
         if (_filter == StatusFilter.Monitoring && !monitoring) return false;
         if (_filter == StatusFilter.Paused && monitoring) return false;
 
@@ -287,10 +291,11 @@ else
 
         // Null, not empty — PageHeader renders the subtitle element only when there
         // is one, and an empty <p> still occupies a line.
-        int active = VisibleRoutes.Count(r => r.MonitoringStatus == MonitoringStatus.Active);
+        // Same rule as the Monitoring filter, so the count and the filter never disagree.
+        int active = VisibleRoutes.Count(IsMonitoring);
         _subtitle = VisibleRoutes.Count == 0
             ? null
-            : $"{active} of {VisibleRoutes.Count} monitoring · updated {DateTime.Now:HH:mm}";
+            : $"{active} of {VisibleRoutes.Count} monitoring · updated {LocalTimeFormatter.Clock(DateTime.Now)}";
     }
 
     /// <summary>

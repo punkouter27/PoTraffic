@@ -90,8 +90,11 @@ public static class TestingEndpoints
                 CreatedAt = DateTimeOffset.UtcNow
             };
             db.Add(user);
-            await db.SaveChangesAsync(ct);
         }
+
+        // As ExternalAuthService does on a real sign-in, so admin pages show it under test too.
+        user.LastLoginAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(ct);
 
         await CookieSignIn.SignInAsync(httpContext, user);
         return Results.Ok(new AuthMeResponse(user.Id, user.Email, user.Role, user.AuthProvider));

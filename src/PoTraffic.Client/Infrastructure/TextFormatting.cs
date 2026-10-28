@@ -17,6 +17,12 @@ namespace PoTraffic.Client.Infrastructure;
 public static class TextFormatting
 {
     /// <summary>
+    /// Whole minutes, rounded the way the chart rounds its tooltip, so a point never reads
+    /// "33 min" on the chart and "32 min" in the detail line under it.
+    /// </summary>
+    public static int Minutes(int seconds) => (int)Math.Round(seconds / 60.0, MidpointRounding.AwayFromZero);
+
+    /// <summary>
     /// A distance in the units the user's roads are signed in: miles where the browser's
     /// region drives in miles (US, UK, Liberia, Myanmar), kilometres everywhere else.
     /// </summary>

@@ -141,17 +141,16 @@
         _saving = true;
         try
         {
-            // Editing replaces the window: delete the old one first, out of the user's sight.
-            if (_editing && Window is not null)
-                await Http.DeleteAsync($"/api/routes/{RouteId}/windows/{Window.Id}");
-
+            // Editing replaces the window. The server swaps it in the same save that adds the
+            // new one, so a rejected save leaves the old schedule standing.
             HttpResponseMessage resp = await Http.PostAsJsonAsync(
                 $"/api/routes/{RouteId}/windows",
                 new SaveWindowRequest(
                     ScheduleFields.ToHHmm(_startTime.Value),
                     ScheduleFields.ToHHmm(_endTime.Value),
                     mask,
-                    ScheduleFields.LocalZoneId), AppJsonContext.Default.SaveWindowRequest);
+                    ScheduleFields.LocalZoneId,
+                    _editing ? Window?.Id : null), AppJsonContext.Default.SaveWindowRequest);
 
             if (!resp.IsSuccessStatusCode)
             {

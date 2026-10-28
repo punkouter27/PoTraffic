@@ -74,7 +74,17 @@ public static class SpendingCap
     public static int PollsThisMonth(TableStorageContext db, DateTimeOffset nowUtc)
     {
         DateTimeOffset start = MonthStart(nowUtc);
-        return db.PollRecords.Count(p => p.PolledAt >= start);
+        return BilledPolls(db).Count(p => p.PolledAt >= start);
+    }
+
+    /// <summary>
+    /// Every poll that reached the provider: a sample route's history is generated, never
+    /// fetched, so it is left out of spend, per-user usage and fleet-wide averages.
+    /// </summary>
+    public static IEnumerable<PollRecord> BilledPolls(TableStorageContext db)
+    {
+        HashSet<RouteId> samples = [.. db.Routes.Where(r => r.IsSample).Select(r => r.Id)];
+        return samples.Count == 0 ? db.PollRecords : db.PollRecords.Where(p => !samples.Contains(p.RouteId));
     }
 
     /// <summary>This month's billed calls by kind, scheduled polls first, each with its cost.</summary>

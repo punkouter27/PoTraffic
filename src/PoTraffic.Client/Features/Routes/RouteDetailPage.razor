@@ -1,4 +1,5 @@
 @page "/routes/{RouteId:guid}"
+@attribute [Authorize]
 @using PoTraffic.Shared.DTOs.History
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.Enums
@@ -7,6 +8,7 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject UiPreferences Prefs
+@inject NotificationService Notifications
 
 @* ──────────────────────────────────────────────────────────────────────
    Route detail — the answer, the evidence, and everything else folded away.
@@ -17,11 +19,11 @@
    first answered the question the app exists to answer, and three of them
    answered "when is it bad?" in three different shapes.
 
-   Now three tabs under one header: OVERVIEW (when to leave, and today's
-   samples), SCHEDULE (the monitoring window and the return trip) and HISTORY
-   (the weekly grid and the weather). The map, the grid and the weather are
+   Now four tabs under one header: OVERVIEW (when to leave, and today's
+   samples), SCHEDULE (the monitoring window and the return trip), HEATMAP
+   (all seven days in 15-minute slots) and WEATHER. The map and the weather are
    advanced panels — off until switched on in Settings — so by default the page
-   is the answer, today's chart and the schedule. The header carries the name,
+   is the answer, today's chart, the schedule and the week. The header carries the name,
    renameable in place, and one chip saying when the route was last checked and
    when the next check is due.
 
@@ -71,6 +73,7 @@ else
                                   LatestProbe="LatestPoll"
                                   Session="_activeSession"
                                   ArmedWindow="_activeWindow"
+                                  Paused="@(_route is { IsSample: false, MonitoringStatus: MonitoringStatus.Paused })"
                                   OnProbeCompleted="@OnWindowSaved" />
             }
         </Actions>
@@ -112,11 +115,12 @@ else
     {
     string[] tabs = TabKeys;
 
-    @* ── ONE PAGE, THREE TABS ─────────────────────────────────────────────
+    @* ── ONE PAGE, FOUR TABS ──────────────────────────────────────────────
        The route page and its monitoring-window editor used to be one long stack:
        the answer, then a settings card, then the evidence. They are tabs of the
        same page now — Overview (the answer and today), Schedule (the monitoring
-       window and the return trip) and History (the week and the weather) — and
+       window and the return trip), Heatmap (all seven days in quarter-hours) and
+       Weather (what rain and snow cost) — and
        the open tab rides the URL as ?tab=, so /routes/{id} still opens the answer
        and a link can land straight on the schedule.
 
@@ -125,8 +129,8 @@ else
        rather than the zero of a display:none panel.
 
        The sample has no Schedule tab — it is never probed, so a schedule form on it
-       would offer something that does nothing. History appears only when one of its
-       panels is switched on in Settings → Advanced panels. *@
+       would offer something that does nothing. Weather appears only when it is
+       switched on in Settings → Advanced panels. *@
     <div class="pt-route-tabs">
     <RadzenTabs SelectedIndex="@Array.IndexOf(tabs, ActiveTab)" Change="@(i => OnTabChanged(tabs, i))">
         <Tabs>
@@ -158,7 +162,7 @@ else
             <div class="pt-answer-headline">Leave by @LocalTimeFormatter.FormatWallClock(leaveBy)</div>
             <div class="pt-answer-meta">
                 On time on @plan.OnTimePercent% of @plan.SampleCount recorded trips —
-                usually @(plan.TypicalSeconds / 60) min, up to @(plan.WorstCaseSeconds / 60) min.
+                usually @TextFormatting.Minutes(plan.TypicalSeconds ?? 0) min, up to @TextFormatting.Minutes(plan.WorstCaseSeconds ?? 0) min.
                 @if (!plan.DayOfWeekSpecific)
                 {
                     <span>Based on every day until today's history fills in.</span>
@@ -232,8 +236,8 @@ else
         @if (_selectedPoll is { } selected)
         {
             <div class="pt-trend-selection">
-                <span class="pt-trend-selection-time">@selected.PolledAtDateTime.ToString("HH:mm:ss")</span>
-                <span class="pt-trend-selection-value">@(selected.TravelDurationSeconds / 60) min</span>
+                <span class="pt-trend-selection-time">@LocalTimeFormatter.Clock(selected.PolledAtDateTime)</span>
+                <span class="pt-trend-selection-value">@TextFormatting.Minutes(selected.TravelDurationSeconds) min</span>
                 <span class="pt-trend-selection-meta">
                     @TextFormatting.Distance(selected.DistanceMetres)
                     @if (selected.IsRerouted)
@@ -267,6 +271,8 @@ else
                             <WindowConfigPanel RouteId="RouteId" Window="_activeWindow" Session="_activeSession" OnSaved="OnWindowSaved" />
                         </SectionErrorBoundary>
 
+                        <RouteAddressesRow RouteId="RouteId" Origin="@_route.OriginAddress" Destination="@_route.DestinationAddress" OnSaved="OnWindowSaved" />
+
                         @* Both states go through the same call: the endpoint creates the reversed route and
                            links it, or hands back the one already linked. Navigating straight to a stored
                            ReturnRouteId could open a route that had since been deleted. *@
@@ -277,29 +283,39 @@ else
                                           ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
                                           Click="CreateReturnTripAsync" IsBusy="_creatingReturn" />
                         </div>
+
+                        @* Stop above ends today's session only; this is the switch that lasts. *@
+                        @{ bool paused = _route.MonitoringStatus == MonitoringStatus.Paused; }
+                        <div class="pt-setting-row">
+                            <span class="pt-setting-label">Monitoring</span>
+                            <span class="pt-setting-value">@(paused ? "Paused — no checks until resumed" : "On")</span>
+                            <RadzenButton Text="@(paused ? "Resume" : "Pause")" Icon="@(paused ? "play_arrow" : "pause")"
+                                          ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                          Click="@(() => SetPausedAsync(!paused))" IsBusy="_pausing" />
+                        </div>
                     </RadzenCard>
                 </RadzenTabsItem>
             }
 
-            @if (ShowHistory)
-            {
-                <RadzenTabsItem Text="History" Icon="calendar_month">
-                    <div class="pt-route-history">
-                        @if (ShowHeatmap)
-                        {
-                            <RadzenCard>
-                                <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">Your week, hour by hour</RadzenText>
-                                <SectionErrorBoundary Label="the weekly pattern">
-                                    <VolatilityHeatmap Heatmap="_heatmap" />
-                                </SectionErrorBoundary>
-                            </RadzenCard>
-                        }
+            <RadzenTabsItem Text="Heatmap" Icon="calendar_month">
+                <div class="pt-route-history">
+                    <RadzenCard>
+                        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">Your week, every 15 minutes</RadzenText>
+                        <SectionErrorBoundary Label="the weekly pattern">
+                            <VolatilityHeatmap Heatmap="_heatmap" />
+                        </SectionErrorBoundary>
+                    </RadzenCard>
+                </div>
+            </RadzenTabsItem>
 
-                        @* Under the weekly grid because it answers the question the grid provokes:
-                           the grid shows that some mornings are worse, this says which were wet.
-                           WeatherImpact draws nothing for a null payload, and an empty card is
-                           worse than none, so the card waits for the first fetch. *@
-                        @if (ShowWeather && _weatherImpact is not null)
+            @* The question the heatmap provokes: some mornings are worse — were they wet?
+               WeatherImpact draws nothing for a null payload, and an empty card is worse
+               than none, so the card waits for the first fetch. *@
+            @if (ShowWeather)
+            {
+                <RadzenTabsItem Text="Weather" Icon="rainy">
+                    <div class="pt-route-history">
+                        @if (_weatherImpact is not null)
                         {
                             <RadzenCard>
                                 <SectionErrorBoundary Label="the weather impact">
@@ -321,28 +337,28 @@ else
     [Parameter] public Guid RouteId { get; set; }
 
     /// <summary>
-    /// The open tab — "schedule" or "history"; absent (or anything unknown) is Overview.
-    /// Lives in the query string so a reload, a shared link or the back button keeps it.
+    /// The open tab — "schedule", "heatmap" or "weather"; absent (or anything unknown) is
+    /// Overview. Lives in the query string so a reload, a shared link or the back button keeps it.
     /// </summary>
     [SupplyParameterFromQuery(Name = "tab")] public string? Tab { get; set; }
 
     private const string OverviewTab = "overview";
     private const string ScheduleTab = "schedule";
-    private const string HistoryTab = "history";
+    private const string HeatmapTab = "heatmap";
+    private const string WeatherTab = "weather";
 
     // Advanced panels (Settings → Advanced panels). Read per render: the service caches
     // them, and a switch flipped in Settings applies the next time this page draws.
     private bool ShowMap => Prefs.IsOn(AdvancedPanel.Map);
-    private bool ShowHeatmap => Prefs.IsOn(AdvancedPanel.Heatmap);
     private bool ShowWeather => Prefs.IsOn(AdvancedPanel.Weather);
-    private bool ShowHistory => ShowHeatmap || ShowWeather;
 
     /// <summary>The tabs this route has, in order. Their position is RadzenTabs' index.</summary>
     private string[] TabKeys =>
     [
         OverviewTab,
         .. _route?.IsSample == false ? [ScheduleTab] : Array.Empty<string>(),
-        .. ShowHistory ? [HistoryTab] : Array.Empty<string>(),
+        HeatmapTab,
+        .. ShowWeather ? [WeatherTab] : Array.Empty<string>(),
     ];
 
     /// <summary>The tab to show: the query's, when this route has it; otherwise Overview.</summary>
@@ -372,6 +388,7 @@ else
     /// </summary>
     protected override void ResetForSubjectChange()
     {
+        _notFound = false;
         _route = null;
         _path = null;
         _heatmap = null;
@@ -457,6 +474,25 @@ else
         StateHasChanged();
     }
 
+    private bool _pausing;
+
+    /// <summary>Pauses or resumes monitoring; the schedule and history are kept either way.</summary>
+    private async Task SetPausedAsync(bool paused)
+    {
+        _pausing = true;
+        try
+        {
+            HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{RouteId}/paused",
+                new SetRoutePausedRequest(paused), AppJsonContext.Default.SetRoutePausedRequest);
+            if (resp.IsSuccessStatusCode)
+                await RefreshAsync();
+            else
+                Notifications.Notify(NotificationSeverity.Error, paused ? "Couldn't pause" : "Couldn't resume", "Please try again.");
+        }
+        catch { Notifications.Notify(NotificationSeverity.Error, "Unable to connect", "Please try again."); }
+        finally { _pausing = false; }
+    }
+
     /// <summary>Clicking a sample on the chart surfaces its raw record beneath.</summary>
     private void OnTrendPointSelected(int index) =>
         _selectedPoll = index >= 0 && index < _todayPolls.Count ? _todayPolls[index] : null;
@@ -489,6 +525,12 @@ else
         // Failures propagate deliberately: PollingComponentBase turns them into backoff
         // and the stale banner. Swallowing them here would report every refresh as a
         // success and keep hammering an endpoint that is down.
+        //
+        // A commute that doesn't exist won't start existing: once the page says so, stop
+        // asking. Navigating to another id resets the flag (ResetForSubjectChange).
+        if (_notFound)
+            return;
+
         string dayOfWeek = DateTime.Today.DayOfWeek.ToString();
         string sinceUtc = Uri.EscapeDataString(DateTime.UtcNow.AddHours(-24).ToString("o"));
 
@@ -507,16 +549,17 @@ else
         // rides the normal refresh cadence: after the first call the server is only
         // re-deciding the colour, which is exactly what should follow a new sample.
         // 404 when the route's coordinates can't be parsed — RouteMap has an empty state for that.
-        // The map, the weekly grid and the weather are advanced panels: a panel that is
-        // switched off is not fetched at all, so the default page costs four reads, not seven.
+        // The map and the weather are advanced panels: a panel that is switched off is
+        // not fetched at all, so the default page costs five reads, not seven.
         Task<RoutePathDto?> pathTask = ShowMap
             ? GetOptionalAsync($"/api/routes/{RouteId}/path", AppJsonContext.Default.RoutePathDto)
             : Task.FromResult(_path);
 
         // The weekly grid rides along with the fan-out, but only when the copy in hand
-        // has aged out — see HeatmapMaxAge.
-        bool refreshHeatmap = ShowHeatmap
-            && (_heatmapFetchedAt is not { } fetchedAt || DateTimeOffset.UtcNow - fetchedAt > HeatmapMaxAge);
+        // has aged out — see HeatmapMaxAge. It is read from stored samples, never the
+        // provider, so fetching it before its tab is opened costs nothing billed.
+        bool refreshHeatmap = _heatmapFetchedAt is not { } fetchedAt
+            || DateTimeOffset.UtcNow - fetchedAt > HeatmapMaxAge;
         Task<VolatilityHeatmapDto?> heatmapTask = refreshHeatmap
             ? Http.GetFromJsonAsync($"/api/routes/{RouteId}/heatmap", AppJsonContext.Default.VolatilityHeatmapDto)
             : Task.FromResult(_heatmap);

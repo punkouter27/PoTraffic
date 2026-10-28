@@ -62,7 +62,7 @@ public static class WindowsEndpoints
             return Results.BadRequest(new { error = "INVALID_END_TIME" });
 
         CreateWindowResult result = await handler.Handle(
-            new CreateWindowCommand(routeId, userId.Value, start, end, request.DaysOfWeekMask, request.TimeZoneId), CancellationToken.None);
+            new CreateWindowCommand(routeId, userId.Value, start, end, request.DaysOfWeekMask, request.TimeZoneId, request.ReplacesWindowId), CancellationToken.None);
 
         return result.IsSuccess
             ? Results.Created($"/api/routes/{routeId}/windows/{result.WindowId}", new { windowId = result.WindowId })
@@ -142,6 +142,7 @@ public sealed record CreateWindowRequest(
     string StartTime,
     string EndTime,
     byte DaysOfWeekMask,
-    string? TimeZoneId = null);
+    string? TimeZoneId = null,
+    WindowId? ReplacesWindowId = null);
 
 public sealed record StopWindowRequest(SessionId SessionId);

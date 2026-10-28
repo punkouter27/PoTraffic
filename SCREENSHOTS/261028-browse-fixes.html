@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browse fixes before/after</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1a1d23; --muted:#5b6270; --line:#dde1e7; --add:#1f8a3b; --chg:#b45309; }
+@media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1d2026; --fg:#e8eaee; --muted:#9aa1ad; --line:#2d313a; --add:#4ade80; --chg:#fbbf24; } }
+* { box-sizing: border-box; }
+body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+main { max-width:1200px; margin:0 auto; }
+h1 { margin:0 0 4px; font-size:26px; }
+.lede { color:var(--muted); margin:0 0 28px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:24px; }
+h2 { margin:0 0 8px; font-size:18px; }
+ul { margin:0 0 14px; padding-left:20px; }
+.tag { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:4px; margin-right:6px; }
+.add { color:var(--add); border:1px solid var(--add); }
+.chg { color:var(--chg); border:1px solid var(--chg); }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.pair.narrow { grid-template-columns:repeat(2, minmax(0, 300px)); }
+figure { margin:0; }
+figcaption { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:4px; text-transform:uppercase; }
+img { width:100%; border:1px solid var(--line); border-radius:6px; display:block; }
+.note { color:var(--muted); font-size:13px; margin-top:10px; }
+@media (max-width:700px) { .pair, .pair.narrow { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Browse fixes</h1>
+<p class="lede">2026-10-28. Before: the exploratory browse on commit 81e21b7 plus the Heatmap tab. After: the same flows on a fresh Testing host.</p>
+<section>
+<h2>Spending and admin</h2>
+<ul>
+<li><span class="tag chg">fixed</span>The sample commute's 208 generated samples no longer count as Google spend, toward per-user "Polls today", or in the Global Volatility chart.</li>
+<li><span class="tag chg">fixed</span>Last login is recorded on the test sign-in path too.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/admin-before.png" alt="Admin usage before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/admin-after.png" alt="Admin usage after"></figure>
+</div>
+</section>
+<section>
+<h2>Schedule tab</h2>
+<ul>
+<li><span class="tag chg">fixed</span>Editing a schedule swaps it on the server in one save; a rejected edit no longer leaves the commute with no schedule.</li>
+<li><span class="tag add">new</span>Addresses row: edit From/To in place. Only a changed address is looked up again.</li>
+<li><span class="tag add">new</span>Monitoring row: Pause / Resume. Paused keeps the schedule and history and stops polling; the status chip says "paused" and the dashboard's Paused filter finally has something to show.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/schedule-before.png" alt="Schedule tab before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/schedule-after.png" alt="Schedule tab after"></figure>
+</div>
+</section>
+<div class="pair"><figure><figcaption>Paused</figcaption><img src="261028-browse-fixes/paused-after.png" alt="Paused commute"></figure></div>
+<section>
+<h2>Check now</h2>
+<ul>
+<li><span class="tag chg">fixed</span>After a check the chip reads "Checked just now · 23 min" instead of "Not checked yet". Check now still stores no sample, by design.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/checknow-before.png" alt="Check now before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/checknow-after.png" alt="Check now after"></figure>
+</div>
+</section>
+<section>
+<h2>New commute form</h2>
+<ul>
+<li><span class="tag chg">fixed</span>"Enter an origin address" clears as soon as you type.</li>
+<li><span class="tag add">new</span>With mock data on, address suggestions appear (canned, free). Escape closes the list, and it is announced as a listbox.</li>
+<li><span class="tag chg">fixed</span>Signed-out visitors are sent to sign in instead of seeing the form.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/create-before.png" alt="New commute form before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/create-after.png" alt="New commute form after"></figure>
+</div>
+</section>
+<section>
+<h2>Error pages</h2>
+<ul>
+<li><span class="tag chg">fixed</span>"Page not found" and "Access denied" no longer squeeze into a one-word column.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/404-before.png" alt="Not found before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/404-after.png" alt="Not found after"></figure>
+</div>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/denied-before.png" alt="Access denied before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/denied-after.png" alt="Access denied after"></figure>
+</div>
+</section>
+<section>
+<h2>Health</h2>
+<ul>
+<li><span class="tag chg">fixed</span>The duplicate "Background Scheduler" and "Google Maps API Key" rows are gone; the registered checks already cover both and know about mock mode.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/health-before.png" alt="Health page before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/health-after.png" alt="Health page after"></figure>
+</div>
+</section>
+<section>
+<h2>On a phone</h2>
+<ul>
+<li><span class="tag chg">fixed</span>"Account" in the bottom bar now matches "Commutes" in size and colour.</li>
+</ul>
+<div class="pair narrow">
+<figure><figcaption>Before</figcaption><img src="261028-browse-fixes/phone-before.png" alt="Phone dashboard before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-browse-fixes/phone-after.png" alt="Phone dashboard after"></figure>
+</div>
+</section>
+<section>
+<h2>Not pictured</h2>
+<ul>
+<li><span class="tag chg">fixed</span>A deleted or wrong commute link stops polling once it says "doesn't exist" (5 requests, then none for 35 s).</li>
+<li><span class="tag chg">fixed</span>Times read the same everywhere: "updated 3:16 PM", "Resets at 12:00 AM", chart detail "8:00 AM".</li>
+<li><span class="tag chg">fixed</span>The chart's detail line rounds minutes the same way as its tooltip.</li>
+<li><span class="tag chg">fixed</span>The dashboard's "N of M monitoring" uses the same rule as the Monitoring filter.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

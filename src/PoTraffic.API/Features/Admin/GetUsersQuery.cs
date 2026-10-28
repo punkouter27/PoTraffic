@@ -24,9 +24,10 @@ public sealed class GetUsersHandler
         // Routes grouped by owner. TableStorageContext never populates the `User.Routes`
         // navigation collection (it stays the empty default), so reading `u.Routes` below
         // silently yielded zero polls/cost for every user — resolve from _db.Routes instead.
-        // Deleted routes are excluded here so the per-user breakdown ignores them.
+        // Deleted routes are excluded here so the per-user breakdown ignores them, and so are
+        // samples: their history is generated, never billed.
         Dictionary<UserId, List<EntityRoute>> routesByUser = _db.Routes
-            .Where(r => r.MonitoringStatus != (int)MonitoringStatus.Deleted)
+            .Where(r => r.MonitoringStatus != (int)MonitoringStatus.Deleted && !r.IsSample)
             .GroupBy(r => r.UserId)
             .ToDictionary(g => g.Key, g => g.ToList());
 

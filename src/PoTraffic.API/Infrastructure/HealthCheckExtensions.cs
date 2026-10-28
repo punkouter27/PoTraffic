@@ -53,8 +53,8 @@ internal static class HealthCheckExtensions
     /// during host bind.</item>
     /// <item><c>/health/json</c> — per-dependency JSON status for DB and external APIs. This is
     /// the machine-readable feed used by post-deploy smoke and triage scripts.</item>
-    /// <item><c>/health/connections</c> — the richer per-connection list (health checks plus
-    /// scheduler tick and provider-key configuration) rendered by the <c>/health</c> page.</item>
+    /// <item><c>/health/connections</c> — the same checks as a list with durations, rendered by
+    /// the <c>/health</c> page.</item>
     /// </list>
     /// <para>
     /// Note that <c>/health</c> itself is deliberately NOT mapped here: it falls through to the
@@ -72,9 +72,8 @@ internal static class HealthCheckExtensions
 
         app.MapGet("/health/connections", async (
             HealthCheckService healthCheckService,
-            IConfiguration configuration,
             CancellationToken ct) =>
-            Results.Ok(await ConnectionHealthReporter.BuildAsync(healthCheckService, configuration, ct)))
+            Results.Ok(await ConnectionHealthReporter.BuildAsync(healthCheckService, ct)))
             .WithName("GetHealthConnections")
             .Produces<IEnumerable<ConnectionHealthDto>>()
             .AllowAnonymous();

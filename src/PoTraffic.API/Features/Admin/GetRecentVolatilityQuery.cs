@@ -30,7 +30,7 @@ public sealed class GetRecentVolatilityHandler
     {
         DateTimeOffset since = DateTimeOffset.UtcNow.AddHours(-query.Hours);
 
-        List<PollRecord> polls = _db.Polls
+        List<PollRecord> polls = SpendingCap.BilledPolls(_db)
             .Where(p => p.PolledAt >= since)
             .ToList();
 

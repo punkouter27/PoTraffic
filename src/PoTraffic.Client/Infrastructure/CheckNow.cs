@@ -12,8 +12,8 @@ namespace PoTraffic.Client.Infrastructure;
 /// </summary>
 public static class CheckNow
 {
-    /// <summary>Runs a live check and reports the result as a toast. True on success.</summary>
-    public static async Task<bool> RunAsync(HttpClient http, NotificationService notifications, Guid routeId)
+    /// <summary>Runs a live check and reports the result as a toast. The result on success, else null.</summary>
+    public static async Task<CheckNowResponse?> RunAsync(HttpClient http, NotificationService notifications, Guid routeId)
     {
         try
         {
@@ -26,11 +26,11 @@ public static class CheckNow
                     Severity = NotificationSeverity.Info,
                     Summary = "Right now",
                     Detail = data is not null
-                        ? $"{data.DurationSeconds / 60} min · {TextFormatting.Distance(data.DistanceMetres)}"
+                        ? $"{TextFormatting.Minutes(data.DurationSeconds)} min · {TextFormatting.Distance(data.DistanceMetres)}"
                         : "Live travel time retrieved",
                     Duration = 6000
                 });
-                return true;
+                return data;
             }
 
             Fail(notifications, resp.StatusCode switch
@@ -47,7 +47,7 @@ public static class CheckNow
         {
             Fail(notifications, "Unable to connect. Please try again.");
         }
-        return false;
+        return null;
     }
 
     private static void Fail(NotificationService notifications, string detail) =>

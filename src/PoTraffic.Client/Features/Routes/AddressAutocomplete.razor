@@ -6,13 +6,13 @@
    when the API returns nothing, so free-text entry always works. *@
 <div class="pt-ac">
     <input class="pt-ac-input" type="text" value="@Value" placeholder="@Placeholder"
-           @oninput="OnInput" @onblur="OnBlur" autocomplete="off" />
+           @oninput="OnInput" @onblur="OnBlur" @onkeydown="OnKeyDown" autocomplete="off" />
     @if (_open && _suggestions.Count > 0)
     {
-        <ul class="pt-ac-list">
+        <ul class="pt-ac-list" role="listbox">
             @foreach (PlaceSuggestionDto s in _suggestions)
             {
-                <li class="pt-ac-item" @onmousedown="() => Pick(s)">@s.Description</li>
+                <li class="pt-ac-item" role="option" aria-selected="false" @onmousedown="() => Pick(s)">@s.Description</li>
             }
         </ul>
     }
@@ -77,6 +77,13 @@
         Value = s.Description;
         _open = false;
         await ValueChanged.InvokeAsync(s.Description);
+    }
+
+    /// <summary>Escape closes the list, as a combobox should — it otherwise covered the button below.</summary>
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+            _open = false;
     }
 
     // Delay close so a mousedown on a suggestion still registers.

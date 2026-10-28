@@ -54,4 +54,11 @@ public static class LocalTimeFormatter
         TimeOnly.TryParse(hhmm, CultureInfo.InvariantCulture, out TimeOnly t) && t == TimeOnly.MinValue
             ? "midnight"
             : FormatWallClock(hhmm);
+
+    /// <summary>
+    /// A local instant as the same "h:mm tt" clock the schedule uses, so the page never
+    /// says "3:00 AM" in one place and "14:00" in the next.
+    /// </summary>
+    public static string Clock(DateTime local) =>
+        local.ToString("h:mm tt", CultureInfo.CurrentCulture);
 }
