@@ -5,8 +5,11 @@ conventions live in [CLAUDE.md](CLAUDE.md); this file covers how work is deliver
 
 ## Getting oriented
 
-If a `DOCS/` folder exists at the repo root, read it first for an overall summary of the
-project, then [CLAUDE.md](CLAUDE.md) for architecture and commands.
+Read `DOCS/` (if it exists) and [README.md](README.md) first for architectural context, then
+[CLAUDE.md](CLAUDE.md) for architecture and commands.
+
+When a change touches dependencies, configuration keys, or major endpoints, update `DOCS/`
+and `README.md` in the same change so they never drift from the code.
 
 ## Branching
 
@@ -35,12 +38,18 @@ secrets in Azure Key Vault (`KeyVault:Uri`) when one exists.
 3. **Test only what you touched.** Do not run the whole suite after a change. Run the tests
    covering the changed code, or none at all when the change is simple. The full run
    (`pwsh ./SCRIPTS/run-tests.ps1`) is for the user to invoke deliberately.
-4. **UI changes get a before/after screenshot**, annotated to point out what changed.
+4. **UI changes get a before/after comparison**: an annotated HTML page pointing out what
+   changed, saved to `SCREENSHOTS/{YYMMDD}-{feature}.html`. Give the user its absolute path.
 
 Keep test files themselves correct and up to date when a change invalidates them.
 
-Do it for the user: if a step can be done with a command or tool, run it rather than asking
-the user to type commands or click through a web portal.
+Do it for the user: automate every run, build, and environment step. Never hand the user
+CLI commands to type or portal pages to click through.
+
+## UI standing requirements
+
+The layout shows the build version as `YYMMDD` (from the build date or the git commit date),
+fixed in the bottom-right corner. Keep it there when changing the layout.
 
 ### Running a subset of tests
 
@@ -61,10 +70,16 @@ you are working on, and the full suite once at the end.
 `.github/workflows/deploy.yml` deploys to the production App Service on every push to
 `master` — a push is a deploy, not a save. Do not push unless asked.
 
-When asked to sync (commit and push), write a short, casual commit message in plain
-American slang — not technical jargon — so it reads like a person wrote it, then push.
+When asked to commit or sync, commit with a short, casual message in plain American slang —
+not technical jargon — so it reads like a person wrote it, then push without asking again.
 
 ## Reporting back
 
 - If a request removed more than 100 lines of code overall, say so.
-- If an answer runs longer than 100 words, end it with a TL;DR of about 20 words.
+- If an answer runs longer than 100 words, end it with a TL;DR of 20 words or fewer.
+- If the code change is over 20 lines, append a three-tier summary, one sentence each:
+  1. **Toddler** — the simple intuition.
+  2. **Child** — what it now does.
+  3. **Adult** — the technical and architectural change.
+- If the code change is over 100 lines and the user's prompt left no open questions, end
+  with exactly 3 strategic questions about where the app goes next and follow-on changes.

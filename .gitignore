@@ -163,3 +163,6 @@ publish-test/
 
 # curl cookie jars from manual API probing — contain live session cookies
 cookies*.txt
+
+# Local tool index (Aura) — machine-specific, regenerated on demand
+.aura/

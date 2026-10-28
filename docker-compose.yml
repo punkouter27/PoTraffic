@@ -4,9 +4,13 @@ services:
     container_name: PoTraffic
     command: "azurite --tableHost 0.0.0.0 --loose --location /data"
     ports:
-      - "10002:10002"   # Table service (the only one the app uses)
+      # Host port 10012, not the Azurite default 10002: sibling projects on this machine run
+      # their own Azurite on 10002, and sharing it silently mixes their tables with ours.
+      - "10012:10002"   # Table service (the only one the app uses)
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:10002/"]
+      # TCP connect, not an HTTP GET: Azurite answers a bare GET / with 400, which wget treats
+      # as failure, so the container never reported healthy.
+      test: ["CMD", "node", "-e", "require('net').connect(10002,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
       interval: 5s
       timeout: 3s
       retries: 5

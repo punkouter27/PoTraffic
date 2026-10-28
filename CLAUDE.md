@@ -20,7 +20,19 @@ never configured).
 ./SCRIPTS/start-dev.ps1        # kills stale dotnet on 5000/5001, starts Azurite, runs API (https profile)
 ./SCRIPTS/stop-dev.ps1         # docker compose down (Azurite)
 dotnet build                   # TreatWarningsAsErrors=true — a warning is a build break
+./SCRIPTS/setup.ps1            # first-time check: .NET SDK, Docker, az login / Key Vault, then build
+./SCRIPTS/post-deploy-smoke.ps1 -BaseUrl https://potraffic-api-win2.azurewebsites.net
 ```
+
+Port clashes: sibling projects on this machine use the same defaults (5000/5001 for a dev host,
+10000–10002 for Azurite). `start-dev.ps1` only kills *dotnet* processes on 5000/5001, and its
+Azurite readiness probe passes against any Azurite on 10002 — so it can silently hydrate from
+another project's storage. When the ports are taken, run PoTraffic's Azurite on another host
+port and start the API with `--no-launch-profile -- --urls ...` plus a
+`ConnectionStrings__TableStorage` env var pointing at that port.
+
+Azure resources are defined in `infra/main.bicep`; production is
+`https://potraffic-api-win2.azurewebsites.net` (app `potraffic-api-win2`).
 
 | URL (dev) | |
 |---|---|
