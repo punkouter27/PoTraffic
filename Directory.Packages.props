@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup Label="FluentValidation">
-    <PackageVersion Include="FluentValidation" Version="11.11.0" />
+    <PackageVersion Include="FluentValidation" Version="12.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="ASP.NET Core / Blazor">
