@@ -21,6 +21,11 @@
                             100% { transform: translate3d(0%, 0, 0); } }
 @keyframes pt-shockwave   { 0%   { transform: scale(0.4); opacity: 0.85; }
                             100% { transform: scale(3.2); opacity: 0; } }
+/* pt-pulse with the colour left to the caller (--pt-ring-pulse) — pt-pulse is
+   pinned to the success green, and a countdown's last minute is not a success. */
+@keyframes pt-ring-pulse  { 0%   { box-shadow: 0 0 0 0 var(--pt-ring-pulse, transparent); }
+                            70%  { box-shadow: 0 0 0 6px transparent; }
+                            100% { box-shadow: 0 0 0 0 transparent; } }
 
 
 /* ── Stagger entrance ───────────────────────────────────────────────────────

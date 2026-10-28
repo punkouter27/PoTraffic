@@ -110,10 +110,14 @@ public static class WindowsEndpoints
             };
         }
 
+        // status/nextWindowStartUtc are additive: "waiting" means the chain is armed but the
+        // window has not opened, so sessionId is null and no quota was spent yet.
         return Results.Ok(new
         {
             sessionId = result.SessionId,
-            quotaRemaining = result.QuotaRemaining
+            quotaRemaining = result.QuotaRemaining,
+            status = result.WindowOpen ? "active" : "waiting",
+            nextWindowStartUtc = result.NextWindowStartUtc
         });
     }
 

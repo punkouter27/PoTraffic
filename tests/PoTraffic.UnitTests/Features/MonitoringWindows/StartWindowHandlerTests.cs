@@ -2,6 +2,7 @@ using FluentAssertions;
 using System.Linq.Expressions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using PoTraffic.API.Features.Config;
 using PoTraffic.API.Features.MonitoringWindows;
 using PoTraffic.API.Infrastructure.Storage;
 using PoTraffic.API.Infrastructure.Scheduling;
@@ -19,9 +20,19 @@ namespace PoTraffic.UnitTests.Features.MonitoringWindows;
 public sealed class StartWindowHandlerTests
 {
 
+    /// <summary>
+    /// Seeds a user with <paramref name="sessionCount"/> of today's sessions on other routes and
+    /// a target window. The window is open all day unless <paramref name="windowOpensInTwoHours"/>,
+    /// in which case it is a one-minute UTC window that is never "now".
+    /// </summary>
     private static async Task<(TableStorageContext Db, UserId UserId, WindowId WindowId)> SeedWithSessionsAsync(
-        int sessionCount)
+        int sessionCount, bool windowOpensInTwoHours = false)
     {
+        TimeOnly start = windowOpensInTwoHours
+            ? TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(2))
+            : new TimeOnly(0, 0);
+        TimeOnly end = windowOpensInTwoHours ? start.AddMinutes(1) : new TimeOnly(23, 59, 59);
+
         TableStorageContext db = TestDoubles.CreateDb();
         UserId userId = UserId.New();
         RouteId routeId = RouteId.New();
@@ -56,9 +67,9 @@ public sealed class StartWindowHandlerTests
             Id = windowId,
             RouteId = routeId,
             Route = route,
-            StartTime = new TimeOnly(7, 0),
-            EndTime = new TimeOnly(9, 0),
-            DaysOfWeekMask = 0b01111110 // Mon-Fri
+            StartTime = start,
+            EndTime = end,
+            DaysOfWeekMask = 0x7F
         };
         db.Add(window);
 
@@ -123,6 +134,26 @@ public sealed class StartWindowHandlerTests
     }
 
     [Fact]
+    public async Task StartWindow_EnforcesTheConfiguredDailyQuota_NotTheConstant()
+    {
+        // Arrange — an admin lowered quota.daily.default to 2, and 2 sessions are used today:
+        // well under the constant (10), but at the configured limit the account page shows.
+        (TableStorageContext db, UserId userId, WindowId windowId) = await SeedWithSessionsAsync(2);
+        db.Add(new SystemConfiguration { Key = "quota.daily.default", Value = "2" });
+
+        IJobScheduler scheduler = Substitute.For<IJobScheduler>();
+        var handler = new StartWindowCommandHandler(db, scheduler, NullLogger<StartWindowCommandHandler>.Instance);
+
+        // Act
+        StartWindowResult result = await handler.Handle(
+            new StartWindowCommand(windowId, userId), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("QUOTA_EXCEEDED");
+    }
+
+    [Fact]
     public async Task StartWindow_WhenQuotaNotExhausted_CreatesSessionAndEnqueuesJob()
     {
         // Arrange — seed DefaultDailyQuota - 1 sessions (one slot remaining)
@@ -143,6 +174,34 @@ public sealed class StartWindowHandlerTests
         result.ErrorCode.Should().BeNull();
         result.QuotaRemaining.Should().Be(0, "the last remaining quota slot was consumed");
         result.SessionId.Should().NotBeNull();
+    }
+
+    /// <summary>
+    /// "Save &amp; start monitoring" at 01:30 for a 03:00 window must not buy a session that
+    /// sits idle until 03:00: it arms the chain and leaves the session — and the quota slot —
+    /// for the chain's first in-window poll.
+    /// </summary>
+    [Fact]
+    public async Task StartWindow_OutsideWindow_ArmsChainWithoutSpendingASession()
+    {
+        (TableStorageContext db, UserId userId, WindowId windowId) =
+            await SeedWithSessionsAsync(0, windowOpensInTwoHours: true);
+
+        IJobScheduler scheduler = Substitute.For<IJobScheduler>();
+        scheduler.Enqueue(Arg.Any<Expression<Func<Task>>>()).Returns("armed-job-id");
+        var handler = new StartWindowCommandHandler(db, scheduler, NullLogger<StartWindowCommandHandler>.Instance);
+
+        StartWindowResult result = await handler.Handle(
+            new StartWindowCommand(windowId, userId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue("the client treats any 2xx as armed");
+        result.WindowOpen.Should().BeFalse();
+        result.SessionId.Should().BeNull("no session exists until the window opens");
+        result.NextWindowStartUtc.Should().BeAfter(DateTimeOffset.UtcNow);
+        result.QuotaRemaining.Should().Be(QuotaConstants.DefaultDailyQuota, "no quota is spent while waiting");
+        db.MonitoringSessions.Should().BeEmpty();
+        scheduler.Received(1).Enqueue(Arg.Any<Expression<Func<Task>>>());
+        db.Routes.Single(r => r.Id == db.MonitoringWindows.Single().RouteId).JobChainId.Should().Be("armed-job-id");
     }
 
     [Fact]

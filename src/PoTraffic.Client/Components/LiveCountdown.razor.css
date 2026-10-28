@@ -46,3 +46,23 @@
 @media (prefers-reduced-motion: reduce) {
     .pt-countdown-due .pt-countdown-ring { animation: none; }
 }
+
+/* #17 — the last minute. A brand-coloured ring breathes outward around the dial so
+   a glance catches that the next sample is about to land. The keyframes live in
+   pt-motion.css with the others; this only colours them via --pt-ring-pulse. */
+.pt-countdown-near .pt-countdown-ring {
+    --pt-ring-pulse: color-mix(in oklab, var(--pt-color-brand-500) 55%, transparent);
+    animation: pt-ring-pulse 1.2s infinite var(--pt-ease);
+}
+
+.pt-countdown-near .pt-countdown-text {
+    color: var(--pt-color-brand-on-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Motion off, meaning kept: a still halo instead of a pulsing one. */
+    .pt-countdown-near .pt-countdown-ring {
+        animation: none;
+        box-shadow: 0 0 0 2px var(--pt-ring-pulse);
+    }
+}

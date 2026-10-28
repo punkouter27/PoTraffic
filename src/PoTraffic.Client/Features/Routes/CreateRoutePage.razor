@@ -76,12 +76,13 @@
     private string? _destinationError;
     private string? _daysError;
 
-    // Default to the window the user is most likely to want right now: this minute through
-    // six hours from now. The end may land on the following calendar day; that is a
-    // wrap-around window, which PollRouteJob evaluates correctly.
-    private DateTime? _startTime = ScheduleFields.LocalNowToMinute();
-    private DateTime? _endTime = ScheduleFields.LocalNowToMinute().AddHours(6);
-    private IEnumerable<byte> _days = ScheduleFields.WeekdayBits;
+    // Default to watching nearly the whole day: 03:00 through midnight — the one default
+    // both schedule editors share (ScheduleFields.DefaultWindow). The end is stored as
+    // 00:00; PollRouteJob.IsWithinWindow reads 03:00–00:00 as ending at midnight, not as
+    // spilling into the next day.
+    private DateTime? _startTime = ScheduleFields.DefaultWindow().Start;
+    private DateTime? _endTime = ScheduleFields.DefaultWindow().End;
+    private IEnumerable<byte> _days = ScheduleFields.DefaultDayBits;
 
     private string _error = "";
     private bool _loading;
@@ -173,7 +174,6 @@
                 {
                     RouteErrorCodes.MapsKeyMissing => "Maps integration is not configured on the server.",
                     RouteErrorCodes.AddressNotFound => "We couldn't find that address. Please check and try again.",
-                    RouteErrorCodes.GeocodeFailed => "We couldn't find that address. Please check and try again.",
                     RouteErrorCodes.SameCoordinates => "Origin and destination resolve to the same location. Please use different addresses.",
                     _ when (int)createResp.StatusCode >= 500 => "Something went wrong on our end. Please try again in a moment.",
                     _                  => "Failed to create commute. Please verify your addresses."

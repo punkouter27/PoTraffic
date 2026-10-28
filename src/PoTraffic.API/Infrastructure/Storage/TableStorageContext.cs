@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Azure;
@@ -10,6 +11,7 @@ using PoTraffic.API.Features.Alerts;
 using PoTraffic.API.Features.Auth;
 using PoTraffic.API.Features.Config;
 using PoTraffic.API.Features.MonitoringWindows;
+using PoTraffic.API.Infrastructure.Observability;
 
 namespace PoTraffic.API.Infrastructure.Storage;
 
@@ -366,13 +368,20 @@ public sealed class TableStorageContext
         if (ops.Count == 0)
             return 0;
 
+        // Started only once there is something to write, so the many no-op saves cost no span.
+        using Activity? activity = PoTrafficTelemetry.Source.StartActivity("TableStorage.SaveChanges", ActivityKind.Client);
+        activity?.SetTag(PoTrafficTelemetry.StorageUpsertsTag, upserts.Count);
+        activity?.SetTag(PoTrafficTelemetry.StorageDeletesTag, deletes.Count);
+        activity?.SetTag(PoTrafficTelemetry.StorageTablesTag, ops.Select(o => o.Table).Distinct().Count());
+
         IReadOnlyList<TableWriteResult> results;
         try
         {
             results = await _store.ApplyAsync(ops, ct);
         }
-        catch
+        catch (Exception ex)
         {
+            activity.RecordFailure(ex);
             // Re-queue deletes so the next save retries them; dirty entities are
             // re-detected automatically because their snapshots were not updated.
             lock (_gate) _pendingDeletes.AddRange(deletes);

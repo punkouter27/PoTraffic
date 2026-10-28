@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using PoTraffic.API.Infrastructure.Observability;
 
 namespace PoTraffic.API.Infrastructure.Providers;
 
@@ -50,9 +52,11 @@ public sealed class TomTomIncidentProvider(HttpClient http, IConfiguration confi
             + $"?key={Uri.EscapeDataString(key)}&bbox={bbox}&fields={Uri.EscapeDataString(Fields)}"
             + "&language=en-US&timeValidityFilter=present";
 
+        using Activity? activity = PoTrafficTelemetry.StartProviderCall("TomTom", "IncidentDetails");
         try
         {
             using HttpResponseMessage resp = await http.GetAsync(url, ct);
+            activity?.SetTag(PoTrafficTelemetry.ProviderStatusTag, (int)resp.StatusCode);
             if (!resp.IsSuccessStatusCode)
             {
                 logger.LogWarning("TomTom incidents returned {Status}", (int)resp.StatusCode);
@@ -60,10 +64,13 @@ public sealed class TomTomIncidentProvider(HttpClient http, IConfiguration confi
             }
 
             using JsonDocument doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-            return Worst(doc.RootElement, path);
+            RouteIncident? worst = Worst(doc.RootElement, path);
+            activity?.SetTag("incident.found", worst is not null);
+            return worst;
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or TaskCanceledException)
         {
+            activity.RecordFailure(ex);
             logger.LogWarning(ex, "TomTom incident lookup failed");
             return null;
         }

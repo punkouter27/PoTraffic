@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PoTraffic.API.Features.Routes;
+using PoTraffic.API.Infrastructure.Observability;
 using PoTraffic.API.Infrastructure.Storage;
 using PoTraffic.Shared.Enums;
 
@@ -20,7 +21,6 @@ public sealed class BackgroundSchedulerService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly TableStorageJobScheduler? _tableScheduler;
     private readonly ILogger<BackgroundSchedulerService> _logger;
-    private static readonly ActivitySource s_activitySource = new("PoTraffic.Scheduler");
 
     /// <summary>
     /// Longest the worker sleeps between checks for due jobs. Each tick issues Table Storage
@@ -189,12 +189,17 @@ public sealed class BackgroundSchedulerService : BackgroundService
         {
             if (ct.IsCancellationRequested) break;
 
-            using Activity? activity = s_activitySource.StartActivity(
-                $"Job.{job.TypeName.Split('.').Last()}.{job.MethodName}");
+            // One root span per job, in its own trace: everything the job does (provider calls,
+            // storage writes) nests under it. PollRouteJob adds the route id itself.
+            using Activity? activity = PoTrafficTelemetry.Source.StartActivity(
+                $"{PoTrafficTelemetry.JobSpanPrefix}{job.TypeName.Split('.').Last()}.{job.MethodName}",
+                ActivityKind.Internal,
+                parentContext: default);
 
-            activity?.SetTag("job.id", job.RowKey);
-            activity?.SetTag("job.type", job.TypeName);
-            activity?.SetTag("job.method", job.MethodName);
+            activity?.SetTag(PoTrafficTelemetry.JobIdTag, job.RowKey);
+            activity?.SetTag(PoTrafficTelemetry.JobTypeTag, job.TypeName);
+            activity?.SetTag(PoTrafficTelemetry.JobMethodTag, job.MethodName);
+            activity?.SetTag(PoTrafficTelemetry.JobKindTag, kind);
             activity?.SetTag("job.daily_at", job.DailyAtUtc);
 
             _tableScheduler!.MarkRunning(job);
@@ -209,6 +214,7 @@ public sealed class BackgroundSchedulerService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "{Kind} job {JobId} failed", kind, job.RowKey);
+                activity.RecordFailure(ex);
                 _tableScheduler.MarkFailed(job, ex.Message);
             }
         }

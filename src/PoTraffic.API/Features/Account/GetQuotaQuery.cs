@@ -1,5 +1,6 @@
 using PoTraffic.API.Features.Config;
 using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.API.Infrastructure.Time;
 using PoTraffic.Shared.DTOs.Account;
 using PoTraffic.Shared.Enums;
 
@@ -19,17 +20,15 @@ public sealed class GetQuotaHandler
         bool userExists = _db.Users.Any(u => u.Id == query.UserId);
         if (!userExists) return null;
 
-        // Load daily quota limit from SystemConfiguration
-        string? limitValue = _db.SystemConfigurations
-            .Where(c => c.Key == "quota.daily.default")
-            .Select(c => c.Value)
-            .FirstOrDefault();
+        // The same limit PollRouteJob and StartWindowCommand enforce.
+        int dailyLimit = PollRouteJob.DailySessionQuota(_db);
 
-        int dailyLimit = int.TryParse(limitValue, out int lim) ? lim : 10;
-
-        // Count today's sessions for this user's routes
-        DateTimeOffset dayStart = DateTimeOffset.UtcNow.Date;
-        DateTimeOffset dayEnd = dayStart.AddDays(1);
+        // "Today" is the user's local day: sessions are keyed by their window's local date
+        // (MonitoringWindow.LocalDateAt), so a UTC day would split one evening's usage across
+        // two counts for anyone west of Greenwich.
+        TimeZoneInfo zone = _db.ZoneFor(query.UserId);
+        DateTime localToday = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, zone).Date;
+        DateOnly today = DateOnly.FromDateTime(localToday);
 
         // Resolve the user's route IDs explicitly — TableStorageContext has no
         // navigation property to back the old `s.Route.UserId` access.
@@ -43,22 +42,20 @@ public sealed class GetQuotaHandler
             .Where(r => userRouteIds.Contains(r.Id) && !r.IsSample)
             .Select(r => r.Id)];
 
-        // Count today's sessions only. The previous `>= today && <= dayEnd` range was
-        // inclusive of dayEnd (tomorrow), over-counting future-dated sessions; this matches
-        // StartWindowCommand's `SessionDate == today` so the displayed quota equals what is enforced.
-        DateOnly today = DateOnly.FromDateTime(dayStart.UtcDateTime);
+        // Count today's sessions only — the same `SessionDate == today` test the enforcement
+        // (PollRouteJob.SessionsUsedOn) applies, so the displayed quota equals what is enforced.
         int usedToday = _db.MonitoringSessions
             .Count(s => billableRouteIds.Contains(s.RouteId) && s.SessionDate == today);
 
         int remaining = Math.Max(0, dailyLimit - usedToday);
 
-        // Reset time = midnight UTC next day
-        DateTimeOffset resetsAt = dayEnd;
+        // Resets at the user's next local midnight.
+        DateTimeOffset resetsAt = UserTime.ToUtc(localToday.AddDays(1), zone);
 
         // Cost transparency (#8): today's provider spend at the per-poll rate in
         // SystemConfiguration. Monthly projection extrapolates today.
         int pollsToday = _db.Polls.Count(p => billableRouteIds.Contains(p.RouteId)
-                                              && DateOnly.FromDateTime(p.PolledAt.UtcDateTime) == today);
+                                              && DateOnly.FromDateTime(p.PolledAt.ToLocal(zone).DateTime) == today);
         decimal costToday = pollsToday * PollCostRates.PerPoll(_db);
 
         return new QuotaDto(

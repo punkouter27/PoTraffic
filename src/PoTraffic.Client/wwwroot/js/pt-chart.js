@@ -168,6 +168,38 @@ function xTickIndices(count, plotWidth) {
     return indices;
 }
 
+/** Condition → band tint and glyph. Low alpha so the bands read on both themes. */
+const WEATHER_STYLE = {
+    Rain:  { fill: "rgba(59, 130, 246, 0.14)", glyph: "🌧" },
+    Snow:  { fill: "rgba(148, 163, 184, 0.22)", glyph: "❄" },
+    Storm: { fill: "rgba(139, 92, 246, 0.18)", glyph: "⛈" },
+    Fog:   { fill: "rgba(148, 163, 184, 0.14)", glyph: "🌫" }
+};
+
+function drawWeather(ctx, weather, count, plot) {
+    if (!weather || count < 2) return;
+
+    const half = plot.w / (count - 1) / 2;
+    let i = 0;
+    while (i < count) {
+        const style = WEATHER_STYLE[weather[i]];
+        if (!style) { i++; continue; }
+
+        let j = i;
+        while (j + 1 < count && weather[j + 1] === weather[i]) j++;
+
+        const x1 = Math.max(plot.x, xForIndex(i, count, plot) - half);
+        const x2 = Math.min(plot.x + plot.w, xForIndex(j, count, plot) + half);
+        ctx.fillStyle = style.fill;
+        ctx.fillRect(x1, plot.y, x2 - x1, plot.h);
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.fillText(style.glyph, (x1 + x2) / 2, plot.y + 2);
+        i = j + 1;
+    }
+}
+
 function draw(canvas) {
     const st = states.get(canvas);
     if (!st) return;
@@ -243,6 +275,14 @@ function draw(canvas) {
         ctx.fillStyle = theme.brush;
         ctx.fillRect(x1, plot.y, x2 - x1, plot.h);
     }
+
+    // ── Weather bands ────────────────────────────────────────────────────
+    //
+    // Rain, snow, storm and fog shade the span of the samples taken in them, so a
+    // spike that lines up with a wet stretch reads as weather at a glance. Clear and
+    // Cloudy are not drawn: they are the normal case, and shading them would bury the
+    // signal. Runs of the same condition merge into one band with one glyph.
+    drawWeather(ctx, view.weather, count, plot);
 
     // ── Observed travel times ────────────────────────────────────────────
     //
@@ -337,6 +377,8 @@ function buildView(data) {
     return {
         points,
         labels: data.labels ?? [],
+        weather: data.weather ?? [],
+        precipitation: data.precipitation ?? [],
         min,
         max: max > min ? max : min + 1
     };
@@ -384,7 +426,12 @@ function updateTooltip(canvas) {
 
     const minutes = view.points[i];
     const label = view.labels[i] ?? `#${i + 1}`;
-    tip.innerHTML = `<strong>${escapeHtml(label)}</strong><br>${minutes.toFixed(0)} min`;
+    const condition = view.weather[i];
+    const mm = view.precipitation[i];
+    const wet = WEATHER_STYLE[condition]
+        ? `<br>${WEATHER_STYLE[condition].glyph} ${escapeHtml(condition)}${mm > 0 ? ` · ${mm.toFixed(1)} mm` : ""}`
+        : "";
+    tip.innerHTML = `<strong>${escapeHtml(label)}</strong><br>${minutes.toFixed(0)} min${wet}`;
     tip.classList.add("visible");
 
     // Flip the tooltip to the left of the cursor near the right edge so it

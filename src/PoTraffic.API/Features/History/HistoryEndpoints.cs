@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using PoTraffic.API.Features.Routes;
 using PoTraffic.API.Infrastructure.Http;
 using PoTraffic.API.Infrastructure.Security;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
 using PoTraffic.Shared.DTOs.History;
 using PoTraffic.Shared.DTOs.Routes;
 
@@ -107,36 +105,6 @@ public static class HistoryEndpoints
             UserId userId = ctx.User.GetUserId();
             RouteDto? route = await handler.Handle(new GetRouteByIdQuery(routeId, userId), ctx.RequestAborted);
             return route is null ? Results.NotFound() : ConditionalJson.Ok(ctx, route);
-        });
-
-        // GET /api/routes/{routeId}/departure.ics?dayOfWeek=Monday — calendar reminder (#2)
-        group.MapGet("/departure.ics", async (
-            RouteId routeId,
-            GetRouteByIdQueryHandler routes,
-            GetOptimalDepartureQueryHandler optimalDeparture,
-            GetDeparturePlanQueryHandler departurePlan,
-            TableStorageContext db,
-            HttpContext ctx,
-            [FromQuery] string dayOfWeek = "Monday") =>
-        {
-            UserId userId = ctx.User.GetUserId();
-            RouteDto? route = await routes.Handle(new GetRouteByIdQuery(routeId, userId), ctx.RequestAborted);
-            if (route is null) return Results.NotFound();
-
-            var optimal = await optimalDeparture.Handle(new GetOptimalDepartureQuery(routeId, userId, dayOfWeek), ctx.RequestAborted);
-            if (optimal is null) return Results.NoContent();
-
-            // With an arrive-by target the reminder is the planned leave-by, not the
-            // fastest slot: that is the time the user actually acts on.
-            DeparturePlanDto? plan = await departurePlan.Handle(new GetDeparturePlanQuery(routeId, userId, dayOfWeek), ctx.RequestAborted);
-            if (plan is { LeaveBy: { } leaveBy, WorstCaseSeconds: { } worst })
-            {
-                TimeOnly t = TimeOnly.ParseExact(leaveBy, "HH:mm");
-                optimal = optimal with { TimeSlotBucket = t.Hour * 60 + t.Minute, PredictedDurationSeconds = worst };
-            }
-
-            string ics = DepartureCalendar.Build(routeId, route.DestinationAddress, optimal, db.ZoneFor(userId));
-            return Results.File(System.Text.Encoding.UTF8.GetBytes(ics), "text/calendar", "departure.ics");
         });
 
         return routes;

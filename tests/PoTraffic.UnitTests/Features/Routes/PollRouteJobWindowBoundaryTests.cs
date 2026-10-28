@@ -214,6 +214,39 @@ public sealed class PollRouteJobWindowBoundaryTests
         NextStart(window, now).Should().BeNull("no enabled days → polling chain must stop");
     }
 
+    /// <summary>
+    /// The create-route default is 03:00 → midnight local, stored with End = 00:00. For an
+    /// Eastern user its evening crosses UTC midnight; it must still be one local day — open
+    /// until local midnight, gated by the local weekday, and keyed to the local date so it
+    /// costs one session rather than two.
+    /// </summary>
+    [Fact]
+    public void MidnightEndWindow_RunsUntilLocalMidnight_OnOneLocalDay()
+    {
+        var window = new MonitoringWindow
+        {
+            Id = WindowId.New(),
+            RouteId = RouteId.New(),
+            DaysOfWeekMask = Tue,
+            StartTime = new TimeOnly(3, 0),
+            EndTime = new TimeOnly(0, 0),
+            TimeZoneId = "America/New_York",
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        DateTimeOffset tue0300 = DateTimeOffset.Parse("2026-06-30T07:00:00Z");  // Tue 03:00 EDT
+        DateTimeOffset tue2330 = DateTimeOffset.Parse("2026-07-01T03:30:00Z");  // Tue 23:30 EDT = Wed UTC
+        DateTimeOffset wed0030 = DateTimeOffset.Parse("2026-07-01T04:30:00Z");  // Wed 00:30 EDT
+
+        IsWithin(window, tue0300).Should().BeTrue("03:00 local is the window start");
+        IsWithin(window, tue2330).Should().BeTrue("End 00:00 means until local midnight, and it is still Tuesday locally");
+        IsWithin(window, wed0030).Should().BeFalse("the window closed at local midnight and Wednesday is not enabled");
+
+        window.LocalDateAt(tue2330).Should().Be(window.LocalDateAt(tue0300),
+            "both ends of one local day's window share a session date, though the UTC dates differ");
+        window.LocalDateAt(tue2330).Should().Be(new DateOnly(2026, 6, 30));
+    }
+
     private static MonitoringWindow PacificWeekdayEvening() => new()
     {
         Id = WindowId.New(),

@@ -21,11 +21,18 @@ public sealed record StartWindowCommand(
     WindowId WindowId,
     UserId UserId);
 
+/// <param name="SessionId">The day's session; null when the start only armed the chain
+/// because the window is not open yet (<paramref name="WindowOpen"/> false).</param>
+/// <param name="WindowOpen">False when "now" is outside the window: no session or quota was
+/// spent, and the chain creates the session when it first polls inside the window.</param>
+/// <param name="NextWindowStartUtc">When an armed-but-waiting window next opens.</param>
 public sealed record StartWindowResult(
     bool IsSuccess,
     string? ErrorCode,   // RouteErrorCodes.NotFound | "QUOTA_EXCEEDED"
     int QuotaRemaining,
-    SessionId? SessionId);
+    SessionId? SessionId,
+    bool WindowOpen = true,
+    DateTimeOffset? NextWindowStartUtc = null);
 
 public sealed class StartWindowCommandHandler
 {
@@ -66,14 +73,17 @@ public sealed class StartWindowCommandHandler
         if (route is null)
             return new StartWindowResult(false, RouteErrorCodes.NotFound, 0, null);
 
-        DateOnly today = DateOnly.FromDateTime(DateTimeOffset.UtcNow.Date);
+        // Sessions and the daily quota are keyed by the window's local date, matching the
+        // poll chain (PollRouteJob.EnsureActiveSessionAsync) — see MonitoringWindow.LocalDateAt.
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateOnly today = window.LocalDateAt(now);
 
         SemaphoreSlim gate = GateFor(route.Id);
         await gate.WaitAsync(ct);
         try
         {
-            // The user's route IDs — used for per-user daily quota counting.
-            HashSet<RouteId> userRouteIds = _db.GetUserRouteIds(cmd.UserId);
+            int todaySessionCount = PollRouteJob.SessionsUsedOn(_db, cmd.UserId, today);
+            int dailyQuota = PollRouteJob.DailySessionQuota(_db);
 
             // 2. Idempotent guard — return existing session if one already exists for this route today
             MonitoringSession? existingSession = _db.MonitoringSessions
@@ -84,22 +94,47 @@ public sealed class StartWindowCommandHandler
                 _logger.LogInformation(
                     "Start called for window {WindowId} but session {SessionId} already exists for today — idempotent return",
                     cmd.WindowId, existingSession.Id);
-                int quotaUsed = _db.MonitoringSessions
-                    .Count(s => userRouteIds.Contains(s.RouteId) && s.SessionDate == today);
-                return new StartWindowResult(true, null, Math.Max(0, QuotaConstants.DefaultDailyQuota - quotaUsed), existingSession.Id);
+                return new StartWindowResult(true, null, Math.Max(0, dailyQuota - todaySessionCount), existingSession.Id);
             }
 
-            // 3. Count today's sessions for this user across all their routes
-            int todaySessionCount = _db.MonitoringSessions
-                .Count(s => userRouteIds.Contains(s.RouteId) && s.SessionDate == today);
+            // 3. Outside the window: arm the chain but spend nothing. A session bought now
+            // would sit idle until the window opens (or, for a window that opens tomorrow,
+            // be charged to the wrong day); the chain sleeps until the start and creates the
+            // session itself on its first in-window poll, quota permitting.
+            if (!PollRouteJob.IsWithinWindow(window, now))
+            {
+                DateTimeOffset? nextStart = PollRouteJob.NextWindowStart(window, now);
 
-            if (todaySessionCount >= QuotaConstants.DefaultDailyQuota)
+                // Opening later today with today's quota already gone: arming would only
+                // sleep until the window and then skip it, so say so now.
+                if (nextStart is { } opens
+                    && window.LocalDateAt(opens) == today
+                    && todaySessionCount >= dailyQuota)
+                {
+                    _logger.LogInformation("Quota exceeded for user {UserId} on {Date}", cmd.UserId, today);
+                    return new StartWindowResult(false, "QUOTA_EXCEEDED", 0, null);
+                }
+
+                string armedJobId = ArmChain(route);
+                await _db.SaveChangesAsync(ct);
+
+                _logger.LogInformation(
+                    "Monitoring armed for window {WindowId}, route {RouteId}, job {JobId} — waiting for window start {NextStart:O}",
+                    cmd.WindowId, route.Id, armedJobId, nextStart);
+
+                return new StartWindowResult(
+                    true, null, Math.Max(0, dailyQuota - todaySessionCount), null,
+                    WindowOpen: false, NextWindowStartUtc: nextStart);
+            }
+
+            // 4. Inside the window: the session starts now, against today's quota.
+            if (todaySessionCount >= dailyQuota)
             {
                 _logger.LogInformation("Quota exceeded for user {UserId} on {Date}", cmd.UserId, today);
                 return new StartWindowResult(false, "QUOTA_EXCEEDED", 0, null);
             }
 
-            // 4. Create MonitoringSession (IsHolidayExcluded always false — PublicHolidays table removed S-09)
+            // 5. Create MonitoringSession (IsHolidayExcluded always false — PublicHolidays table removed S-09)
             var session = new MonitoringSession
             {
                 Id = SessionId.New(),
@@ -116,27 +151,35 @@ public sealed class StartWindowCommandHandler
             await _db.SaveChangesAsync(ct);
 
             // 6. Enqueue AFTER successful DB save — ensures no orphan job if SaveChanges fails.
-            //    Cancel any prior chain first so we never leave a second, un-cancellable chain running.
-            if (route.JobChainId is { } priorJobId)
-                _scheduler.Cancel(priorJobId);
-
-            PollRouteJob routeJob = new(null!, null!, null!);
-            string jobId = _scheduler.Enqueue(() => routeJob.Execute(route.Id));
-
-            // 7. Store job ID so DeleteRouteCommand can cancel it.
-            route.JobChainId = jobId;
+            string jobId = ArmChain(route);
             await _db.SaveChangesAsync(ct);
 
             _logger.LogInformation(
                 "Monitoring started for window {WindowId}, route {RouteId}, session {SessionId}, job {JobId}",
                 cmd.WindowId, route.Id, session.Id, jobId);
 
-            int remaining = QuotaConstants.DefaultDailyQuota - todaySessionCount - 1;
+            int remaining = dailyQuota - todaySessionCount - 1;
             return new StartWindowResult(true, null, remaining, session.Id);
         }
         finally
         {
             gate.Release();
         }
+    }
+
+    /// <summary>
+    /// Enqueues a fresh poll chain and records its job id on the route (so DeleteRouteCommand
+    /// and Stop can cancel it). Any prior chain is cancelled first so a second, un-cancellable
+    /// chain is never left running. The caller saves.
+    /// </summary>
+    private string ArmChain(EntityRoute route)
+    {
+        if (route.JobChainId is { } priorJobId)
+            _scheduler.Cancel(priorJobId);
+
+        PollRouteJob routeJob = new(null!, null!, null!);
+        string jobId = _scheduler.Enqueue(() => routeJob.Execute(route.Id));
+        route.JobChainId = jobId;
+        return jobId;
     }
 }

@@ -6,6 +6,7 @@
 @inherits PollingComponentBase
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject UiPreferences Prefs
 
 @* ──────────────────────────────────────────────────────────────────────
    Route detail — the answer, the evidence, and everything else folded away.
@@ -16,17 +17,38 @@
    first answered the question the app exists to answer, and three of them
    answered "when is it bad?" in three different shapes.
 
-   Now: ANSWER (when to leave), one SETTINGS card (arrive by, schedule, return
-   trip), and EVIDENCE (map, today's chart, the weekly grid). The header carries
-   the name, renameable in place, and one chip saying when the route was last
-   checked and when the next check is due.
+   Now three tabs under one header: OVERVIEW (when to leave, and today's
+   samples), SCHEDULE (the monitoring window and the return trip) and HISTORY
+   (the weekly grid and the weather). The map, the grid and the weather are
+   advanced panels — off until switched on in Settings — so by default the page
+   is the answer, today's chart and the schedule. The header carries the name,
+   renameable in place, and one chip saying when the route was last checked and
+   when the next check is due.
+
+   Each card sits in its own SectionErrorBoundary: one chart that throws shows a
+   one-line notice with Retry instead of blanking the page.
    ────────────────────────────────────────────────────────────────────── *@
 
 <PageTitle>@_pageTitle — PoTraffic</PageTitle>
 
 @if (IsFirstLoad)
 {
+    @* The progress line says "working"; the skeleton below it holds the page's shape —
+       title, tab strip, the answer and the chart card — so the real content settles
+       into place instead of shoving everything down when it lands. *@
     <PtProgressLine AriaLabel="Loading commute" />
+    <div class="pt-skeleton-stack pt-route-skeleton" aria-busy="true" aria-label="Loading commute">
+        <div class="pt-skeleton-line lg w-50"></div>
+        <div class="pt-skeleton-line w-30"></div>
+        <div class="pt-skeleton-card">
+            <div class="pt-skeleton-line w-40"></div>
+            <div class="pt-skeleton-line lg w-70"></div>
+            <div class="pt-skeleton-line w-50"></div>
+        </div>
+        <div class="pt-skeleton-card pt-route-skeleton-chart">
+            <div class="pt-skeleton-line w-30"></div>
+        </div>
+    </div>
 }
 else
 {
@@ -48,6 +70,7 @@ else
                 <RouteProbeStatus RouteId="RouteId"
                                   LatestProbe="LatestPoll"
                                   Session="_activeSession"
+                                  ArmedWindow="_activeWindow"
                                   OnProbeCompleted="@OnWindowSaved" />
             }
         </Actions>
@@ -87,9 +110,30 @@ else
     }
     else
     {
+    string[] tabs = TabKeys;
 
-    @* Two columns past 1200px: the answer and every control that acts on it on the
-       left, every piece of EVIDENCE on the right. Below 1200px, one column. *@
+    @* ── ONE PAGE, THREE TABS ─────────────────────────────────────────────
+       The route page and its monitoring-window editor used to be one long stack:
+       the answer, then a settings card, then the evidence. They are tabs of the
+       same page now — Overview (the answer and today), Schedule (the monitoring
+       window and the return trip) and History (the week and the weather) — and
+       the open tab rides the URL as ?tab=, so /routes/{id} still opens the answer
+       and a link can land straight on the schedule.
+
+       Server render mode (Radzen's default) on purpose: only the open tab is in the
+       DOM, so the canvas chart and the map measure a real width when they attach
+       rather than the zero of a display:none panel.
+
+       The sample has no Schedule tab — it is never probed, so a schedule form on it
+       would offer something that does nothing. History appears only when one of its
+       panels is switched on in Settings → Advanced panels. *@
+    <div class="pt-route-tabs">
+    <RadzenTabs SelectedIndex="@Array.IndexOf(tabs, ActiveTab)" Change="@(i => OnTabChanged(tabs, i))">
+        <Tabs>
+            <RadzenTabsItem Text="Overview" Icon="insights">
+
+    @* Two columns once the content column can carry them: the answer on the left,
+       the evidence on the right. Below that, one column. *@
     <div class="pt-route-two">
 
     <aside class="pt-route-side">
@@ -97,6 +141,7 @@ else
     @* ── THE ANSWER ────────────────────────────────────────────────────
        Leads with "Leave by" whenever there is a plan, because that is the question the
        app exists to answer; the day's range of durations is the supporting line. *@
+    <SectionErrorBoundary Label="the summary">
     <section class="pt-answer" aria-label="Route summary">
         @* The title already reads "Origin → Destination" unless the route is named. *@
         @if (_route.Name is not null)
@@ -150,51 +195,38 @@ else
             </div>
         }
     </section>
-
-    @* ── THE CONTROLS ────────────────────────────────────────────────────
-       Schedule and return trip. Not for the sample: it is never probed, so a schedule
-       form on it offers something that would do nothing, and a reversed copy of
-       generated data would be a second fake route. *@
-    @if (!_route.IsSample)
-    {
-        <RadzenCard class="pt-route-settings">
-            <WindowConfigPanel RouteId="RouteId" Window="_activeWindow" Session="_activeSession" OnSaved="OnWindowSaved" />
-
-            @* Both states go through the same call: the endpoint creates the reversed route and
-               links it, or hands back the one already linked. Navigating straight to a stored
-               ReturnRouteId could open a route that had since been deleted. *@
-            <div class="pt-setting-row">
-                <span class="pt-setting-label">Return trip</span>
-                <span class="pt-setting-value">@(_route.ReturnRouteId is not null ? "Linked" : "Not tracked")</span>
-                <RadzenButton Text="@(_route.ReturnRouteId is not null ? "View" : "Track return trip")"
-                              ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                              Click="CreateReturnTripAsync" IsBusy="_creatingReturn" />
-            </div>
-        </RadzenCard>
-    }
+    </SectionErrorBoundary>
 
     </aside>
 
     @* ── THE EVIDENCE ──────────────────────────────────────────────────
-       The drive and today's samples share a row; the week sits under both. *@
+       Today's samples, and the drive beside them when the map is switched on. *@
     <div class="pt-route-evidence">
 
-    <div class="pt-route-evidence-top">
+    <div class="pt-route-evidence-top @(ShowMap ? "" : "pt-route-evidence-single")">
 
-    <RadzenCard>
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">The drive</RadzenText>
-        <RouteMap Path="_path"
-                  OriginLabel="@_originStreet"
-                  DestinationLabel="@_destStreet" />
-    </RadzenCard>
+    @if (ShowMap)
+    {
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">The drive</RadzenText>
+            <SectionErrorBoundary Label="the map">
+                <RouteMap Path="_path"
+                          OriginLabel="@_originStreet"
+                          DestinationLabel="@_destStreet" />
+            </SectionErrorBoundary>
+        </RadzenCard>
+    }
 
     <RadzenCard>
         @* Not pt-mb-0: the canvas draws its "min" axis caption at its own top edge,
            which collided with this heading's descenders. *@
         <RadzenText TextStyle="TextStyle.H3" class="pt-mb-2 pt-section-heading">Today</RadzenText>
 
+        <SectionErrorBoundary Label="today's chart">
         <TrendChart Points="@_trendPoints"
                     Labels="@_trendLabels"
+                    Weather="@_trendWeather"
+                    Precipitation="@_trendPrecipitation"
                     OnPointSelected="OnTrendPointSelected" />
 
         @if (_selectedPoll is { } selected)
@@ -215,20 +247,71 @@ else
                 </button>
             </div>
         }
+        </SectionErrorBoundary>
     </RadzenCard>
 
     </div>
-
-    <RadzenCard>
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">Your week, hour by hour</RadzenText>
-        <VolatilityHeatmap Heatmap="_heatmap" />
-
-        @* Sits under the weekly grid because it answers the question the grid provokes:
-           the grid shows that some mornings are worse, this says which of them were wet. *@
-        <WeatherImpact Impact="_weatherImpact" />
-    </RadzenCard>
-
     </div>
+    </div>
+
+            </RadzenTabsItem>
+
+            @if (!_route.IsSample)
+            {
+                <RadzenTabsItem Text="Schedule" Icon="schedule">
+                    @* ── THE CONTROLS ────────────────────────────────────────────────
+                       The monitoring window and the return trip — everything that changes
+                       what gets sampled, in one card. *@
+                    <RadzenCard class="pt-route-settings">
+                        <SectionErrorBoundary Label="the schedule">
+                            <WindowConfigPanel RouteId="RouteId" Window="_activeWindow" Session="_activeSession" OnSaved="OnWindowSaved" />
+                        </SectionErrorBoundary>
+
+                        @* Both states go through the same call: the endpoint creates the reversed route and
+                           links it, or hands back the one already linked. Navigating straight to a stored
+                           ReturnRouteId could open a route that had since been deleted. *@
+                        <div class="pt-setting-row">
+                            <span class="pt-setting-label">Return trip</span>
+                            <span class="pt-setting-value">@(_route.ReturnRouteId is not null ? "Linked" : "Not tracked")</span>
+                            <RadzenButton Text="@(_route.ReturnRouteId is not null ? "View" : "Track return trip")"
+                                          ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                          Click="CreateReturnTripAsync" IsBusy="_creatingReturn" />
+                        </div>
+                    </RadzenCard>
+                </RadzenTabsItem>
+            }
+
+            @if (ShowHistory)
+            {
+                <RadzenTabsItem Text="History" Icon="calendar_month">
+                    <div class="pt-route-history">
+                        @if (ShowHeatmap)
+                        {
+                            <RadzenCard>
+                                <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">Your week, hour by hour</RadzenText>
+                                <SectionErrorBoundary Label="the weekly pattern">
+                                    <VolatilityHeatmap Heatmap="_heatmap" />
+                                </SectionErrorBoundary>
+                            </RadzenCard>
+                        }
+
+                        @* Under the weekly grid because it answers the question the grid provokes:
+                           the grid shows that some mornings are worse, this says which were wet.
+                           WeatherImpact draws nothing for a null payload, and an empty card is
+                           worse than none, so the card waits for the first fetch. *@
+                        @if (ShowWeather && _weatherImpact is not null)
+                        {
+                            <RadzenCard>
+                                <SectionErrorBoundary Label="the weather impact">
+                                    <WeatherImpact Impact="_weatherImpact" />
+                                </SectionErrorBoundary>
+                            </RadzenCard>
+                        }
+                    </div>
+                </RadzenTabsItem>
+            }
+        </Tabs>
+    </RadzenTabs>
     </div>
 
     }
@@ -236,6 +319,48 @@ else
 
 @code {
     [Parameter] public Guid RouteId { get; set; }
+
+    /// <summary>
+    /// The open tab — "schedule" or "history"; absent (or anything unknown) is Overview.
+    /// Lives in the query string so a reload, a shared link or the back button keeps it.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "tab")] public string? Tab { get; set; }
+
+    private const string OverviewTab = "overview";
+    private const string ScheduleTab = "schedule";
+    private const string HistoryTab = "history";
+
+    // Advanced panels (Settings → Advanced panels). Read per render: the service caches
+    // them, and a switch flipped in Settings applies the next time this page draws.
+    private bool ShowMap => Prefs.IsOn(AdvancedPanel.Map);
+    private bool ShowHeatmap => Prefs.IsOn(AdvancedPanel.Heatmap);
+    private bool ShowWeather => Prefs.IsOn(AdvancedPanel.Weather);
+    private bool ShowHistory => ShowHeatmap || ShowWeather;
+
+    /// <summary>The tabs this route has, in order. Their position is RadzenTabs' index.</summary>
+    private string[] TabKeys =>
+    [
+        OverviewTab,
+        .. _route?.IsSample == false ? [ScheduleTab] : Array.Empty<string>(),
+        .. ShowHistory ? [HistoryTab] : Array.Empty<string>(),
+    ];
+
+    /// <summary>The tab to show: the query's, when this route has it; otherwise Overview.</summary>
+    private string ActiveTab =>
+        Tab?.ToLowerInvariant() is { } t && TabKeys.Contains(t) ? t : OverviewTab;
+
+    /// <summary>
+    /// Puts the picked tab in the URL, replacing the history entry so Back leaves the page
+    /// rather than walking back through every tab. The router hands the new query back
+    /// as <see cref="Tab"/>; the route itself is unchanged, so nothing reloads.
+    /// </summary>
+    private void OnTabChanged(string[] tabs, int index)
+    {
+        string key = index >= 0 && index < tabs.Length ? tabs[index] : OverviewTab;
+        Nav.NavigateTo(
+            Nav.GetUriWithQueryParameter("tab", key == OverviewTab ? null : key),
+            replace: true);
+    }
 
     /// <summary>The route this page is showing. Changing it reloads the page from scratch.</summary>
     protected override object? SubjectKey => RouteId;
@@ -256,6 +381,8 @@ else
         _todayPolls = [];
         _trendPoints = [];
         _trendLabels = [];
+        _trendWeather = [];
+        _trendPrecipitation = [];
         _selectedPoll = null;
         _plan = null;
         _activeSession = null;
@@ -273,6 +400,8 @@ else
     private List<PollRecordDto> _todayPolls = [];
     private double[] _trendPoints = [];
     private string[] _trendLabels = [];
+    private string?[] _trendWeather = [];
+    private double?[] _trendPrecipitation = [];
     private PollRecordDto? _selectedPoll;
     private DeparturePlanDto? _plan;
     private VolatilityHeatmapDto? _heatmap;
@@ -378,19 +507,22 @@ else
         // rides the normal refresh cadence: after the first call the server is only
         // re-deciding the colour, which is exactly what should follow a new sample.
         // 404 when the route's coordinates can't be parsed — RouteMap has an empty state for that.
-        Task<RoutePathDto?> pathTask =
-            GetOptionalAsync($"/api/routes/{RouteId}/path", AppJsonContext.Default.RoutePathDto);
+        // The map, the weekly grid and the weather are advanced panels: a panel that is
+        // switched off is not fetched at all, so the default page costs four reads, not seven.
+        Task<RoutePathDto?> pathTask = ShowMap
+            ? GetOptionalAsync($"/api/routes/{RouteId}/path", AppJsonContext.Default.RoutePathDto)
+            : Task.FromResult(_path);
 
         // The weekly grid rides along with the fan-out, but only when the copy in hand
         // has aged out — see HeatmapMaxAge.
-        bool refreshHeatmap = _heatmapFetchedAt is not { } fetchedAt
-            || DateTimeOffset.UtcNow - fetchedAt > HeatmapMaxAge;
+        bool refreshHeatmap = ShowHeatmap
+            && (_heatmapFetchedAt is not { } fetchedAt || DateTimeOffset.UtcNow - fetchedAt > HeatmapMaxAge);
         Task<VolatilityHeatmapDto?> heatmapTask = refreshHeatmap
             ? Http.GetFromJsonAsync($"/api/routes/{RouteId}/heatmap", AppJsonContext.Default.VolatilityHeatmapDto)
             : Task.FromResult(_heatmap);
 
-        bool refreshWeather = _weatherFetchedAt is not { } weatherAt
-            || DateTimeOffset.UtcNow - weatherAt > WeatherMaxAge;
+        bool refreshWeather = ShowWeather
+            && (_weatherFetchedAt is not { } weatherAt || DateTimeOffset.UtcNow - weatherAt > WeatherMaxAge);
         Task<WeatherImpactResponse?> weatherTask = refreshWeather
             ? Http.GetFromJsonAsync($"/api/routes/{RouteId}/weather-impact", AppJsonContext.Default.WeatherImpactResponse)
             : Task.FromResult(_weatherImpact);
@@ -420,7 +552,9 @@ else
         }
 
         // Today's active monitoring session — carries the server-computed poll schedule.
-        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        // Sessions are keyed by the window's local date, not the UTC date, so compare
+        // against the browser's local today (a US evening is already "tomorrow" in UTC).
+        DateOnly today = DateOnly.FromDateTime(DateTime.Today);
         _activeSession = (await sessionsTask)?.FirstOrDefault(
             s => s.State == SessionState.Active && s.SessionDate == today);
 
@@ -434,6 +568,8 @@ else
             LatestPoll = _todayPolls.Count > 0 ? _todayPolls[^1] : null;
             _trendPoints = [.. _todayPolls.Select(p => p.TravelDurationSeconds / 60.0)];
             _trendLabels = [.. _todayPolls.Select(p => p.PolledAtDateTime.ToString("HH:mm"))];
+            _trendWeather = [.. _todayPolls.Select(p => p.WeatherCondition)];
+            _trendPrecipitation = [.. _todayPolls.Select(p => p.PrecipitationMm)];
 
             // A selection from the previous payload may no longer exist.
             if (_selectedPoll is not null && !_todayPolls.Contains(_selectedPoll))

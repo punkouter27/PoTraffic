@@ -15,23 +15,41 @@
 
 <PageTitle>Commutes — PoTraffic</PageTitle>
 
-@* The page now leads with a heading like every other route. It carries the
-   Add Route action, which used to hang off the right of the status bar — a
-   primary action parked inside a connectivity indicator that hides itself
-   whenever there is nothing to report. *@
+@* The page leads with a heading like every other route. *@
 <PageHeader Title="Your commutes"
-            Subtitle="@_subtitle">
-    <Actions>
-        <RadzenButton Text="Add commute" Icon="add" ButtonStyle="ButtonStyle.Primary" class="pt-hide-phone"
-                      Click="@(() => Nav.NavigateTo("/routes/create"))" />
-    </Actions>
-</PageHeader>
+            Subtitle="@_subtitle" />
+
+@* One compact toolbar: find, narrow, add. Search and the status filter used to not
+   exist at all and the Add action sat alone in the header; once there are more
+   commutes than fit a screen, the three belong on one row, in that order.
+   Search and filter appear only when there is something to search — on an empty
+   account they would be controls for nothing. Add stays hidden on a phone, where
+   the bottom nav's FAB is the same action under the thumb. *@
+<div class="pt-dash-toolbar" role="toolbar" aria-label="Commute list tools">
+    @if (_routes.Count > 0)
+    {
+        <RadzenTextBox @bind-Value="_search" @bind-Value:after="RecomputeVisible" Immediate="true"
+                       Placeholder="Search commutes" aria-label="Search commutes"
+                       class="pt-dash-search" autocomplete="off" />
+        <RadzenSelectBar TValue="StatusFilter" @bind-Value="_filter" @bind-Value:after="RecomputeVisible"
+                         Size="ButtonSize.Small" aria-label="Show">
+            <Items>
+                <RadzenSelectBarItem Value="@StatusFilter.All" Text="All" />
+                <RadzenSelectBarItem Value="@StatusFilter.Monitoring" Text="Monitoring" />
+                <RadzenSelectBarItem Value="@StatusFilter.Paused" Text="Paused" />
+            </Items>
+        </RadzenSelectBar>
+    }
+    <RadzenButton Text="Add commute" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                  class="pt-hide-phone pt-dash-add"
+                  Click="@(() => Nav.NavigateTo("/routes/create"))" />
+</div>
 
 @* Connectivity is the one status fact that changes how far to trust the cards, and it
    shows only when the news is bad; quota and spend live in Settings. *@
 <StaleBanner IsOffline="IsOffline" IsStale="IsStale" />
 
-@if (_quotaConsumed >= QuotaConstants.DefaultDailyQuota - 2)
+@if (_quotaConsumed >= _quotaLimit - 2)
 {
     <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true" class="pt-mb-3 pt-enter">
         Daily monitoring limit almost reached — sampling will pause once it's hit.
@@ -117,16 +135,32 @@ else
        departure had been scheduled. Nothing schedules one, so the number was an
        invention — and it gave one route a treatment none of the others could
        earn. Every route is the same card now. *@
+    @if (ShownRoutes.Count == 0)
+    {
+        @* The toolbar filtered everything out. Said plainly, with the way back, so an
+           empty grid is never mistaken for an empty account. *@
+        <div class="pt-empty-state pt-empty-state-inline">
+            <PtIcon Name="search_off" Size="xl" Class="pt-empty-state-icon" />
+            <div class="pt-empty-state-title">No commutes match</div>
+            <RadzenButton Text="Clear search and filter" ButtonStyle="ButtonStyle.Light" Icon="filter_alt_off"
+                          Click="ClearFilters" />
+        </div>
+    }
+
+    @* Each card is its own error boundary: one route whose payload a card cannot
+       render shows a one-line notice in its slot, and the other cards carry on. *@
     <div class="pt-route-cards pt-stagger" role="list">
-        @foreach (RouteDto route in VisibleRoutes)
+        @foreach (RouteDto route in ShownRoutes)
         {
             <div role="listitem" @key="route.Id">
-                <RouteCard Route="route"
-                           OptimalDeparture="@(_optimalDepartures.GetValueOrDefault(route.Id))"
-                           Plan="@(_plans.GetValueOrDefault(route.Id))"
-                           RecentPolls="@(_recentPolls.GetValueOrDefault(route.Id, []))"
-                           OnDeleted="@RefreshAsync"
-                           OnRefresh="@RefreshAsync" />
+                <SectionErrorBoundary Label="this commute">
+                    <RouteCard Route="route"
+                               OptimalDeparture="@(_optimalDepartures.GetValueOrDefault(route.Id))"
+                               Plan="@(_plans.GetValueOrDefault(route.Id))"
+                               RecentPolls="@(_recentPolls.GetValueOrDefault(route.Id, []))"
+                               OnDeleted="@RefreshAsync"
+                               OnRefresh="@RefreshAsync" />
+                </SectionErrorBoundary>
             </div>
         }
     </div>
@@ -141,6 +175,9 @@ else
     private Dictionary<RouteId, DeparturePlanDto> _plans = [];
     private Dictionary<RouteId, List<PollRecordDto>> _recentPolls = [];
     private int _quotaConsumed;
+
+    /// <summary>The configured daily limit from the quota endpoint; the constant until it loads.</summary>
+    private int _quotaLimit = QuotaConstants.DefaultDailyQuota;
     private bool _hydrated;
     private bool _creatingSample;
     private string? _sampleError;
@@ -205,9 +242,48 @@ else
     /// </summary>
     private string? _subtitle;
 
+    /// <summary>The toolbar's status filter.</summary>
+    private enum StatusFilter { All, Monitoring, Paused }
+
+    private string _search = string.Empty;
+    private StatusFilter _filter = StatusFilter.All;
+
+    /// <summary>
+    /// <see cref="VisibleRoutes"/> narrowed by the toolbar. Kept separate because the empty
+    /// states and the subtitle are about the account ("3 of 5 monitoring"), not about
+    /// whatever the search box currently says.
+    /// </summary>
+    private List<RouteDto> ShownRoutes { get; set; } = [];
+
+    private void ClearFilters()
+    {
+        _search = string.Empty;
+        _filter = StatusFilter.All;
+        RecomputeVisible();
+    }
+
+    /// <summary>
+    /// A search matches the name or either address — what the card shows. "Monitoring"
+    /// counts the sample as such, as the card's own colour does: it has history and never
+    /// shows the Paused flag.
+    /// </summary>
+    private bool MatchesToolbar(RouteDto route)
+    {
+        bool monitoring = route.MonitoringStatus == MonitoringStatus.Active || route.IsSample;
+        if (_filter == StatusFilter.Monitoring && !monitoring) return false;
+        if (_filter == StatusFilter.Paused && monitoring) return false;
+
+        string q = _search.Trim();
+        return q.Length == 0
+            || (route.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false)
+            || route.OriginAddress.Contains(q, StringComparison.OrdinalIgnoreCase)
+            || route.DestinationAddress.Contains(q, StringComparison.OrdinalIgnoreCase);
+    }
+
     private void RecomputeVisible()
     {
         VisibleRoutes = [.. _routes.Where(r => !Pending.IsPending(r.Id))];
+        ShownRoutes = [.. VisibleRoutes.Where(MatchesToolbar)];
 
         // Null, not empty — PageHeader renders the subtitle element only when there
         // is one, and an empty <p> still occupies a line.
@@ -254,6 +330,7 @@ else
         if (quota is not null)
         {
             _quotaConsumed = quota.UsedToday;
+            _quotaLimit = quota.DailyLimit;
         }
 
         // UI-2/UI-12: Load optimal departure + 24h trend for each route. Every route's
@@ -357,6 +434,7 @@ else
         if (snapshot.Quota is { } quota)
         {
             _quotaConsumed = quota.UsedToday;
+            _quotaLimit = quota.DailyLimit;
         }
 
         _hydrated = true;

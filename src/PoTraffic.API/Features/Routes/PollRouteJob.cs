@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PoTraffic.API.Features.MonitoringWindows;
+using PoTraffic.API.Infrastructure.Observability;
 using PoTraffic.API.Infrastructure.Scheduling;
 using PoTraffic.API.Infrastructure.Storage;
 using PoTraffic.API.Infrastructure.Time;
@@ -31,6 +33,7 @@ public sealed class PollRouteJob
     public async Task Execute(RouteId routeId)
     {
         _logger.LogDebug("PollRouteJob executing for route {RouteId}", routeId);
+        Activity.Current?.SetTag(PoTrafficTelemetry.RouteIdTag, routeId.ToString());
 
         // Collapse a forked chain: if a crash re-ran a job that had already scheduled its
         // successor, cancel any stray pending poll job(s) for this route so exactly one
@@ -75,8 +78,9 @@ public sealed class PollRouteJob
 
             if (IsWithinWindow(window, now))
             {
-                if (await EnsureActiveSessionAsync(db, route, now))
+                if (await EnsureActiveSessionAsync(db, route, window, now))
                 {
+                    Activity.Current?.SetTag(PoTrafficTelemetry.PollOutcomeTag, "polled");
                     ExecutePollCommandHandler poll = scope.ServiceProvider.GetRequiredService<ExecutePollCommandHandler>();
                     try
                     {
@@ -149,6 +153,7 @@ public sealed class PollRouteJob
     private bool TrySleepUntilNextStart(MonitoringWindow window, DateTimeOffset now, RouteId routeId, string reason, out TimeSpan delay)
     {
         DateTimeOffset? nextStart = NextWindowStart(window, now);
+        Activity.Current?.SetTag(PoTrafficTelemetry.PollOutcomeTag, nextStart is null ? "stopped" : reason);
         if (nextStart is null)
         {
             _logger.LogInformation("PollRouteJob: route {RouteId} window has no enabled days — polling chain stopped", routeId);
@@ -163,26 +168,26 @@ public sealed class PollRouteJob
     }
 
     /// <summary>
-    /// A window's daily session is normally created when the user presses Start;
-    /// this creates the next day's session automatically at window start so a
-    /// Mon–Fri schedule keeps sampling without manual restarts. Honours the
-    /// per-user daily session quota.
+    /// Creates the day's session lazily, the first time the chain polls inside the window —
+    /// Start only arms the chain when pressed outside the window, so this is where most
+    /// sessions are born, and a Mon–Fri schedule keeps sampling without manual restarts.
+    /// Sessions and the per-user daily quota are keyed by the window's local date, so one
+    /// local day's window costs exactly one session even when it crosses UTC midnight.
     /// </summary>
-    private async Task<bool> EnsureActiveSessionAsync(TableStorageContext db, EntityRoute route, DateTimeOffset nowUtc)
+    private async Task<bool> EnsureActiveSessionAsync(
+        TableStorageContext db, EntityRoute route, MonitoringWindow window, DateTimeOffset nowUtc)
     {
-        DateOnly today = DateOnly.FromDateTime(nowUtc.UtcDateTime.Date);
+        DateOnly today = window.LocalDateAt(nowUtc);
         bool hasActive = db.Sessions.Any(s =>
             s.RouteId == route.Id && s.SessionDate == today && s.State == (int)SessionState.Active);
         if (hasActive)
             return true;
 
-        HashSet<RouteId> userRouteIds = db.GetUserRouteIds(route.UserId);
-        int todaySessionCount = db.Sessions.Count(s => userRouteIds.Contains(s.RouteId) && s.SessionDate == today);
-        if (todaySessionCount >= QuotaConstants.DefaultDailyQuota)
+        if (SessionsUsedOn(db, route.UserId, today) >= DailySessionQuota(db))
         {
             _logger.LogInformation(
-                "PollRouteJob: daily session quota exhausted for user {UserId} — route {RouteId} skips today",
-                route.UserId, route.Id);
+                "PollRouteJob: daily session quota exhausted for user {UserId} — route {RouteId} skips {Date}",
+                route.UserId, route.Id, today);
             return false;
         }
 
@@ -195,8 +200,36 @@ public sealed class PollRouteJob
         });
         await db.SaveChangesAsync();
         _logger.LogInformation(
-            "PollRouteJob: auto-created today's monitoring session for route {RouteId} at window start", route.Id);
+            "PollRouteJob: auto-created the {Date} monitoring session for route {RouteId}", today, route.Id);
         return true;
+    }
+
+    /// <summary>
+    /// The daily session limit: the admin-editable <c>quota.daily.default</c> row, falling
+    /// back to <see cref="QuotaConstants.DefaultDailyQuota"/> when it is missing or not a
+    /// positive number. Enforcement and the account page both read it here, so the limit
+    /// shown is the limit enforced.
+    /// </summary>
+    internal static int DailySessionQuota(TableStorageContext db)
+    {
+        string? value = db.SystemConfigurations
+            .Where(c => c.Key == "quota.daily.default")
+            .Select(c => c.Value)
+            .FirstOrDefault();
+        return int.TryParse(value, out int limit) && limit > 0 ? limit : QuotaConstants.DefaultDailyQuota;
+    }
+
+    /// <summary>
+    /// Sessions the user's billable routes hold for <paramref name="sessionDate"/> — the daily
+    /// quota count. The sample route's generated sessions are left out, as in GetQuotaQuery,
+    /// so the quota the account page shows is the quota enforced.
+    /// </summary>
+    internal static int SessionsUsedOn(TableStorageContext db, UserId userId, DateOnly sessionDate)
+    {
+        HashSet<RouteId> billableRouteIds = [.. db.Routes
+            .Where(r => r.UserId == userId && !r.IsSample)
+            .Select(r => r.Id)];
+        return db.Sessions.Count(s => billableRouteIds.Contains(s.RouteId) && s.SessionDate == sessionDate);
     }
 
     /// <summary>
@@ -232,7 +265,11 @@ public sealed class PollRouteJob
     /// <summary>Window times and days are wall-clock in <see cref="MonitoringWindow.Zone"/>
     /// (UTC for legacy windows); mask bit 0 = Monday … bit 6 = Sunday.
     /// Supports wrap-around midnight: when EndTime &lt; StartTime the window
-    /// is active from StartTime through midnight and from midnight through EndTime.</summary>
+    /// is active from StartTime through midnight and from midnight through EndTime.
+    /// An EndTime of 00:00 (the create-route default, 03:00 → midnight) means "until
+    /// midnight": it takes the wrap branch, whose <c>time &lt; 00:00</c> leg is never true,
+    /// so the window is simply [StartTime, 24:00) and lies wholly on one local day — the day
+    /// whose mask bit is checked, and the day <see cref="MonitoringWindow.LocalDateAt"/> keys.</summary>
     internal static bool IsWithinWindow(MonitoringWindow window, DateTimeOffset nowUtc)
     {
         DateTime local = TimeZoneInfo.ConvertTime(nowUtc, window.Zone).DateTime;

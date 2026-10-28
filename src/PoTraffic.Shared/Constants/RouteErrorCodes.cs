@@ -17,9 +17,6 @@ public static class RouteErrorCodes
     /// <summary>Origin and destination resolved to the same coordinates.</summary>
     public const string SameCoordinates = "SAME_COORDINATES";
 
-    /// <summary>The geocoding call itself failed (provider error or unresolvable input).</summary>
-    public const string GeocodeFailed = "GEOCODE_FAILED";
-
     /// <summary>The target route/window does not exist or is not owned by the caller.</summary>
     public const string NotFound = "NOT_FOUND";
 }

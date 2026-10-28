@@ -50,7 +50,8 @@ public sealed class MonitoringWindowScenarios : PlaywrightTestBase
         await Page.WaitForURLAsync($"{BaseUrl}/dashboard", new() { Timeout = 30_000 });
 
         // ── Navigate to Route Detail page ────────────────────────────────────────
-        await Page.GotoAsync($"{BaseUrl}/routes/{routeId}");
+        // The schedule editor is the route page's Schedule tab; ?tab=schedule opens it directly.
+        await Page.GotoAsync($"{BaseUrl}/routes/{routeId}?tab=schedule");
 
         // Wait for ROOT loading progress to disappear (splash screen) — only if present
         ILocator loadingProgress = Page.Locator(".loading-progress");
@@ -59,7 +60,7 @@ public sealed class MonitoringWindowScenarios : PlaywrightTestBase
             await loadingProgress.WaitForAsync(new() { State = WaitForSelectorState.Detached, Timeout = 60_000 });
         }
 
-        // Wait for the WindowConfigPanel — the schedule row of the route page's settings card.
+        // Wait for the WindowConfigPanel — the schedule row of the Schedule tab's settings card.
         ILocator fieldset = Page.Locator(".pt-schedule").First;
         await fieldset.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 45_000 });
 
@@ -147,7 +148,8 @@ public sealed class MonitoringWindowScenarios : PlaywrightTestBase
         await Page.WaitForURLAsync($"{BaseUrl}/dashboard", new() { Timeout = 30_000 });
 
         // Navigate to route detail
-        await Page.GotoAsync($"{BaseUrl}/routes/{routeId}");
+        // The schedule editor is the route page's Schedule tab; ?tab=schedule opens it directly.
+        await Page.GotoAsync($"{BaseUrl}/routes/{routeId}?tab=schedule");
 
         // Wait for ROOT loading progress to disappear (splash screen) — only if present
         ILocator loadingProgress = Page.Locator(".loading-progress");
@@ -156,7 +158,7 @@ public sealed class MonitoringWindowScenarios : PlaywrightTestBase
             await loadingProgress.WaitForAsync(new() { State = WaitForSelectorState.Detached, Timeout = 60_000 });
         }
 
-        // Wait for the WindowConfigPanel — the schedule row of the route page's settings card.
+        // Wait for the WindowConfigPanel — the schedule row of the Schedule tab's settings card.
         ILocator fieldset = Page.Locator(".pt-schedule").First;
         await fieldset.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 45_000 });
 

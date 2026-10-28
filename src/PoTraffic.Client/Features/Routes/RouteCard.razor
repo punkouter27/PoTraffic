@@ -5,7 +5,7 @@
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject NotificationService NotificationService
-@inject DialogService DialogService
+@inject UiPreferences Prefs
 @inject PendingDeletionService Pending
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -68,7 +68,8 @@
             </div>
         </div>
 
-        @if (RecentPolls.Count > 0)
+        @* An advanced panel (Settings → Advanced panels): off by default, the card is the answer. *@
+        @if (RecentPolls.Count > 0 && Prefs.IsOn(AdvancedPanel.Sparklines))
         {
             <TrendSparkline Polls="RecentPolls" />
         }

@@ -16,7 +16,7 @@
         <div class="pt-setting-row">
             <span class="pt-setting-label">Schedule</span>
             <span class="pt-setting-value">
-                @ScheduleFields.DaysLabel(Window.DaysOfWeek) · @FormatWindowTime(Window.StartTime)–@FormatWindowTime(Window.EndTime)
+                @ScheduleFields.DaysLabel(Window.DaysOfWeek) · @FormatWindowTime(Window.StartTime)–@FormatWindowTime(Window.EndTime, isEnd: true)
             </span>
             <RadzenButton Text="Edit schedule" Icon="edit" ButtonStyle="ButtonStyle.Light"
                           Size="ButtonSize.ExtraSmall" Click="@StartEditing" />
@@ -78,28 +78,34 @@
     private bool _editing;
     private string? _error;
 
-    // A new window defaults to "monitor from now": this minute through two hours later.
-    private DateTime? _startTime = ScheduleFields.LocalNowToMinute();
-    private DateTime? _endTime = ScheduleFields.LocalNowToMinute().AddHours(2);
-    private IEnumerable<byte> _days = ScheduleFields.WeekdayBits;
+    // A new window starts from the same default New Route uses: 03:00 through midnight.
+    // This used to be "now → +2h", so a route got a different schedule depending on
+    // which of the two editors it was set up in.
+    private DateTime? _startTime = ScheduleFields.DefaultWindow().Start;
+    private DateTime? _endTime = ScheduleFields.DefaultWindow().End;
+    private IEnumerable<byte> _days = ScheduleFields.DefaultDayBits;
 
     /// <summary>
     /// A window with a zone holds wall-clock times already; a legacy window (no zone)
-    /// holds UTC and is converted to local time.
+    /// holds UTC and is converted to local time. A wall-clock end of 00:00 reads as
+    /// "midnight" — see <see cref="LocalTimeFormatter.FormatWindowEnd"/>.
     /// </summary>
-    private string FormatWindowTime(string hhmm)
+    private string FormatWindowTime(string hhmm, bool isEnd = false)
         => Window?.TimeZoneId is null
             ? LocalTimeFormatter.FormatUtcHHmmAsLocal(hhmm)
-            : LocalTimeFormatter.FormatWallClock(hhmm);
+            : isEnd
+                ? LocalTimeFormatter.FormatWindowEnd(hhmm)
+                : LocalTimeFormatter.FormatWallClock(hhmm);
 
     private void StartEditing()
     {
         _editing = true;
         _error = null;
-        // Times reset to now → +2h: the window is replaced wholesale, and the user is almost
-        // always here to watch from now. The day mask carries over.
-        _startTime = ScheduleFields.LocalNowToMinute();
-        _endTime = _startTime.Value.AddHours(2);
+        // Times reset to the shared default: the window is replaced wholesale. The day
+        // mask carries over.
+        (DateTime start, DateTime end) = ScheduleFields.DefaultWindow();
+        _startTime = start;
+        _endTime = end;
         if (Window is not null)
             _days = ScheduleFields.ToBits(Window.DaysOfWeek);
     }

@@ -26,6 +26,7 @@
                        bounds the DOM too, and replaces "which of 14 pages was that
                        user on" with a scrollbar. Radzen needs an explicit height to
                        virtualize against, hence Style. *@
+                    <div class="pt-admin-wide">
                     <RadzenDataGrid Data="_users" TItem="UserDailyUsageDto"
                                     AllowSorting="true" AllowFiltering="true"
                                     AllowVirtualization="true"
@@ -55,6 +56,29 @@
                             </RadzenDataGridColumn>
                         </Columns>
                     </RadzenDataGrid>
+                    </div>
+
+                    @* Phones get cards, not a grid (#23): five columns of a virtualized grid in
+                       a 360px viewport meant scrolling sideways to find a user's cost. Same rows,
+                       same order, one card per user; the grid above is hidden at this width. *@
+                    <ul class="pt-admin-cards" aria-label="Daily usage">
+                        @if (_users.Count == 0)
+                        {
+                            <li class="pt-admin-card-empty">No users have signed in yet.</li>
+                        }
+                        @foreach (UserDailyUsageDto u in _users)
+                        {
+                            <li class="pt-admin-card">
+                                <div class="pt-admin-card-title">@u.Email</div>
+                                <dl class="pt-admin-card-fields">
+                                    <dt>Polls today</dt><dd>@u.TodayPollCount</dd>
+                                    <dt>Est. cost</dt><dd>@u.TodayEstimatedCostUsd.ToString("C4")</dd>
+                                    <dt>Locale</dt><dd>@u.Locale</dd>
+                                    <dt>Last login</dt><dd>@(u.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</dd>
+                                </dl>
+                            </li>
+                        }
+                    </ul>
                 </LoadingErrorCard>
             </RadzenTabsItem>
 
@@ -100,6 +124,7 @@
                     Sensitive values are masked. Values can be updated by administrators.
                 </RadzenText>
                 <LoadingErrorCard IsLoading="_cfgLoading" Error="@_cfgError">
+                    <div class="pt-admin-wide">
                     <RadzenDataGrid Data="_configs" TItem="SystemConfigDto" AllowSorting="true"
                                     AllowFiltering="true" FilterMode="FilterMode.Simple"
                                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
@@ -136,6 +161,33 @@
                             </RadzenDataGridColumn>
                         </Columns>
                     </RadzenDataGrid>
+                    </div>
+
+                    @* Phone layout — see the usage tab. Values wrap rather than truncate: a
+                       config value cut off at the card edge is a value nobody can read. *@
+                    <ul class="pt-admin-cards" aria-label="System configuration">
+                        @if (_configs.Count == 0)
+                        {
+                            <li class="pt-admin-card-empty">No configuration entries.</li>
+                        }
+                        @foreach (SystemConfigDto c in _configs)
+                        {
+                            <li class="pt-admin-card">
+                                <div class="pt-admin-card-title">
+                                    @c.Key
+                                    @if (c.IsSensitive)
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Sensitive" />
+                                    }
+                                </div>
+                                <div class="pt-admin-card-value @(c.IsSensitive ? "pt-diag-sensitive" : "")">@c.Value</div>
+                                @if (!string.IsNullOrEmpty(c.Description))
+                                {
+                                    <div class="pt-admin-card-desc">@c.Description</div>
+                                }
+                            </li>
+                        }
+                    </ul>
                 </LoadingErrorCard>
             </RadzenTabsItem>
         </Tabs>

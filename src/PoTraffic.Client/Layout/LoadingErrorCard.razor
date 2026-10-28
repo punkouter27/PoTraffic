@@ -1,10 +1,20 @@
 @* Shared loading/error scaffold used across admin and data pages.
-   Renders a spinner when loading, an error alert on failure,
-   or ChildContent on success. *@
+   Renders skeleton lines while loading, an error alert on failure,
+   or ChildContent on success.
+
+   Loading used to be a lone spinner: a 40px circle where a grid or a status
+   list was about to land, so the page jumped by the content's full height the
+   moment it arrived. The skeleton reserves roughly that height in the shape of
+   rows, using the same pt-skeleton-* blocks as the dashboard and Settings. *@
 
 @if (IsLoading)
 {
-    <RadzenProgressBarCircular Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+    <div class="pt-skeleton-stack" aria-busy="true" aria-label="Loading">
+        @for (int i = 0; i < SkeletonRows; i++)
+        {
+            <div class="pt-skeleton-line @(i == 0 ? "lg w-50" : i % 2 == 0 ? "w-70" : "w-40")"></div>
+        }
+    </div>
 }
 else if (Error is not null)
 {
@@ -19,4 +29,7 @@ else
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string? Error { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Placeholder rows while loading — roughly the content's height, in lines.</summary>
+    [Parameter] public int SkeletonRows { get; set; } = 5;
 }

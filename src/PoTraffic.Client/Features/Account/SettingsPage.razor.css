@@ -46,3 +46,20 @@
 .pt-settings-section ::deep .rz-selectbar {
     max-width: 32rem;
 }
+
+/* Advanced panels: the switch, then what it turns on. The switch carries its
+   own aria-label, so the text beside it is description, not a <label>. */
+.pt-settings-toggle {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--pt-space-3);
+}
+
+.pt-settings-toggle-text {
+    min-width: 0;
+}
+
+.pt-settings-toggle-text .pt-settings-meta {
+    display: block;
+    margin: 0;
+}

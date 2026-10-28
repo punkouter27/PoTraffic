@@ -7,13 +7,14 @@
 @inject NotificationService NotificationService
 @inject PoTraffic.Client.Infrastructure.PwaService Pwa
 @inject PoTraffic.Client.Infrastructure.FxService Fx
+@inject PoTraffic.Client.Infrastructure.UiPreferences Prefs
 @using PoTraffic.Client.Infrastructure
 
 <PageTitle>Settings — PoTraffic</PageTitle>
 
 <PageHeader Title="Account settings" BackHref="/dashboard" BackLabel="Commutes" />
 
-@*  Four sections, one short scroll. There used to be eight — for about eight
+@*  Five sections, one short scroll. There used to be eight — for about eight
     controls — behind a sticky section index; Motion had its own section with the
     word "Motion" as both its heading and its only sub-heading. Grouped by what
     they are about, the page is short enough that it needs no index. *@
@@ -192,6 +193,29 @@
         }
     </section>
 
+    @* Progressive disclosure. The app's default is the minimum that answers "when do I
+       leave": the commute list, live status, today's chart and the schedule. These are
+       the extras — real, working, and off until asked for. Per browser, like the theme. *@
+    <section class="pt-settings-section">
+        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Advanced panels</RadzenText>
+        <p class="pt-settings-meta pt-mb-3">
+            Extra detail for the curious. Off by default to keep things simple — switch on what you'd use.
+        </p>
+        <div class="pt-settings-grid">
+            @foreach ((AdvancedPanel panel, string label, string detail) in AdvancedPanels)
+            {
+                <div class="pt-settings-toggle">
+                    <RadzenSwitch Value="@Prefs.IsOn(panel)" Change="@(on => Prefs.SetAsync(panel, on))"
+                                  aria-label="@label" />
+                    <div class="pt-settings-toggle-text">
+                        <span class="pt-settings-field-label">@label</span>
+                        <span class="pt-settings-meta">@detail</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
     <section class="pt-settings-section pt-settings-danger">
         <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Your data</RadzenText>
         <p class="pt-settings-meta">
@@ -239,6 +263,15 @@
     /// rendered — the prompt event may not have fired yet when Settings first paints.
     /// </summary>
     private void OnPwaStateChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>The Advanced panels section, in the order it lists them.</summary>
+    private static readonly (AdvancedPanel Panel, string Label, string Detail)[] AdvancedPanels =
+    [
+        (AdvancedPanel.Sparklines, "Card sparklines", "A 24-hour trend line on each commute card."),
+        (AdvancedPanel.Map, "Route map", "The drive drawn on real roads, tinted by today's traffic."),
+        (AdvancedPanel.Heatmap, "Weekly pattern", "Every weekday hour by hour, with a 3D view — on the commute's History tab."),
+        (AdvancedPanel.Weather, "Weather impact", "What rain, snow and fog cost this commute — on the History tab."),
+    ];
 
     // Whitelist matches the server-side validator.
     private static readonly List<string> ValidLocales = ["en-IE", "en-GB", "en-US", "de-DE", "fr-FR"];

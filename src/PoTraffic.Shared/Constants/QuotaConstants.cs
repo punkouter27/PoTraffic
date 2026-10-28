@@ -12,7 +12,6 @@ public static class QuotaConstants
     public const int WeatherImpactMinSamples = 12;
 
     public const int PollIntervalMinutes = 5;
-    public const int RetentionDays = 90;
 
     // Adaptive polling (#8): when the last hour of samples is stable (coefficient of
     // variation ≤ threshold) the poll cadence backs off from PollIntervalMinutes to

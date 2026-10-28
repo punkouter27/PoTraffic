@@ -14,7 +14,6 @@ env:
   AZURE_WEBAPP_NAME: potraffic-api-win2
   AZURE_RESOURCE_GROUP: PoTraffic
   API_PROJECT_PATH: src/PoTraffic.API/PoTraffic.API.csproj
-  UNIT_TEST_PATH: tests/PoTraffic.UnitTests/PoTraffic.UnitTests.csproj
   PRODUCTION_URL: https://potraffic-api-win2.azurewebsites.net
   DOTNET_NOLOGO: 'true'
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
@@ -24,12 +23,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Lightweight YAML: the UNIT tier only. It runs in seconds and needs
-  # nothing but the SDK, so it costs the pipeline almost nothing and stops a broken build
-  # from ever becoming an artifact. The integration and E2E tiers stay out deliberately —
-  # they need Docker for Azurite and a live Testing host for Playwright, which would take
-  # this job from about a minute to many. Those run locally via
-  # `pwsh ./SCRIPTS/run-tests.ps1`, which produces the full four-tier HTML report.
+  # Build and publish only — no test tier runs here. Every tier (unit, integration, E2E)
+  # runs locally via `pwsh ./SCRIPTS/run-tests.ps1`, whose four-tier HTML report is the
+  # gate; the integration and E2E tiers need Docker and a live Testing host anyway.
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -46,8 +42,6 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
       - run: dotnet restore ${{ env.API_PROJECT_PATH }}
       - run: dotnet build ${{ env.API_PROJECT_PATH }} --no-restore -c Release
-      - name: Unit tests
-        run: dotnet test ${{ env.UNIT_TEST_PATH }} -c Release --logger "console;verbosity=minimal"
       - run: dotnet publish ${{ env.API_PROJECT_PATH }} -c Release --no-build -o publish
       - uses: actions/upload-artifact@v4
         with:

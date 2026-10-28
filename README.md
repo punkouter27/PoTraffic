@@ -16,7 +16,7 @@ congestion or reroute anomalies in real time.
 | Background Jobs | Table Storage-backed scheduler |
 | Auth | Microsoft OAuth in dev/prod, Testing-only auth bypasses |
 | Logging | Serilog + WASM client log forwarding |
-| Observability | OpenTelemetry + Azure Monitor / Application Insights |
+| Observability | OpenTelemetry + Azure Monitor / Application Insights; app spans (`PoTraffic.API` source: jobs, Google Maps / TomTom / Open-Meteo calls, Table Storage writes) export only when App Insights or `OTEL_EXPORTER_OTLP_ENDPOINT` is configured |
 | Testing | xUnit + NSubstitute, integration tests, Playwright .NET E2E |
 
 The API and Blazor WASM static files are hosted together on Azure App Service.
@@ -49,8 +49,10 @@ dotnet build
 ./SCRIPTS/start-dev.ps1
 ```
 
-The startup script starts Azurite, clears stale `dotnet` processes on ports
-5000/5001, and launches the hosted API/client.
+The startup script stops a stale PoTraffic host, starts PoTraffic's own Azurite (host port
+10012, so it never collides with another project's Azurite on 10002), and launches the hosted
+API/client. If another app already holds 5001/5000 it uses 5011/5010 (then 5021/5020) and
+prints the URL.
 
 | URL | Purpose |
 |---|---|

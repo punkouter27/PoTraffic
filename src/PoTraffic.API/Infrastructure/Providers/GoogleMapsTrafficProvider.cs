@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using PoTraffic.API.Infrastructure.Logging;
+using PoTraffic.API.Infrastructure.Observability;
 using PoTraffic.Shared.Constants;
 
 namespace PoTraffic.API.Infrastructure.Providers;
@@ -10,6 +12,7 @@ namespace PoTraffic.API.Infrastructure.Providers;
 // Strategy pattern — concrete GoogleMaps implementation of ITrafficProvider
 public sealed class GoogleMapsTrafficProvider : ITrafficProvider
 {
+    private const string ProviderName = "GoogleMaps";
     private const string GeocodeBaseUrl = "https://maps.googleapis.com/maps/api/geocode/json";
     private const string DirectionsBaseUrl = "https://maps.googleapis.com/maps/api/directions/json";
 
@@ -40,10 +43,12 @@ public sealed class GoogleMapsTrafficProvider : ITrafficProvider
 
         string url = $"{GeocodeBaseUrl}?address={Uri.EscapeDataString(address)}&key={apiKey}";
 
+        using Activity? activity = PoTrafficTelemetry.StartProviderCall(ProviderName, "Geocode");
         try
         {
             GoogleGeocodeResponse? response = await _httpClient
                 .GetFromJsonAsync<GoogleGeocodeResponse>(url, ct);
+            activity?.SetTag(PoTrafficTelemetry.ProviderStatusTag, response?.Status);
 
             if (response?.Status == "OK" && response.Results.Length > 0)
             {
@@ -60,6 +65,7 @@ public sealed class GoogleMapsTrafficProvider : ITrafficProvider
         }
         catch (Exception ex)
         {
+            activity.RecordFailure(ex);
             _logger.LogError(ex, "Google Maps geocoding request failed for address {AddressRef}.",
                 PiiRedactor.Redact(address));
             return null;
@@ -83,12 +89,15 @@ public sealed class GoogleMapsTrafficProvider : ITrafficProvider
             + $"&destinations={Uri.EscapeDataString(destinationCoordinates)}"
             + $"&departure_time=now&traffic_model=best_guess&key={apiKey}";
 
+        // The billed call behind every poll — the span the poll trace is mostly about.
+        using Activity? activity = PoTrafficTelemetry.StartProviderCall(ProviderName, "DistanceMatrix");
         try
         {
             GoogleDistanceMatrixResponse? response =
                 await _httpClient.GetFromJsonAsync<GoogleDistanceMatrixResponse>(url, ct);
 
             GoogleElement? element = response?.Rows?.FirstOrDefault()?.Elements?.FirstOrDefault();
+            activity?.SetTag(PoTrafficTelemetry.ProviderStatusTag, element?.Status ?? response?.Status);
             if (element?.Status != "OK")
             {
                 _logger.LogWarning(
@@ -115,6 +124,7 @@ public sealed class GoogleMapsTrafficProvider : ITrafficProvider
         }
         catch (Exception ex)
         {
+            activity.RecordFailure(ex);
             _logger.LogError(ex,
                 "Google Distance Matrix request failed for {Origin} → {Dest}.",
                 originCoordinates, destinationCoordinates);
@@ -152,10 +162,12 @@ public sealed class GoogleMapsTrafficProvider : ITrafficProvider
             + $"&destination={Uri.EscapeDataString(destinationCoordinates)}"
             + $"&key={apiKey}";
 
+        using Activity? activity = PoTrafficTelemetry.StartProviderCall(ProviderName, "Directions");
         try
         {
             GoogleDirectionsResponse? response =
                 await _httpClient.GetFromJsonAsync<GoogleDirectionsResponse>(url, ct);
+            activity?.SetTag(PoTrafficTelemetry.ProviderStatusTag, response?.Status);
 
             string? points = response?.Routes?.FirstOrDefault()?.OverviewPolyline?.Points;
             if (response?.Status != "OK" || string.IsNullOrWhiteSpace(points))
@@ -174,6 +186,7 @@ public sealed class GoogleMapsTrafficProvider : ITrafficProvider
         }
         catch (Exception ex)
         {
+            activity.RecordFailure(ex);
             _logger.LogWarning(ex,
                 "Google Directions request failed for {Origin} → {Dest}; "
                 + "the map will draw an approximate straight line.",

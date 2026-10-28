@@ -1,0 +1,39 @@
+@* ──────────────────────────────────────────────────────────────────────
+   SectionErrorBoundary — one card fails, the page stays.
+
+   AppErrorBoundary catches anything that escapes a page and replaces the whole
+   screen with "Something went wrong". That is right for a page that cannot
+   render at all and wrong for a chart that threw: a bad heatmap payload used to
+   take the answer, the schedule and every other card down with it.
+
+   Wrap each independently-failing region in one of these. A throw during its
+   render or lifecycle is contained to a small inline notice with a Retry, which
+   calls Recover() and re-renders the children from scratch — usually with the
+   fresh data the page's own refresh has brought in by then.
+
+   Knows nothing about routes: Label is the only thing it says about what failed.
+   ────────────────────────────────────────────────────────────────────── *@
+
+<ErrorBoundary @ref="_boundary">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <ErrorContent>
+        <div class="pt-section-error" role="alert">
+            <PtIcon Name="error" Size="sm" Class="pt-section-error-icon" />
+            <span class="pt-section-error-text">Couldn't show @Label.</span>
+            <button type="button" class="pt-section-error-retry pt-tap" @onclick="Recover">Retry</button>
+        </div>
+    </ErrorContent>
+</ErrorBoundary>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>What the region is, in words that finish "Couldn't show …".</summary>
+    [Parameter] public string Label { get; set; } = "this section";
+
+    private ErrorBoundary? _boundary;
+
+    private void Recover() => _boundary?.Recover();
+}

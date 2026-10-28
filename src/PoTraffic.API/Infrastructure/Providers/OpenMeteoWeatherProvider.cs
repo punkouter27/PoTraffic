@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
+using PoTraffic.API.Infrastructure.Observability;
 
 namespace PoTraffic.API.Infrastructure.Providers;
 
@@ -63,14 +65,19 @@ public sealed class OpenMeteoWeatherProvider : IWeatherProvider
         string url = string.Create(CultureInfo.InvariantCulture,
             $"{BaseUrl}?latitude={lat:F4}&longitude={lon:F4}&current=temperature_2m,precipitation,weather_code");
 
+        // Only cache misses reach here, so a poll trace without this span was served from cache.
+        using Activity? activity = PoTrafficTelemetry.StartProviderCall("OpenMeteo", "Current");
         try
         {
             OpenMeteoResponse? response = await _httpClient.GetFromJsonAsync<OpenMeteoResponse>(url, ct);
             if (response?.Current is not { } current)
             {
+                activity?.SetTag(PoTrafficTelemetry.ProviderStatusTag, "NO_CURRENT");
                 _logger.LogWarning("Open-Meteo returned no current block for {Lat},{Lon}.", lat, lon);
                 return null;
             }
+
+            activity?.SetTag("weather.code", current.WeatherCode);
 
             return new WeatherObservation(
                 Condition: WeatherConditions.FromWmoCode(current.WeatherCode),
@@ -81,6 +88,7 @@ public sealed class OpenMeteoWeatherProvider : IWeatherProvider
         catch (Exception ex)
         {
             // Weather is supplementary. Log and return null so the poll it decorates still lands.
+            activity.RecordFailure(ex);
             _logger.LogWarning(ex, "Open-Meteo request failed for {Lat},{Lon} — poll recorded without weather.", lat, lon);
             return null;
         }

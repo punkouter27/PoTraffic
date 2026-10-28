@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>New commute default window</title>
+<style>
+body{font:15px system-ui,sans-serif;margin:24px;background:#fff;color:#1a1a1a}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.card{border:1px solid #ccc;border-radius:8px;padding:16px}
+img{max-width:100%;border:1px solid #ddd}
+.fields{display:flex;gap:16px;margin-top:12px}
+.field{border:2px solid #d33;border-radius:6px;padding:8px 12px;font-size:20px}
+.after .field{border-color:#2a8a3a}
+.note{margin-top:8px;color:#555}
+</style></head><body>
+<h1>New commute: default monitoring window</h1>
+<div class="grid">
+<div class="card"><h2>Before</h2>
+<img src="261028-route-default-window-before.png" alt="New commute form before the change">
+<div class="fields"><div class="field">Start 09:24</div><div class="field">End 15:24</div></div>
+<p class="note">The window started at the current minute and ran 6 hours.</p></div>
+<div class="card after"><h2>After</h2>
+<div class="fields"><div class="field">Start 03:00</div><div class="field">End 00:00</div></div>
+<p class="note">Fixed default from 03:00 to midnight (a 21-hour window that crosses midnight). The rest of the form is unchanged.
+Set in <code>src/PoTraffic.Client/Features/Routes/CreateRoutePage.razor</code>.</p></div>
+</div></body></html>

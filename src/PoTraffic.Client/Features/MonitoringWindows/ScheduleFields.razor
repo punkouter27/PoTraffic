@@ -54,7 +54,7 @@
     [Parameter] public EventCallback<DateTime?> StartChanged { get; set; }
     [Parameter] public DateTime? End { get; set; }
     [Parameter] public EventCallback<DateTime?> EndChanged { get; set; }
-    [Parameter] public IEnumerable<byte> Days { get; set; } = WeekdayBits;
+    [Parameter] public IEnumerable<byte> Days { get; set; } = DefaultDayBits;
     [Parameter] public EventCallback<IEnumerable<byte>> DaysChanged { get; set; }
     [Parameter] public string? DaysError { get; set; }
 
@@ -64,8 +64,8 @@
         ("Thu", 0x08), ("Fri", 0x10), ("Sat", 0x20), ("Sun", 0x40)
     ];
 
-    /// <summary>Monday–Friday, the default for a new window.</summary>
-    internal static readonly byte[] WeekdayBits = [0x01, 0x02, 0x04, 0x08, 0x10];
+    /// <summary>Every day of the week, the default for a new window.</summary>
+    internal static readonly byte[] DefaultDayBits = [.. AllDays.Select(d => d.Bit)];
 
     /// <summary>The wire format — the selected bits folded into one byte.</summary>
     internal static byte ToMask(IEnumerable<byte> days) =>
@@ -103,11 +103,20 @@
     internal static bool EndDiffersFromStart(DateTime? start, DateTime? end) =>
         start is null || end is null || TimeOnly.FromDateTime(end.Value) != TimeOnly.FromDateTime(start.Value);
 
-    /// <summary>Current local wall-clock truncated to the minute.</summary>
-    internal static DateTime LocalNowToMinute()
+    /// <summary>
+    /// The window both schedule editors start from: 03:00 through midnight, which covers
+    /// every commute anyone actually drives. New Route and the route page's editor used to
+    /// disagree (03:00→midnight vs. now→+2h), so the same route got a different schedule
+    /// depending on where it was set up. One default, here.
+    ///
+    /// <para>The end is tomorrow's 00:00 so the picker shows a real instant; only its time
+    /// of day goes on the wire ("00:00"), which the poller reads as "until midnight", not
+    /// as a window that wraps into the next day.</para>
+    /// </summary>
+    internal static (DateTime Start, DateTime End) DefaultWindow()
     {
-        DateTime now = DateTime.Now;
-        return new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0, DateTimeKind.Unspecified);
+        DateTime today = DateTime.Today;
+        return (today.AddHours(3), today.AddDays(1));
     }
 
     // Times are sent as local wall-clock with the browser's zone (LocalZoneId). The server

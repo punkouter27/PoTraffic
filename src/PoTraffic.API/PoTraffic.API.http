@@ -421,12 +421,3 @@ Accept: application/json
 
 ###
 
-### ============================================================================
-# ERROR ENDPOINT
-# ============================================================================
-
-# Test error handling
-GET {{PoTraffic.API_HostAddress}}/error
-Accept: application/json
-
-###

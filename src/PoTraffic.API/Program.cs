@@ -150,10 +150,6 @@ try
     app.MapSystemEndpoints();
     app.MapTestingEndpoints(app.Environment);
 
-    // Error endpoint — anonymous so the exception handler re-execute path is never blocked
-    // by the deny-by-default fallback (§4.5).
-    app.MapGet("/error", () => Results.Problem()).ExcludeFromDescription().AllowAnonymous();
-
     app.MapPoTrafficHealthChecks();   // /health + /health/ready
     // Uniform cross-app liveness probe (see PoPlatform). Same shape in every Po app, which
     // is what lets the portfolio dashboard poll them all and render one uptime grid.

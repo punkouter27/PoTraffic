@@ -56,6 +56,8 @@ internal static class ObservabilityExtensions
                 }
             });
 
+        bool hasOtlp = !string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]);
+
         if (!string.IsNullOrWhiteSpace(appInsightsConnStr))
         {
             otel.UseAzureMonitor(o =>
@@ -66,8 +68,10 @@ internal static class ObservabilityExtensions
             });
             otel.WithTracing(tracing =>
             {
-                tracing.SetSampler(new CompositeRoutingSampler(isProd));
-                if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+                tracing
+                    .SetSampler(new CompositeRoutingSampler(isProd))
+                    .AddSource(PoTrafficTelemetry.SourceName);
+                if (hasOtlp)
                     tracing.AddOtlpExporter();
             });
         }
@@ -79,8 +83,14 @@ internal static class ObservabilityExtensions
                     .SetSampler(new CompositeRoutingSampler(isProd))
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation();
-                if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
-                    tracing.AddOtlpExporter();
+                // The app's own spans are only worth creating when something exports them:
+                // left unregistered, nothing listens to the source and every span is a no-op.
+                if (hasOtlp)
+                {
+                    tracing
+                        .AddSource(PoTrafficTelemetry.SourceName)
+                        .AddOtlpExporter();
+                }
             });
         }
 

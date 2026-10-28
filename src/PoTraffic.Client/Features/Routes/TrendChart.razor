@@ -43,6 +43,15 @@ else
     /// <summary>Per-sample labels shown in the hover tooltip, e.g. "08:42".</summary>
     [Parameter] public IReadOnlyList<string> Labels { get; set; } = [];
 
+    /// <summary>
+    /// Per-sample weather condition (null when not recorded). Rain, snow, storm and fog
+    /// shade their span of the chart so spikes can be read against the weather.
+    /// </summary>
+    [Parameter] public IReadOnlyList<string?> Weather { get; set; } = [];
+
+    /// <summary>Per-sample precipitation in mm, shown in the tooltip alongside the condition.</summary>
+    [Parameter] public IReadOnlyList<double?> Precipitation { get; set; } = [];
+
     /// <summary>Raised with the index (into the full <see cref="Points"/> list) of a clicked sample.</summary>
     [Parameter] public EventCallback<int> OnPointSelected { get; set; }
 
@@ -139,7 +148,9 @@ else
             await _module.InvokeVoidAsync("render", _canvas, new
             {
                 points = Slice(Points),
-                labels = Slice(Labels)
+                labels = Slice(Labels),
+                weather = Slice(Weather),
+                precipitation = Slice(Precipitation)
             });
         }
         catch

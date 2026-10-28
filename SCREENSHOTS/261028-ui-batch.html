@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UI batch before/after</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1a1d23; --muted:#5b6270; --line:#dde1e7; --add:#1f8a3b; --chg:#b45309; }
+@media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1d2026; --fg:#e8eaee; --muted:#9aa1ad; --line:#2d313a; --add:#4ade80; --chg:#fbbf24; } }
+* { box-sizing: border-box; }
+body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+main { max-width:1200px; margin:0 auto; }
+h1 { margin:0 0 4px; font-size:26px; }
+.lede { color:var(--muted); margin:0 0 28px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:24px; }
+h2 { margin:0 0 8px; font-size:18px; }
+ul { margin:0 0 14px; padding-left:20px; }
+li { margin:2px 0; }
+.tag { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:4px; margin-right:6px; }
+.add { color:var(--add); border:1px solid var(--add); }
+.chg { color:var(--chg); border:1px solid var(--chg); }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.pair.narrow { grid-template-columns:repeat(2, minmax(0, 300px)); }
+figure { margin:0; }
+figcaption { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:4px; text-transform:uppercase; }
+img { width:100%; border:1px solid var(--line); border-radius:6px; display:block; }
+.note { color:var(--muted); font-size:13px; margin-top:10px; }
+@media (max-width:700px) { .pair, .pair.narrow { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>UI batch: before and after</h1>
+<p class="lede">2026-10-28. Items 3, 17, 21, 23–25, 27, 28, 41, 42, 43 and 47, plus the all-days default. Both builds ran as <code>Testing</code> hosts on the same seeded commute (mock data). "Before" is commit 2811f85.</p>
+
+<section>
+<h2>Dashboard</h2>
+<ul>
+<li><span class="tag add">new</span>One toolbar: search, All / Monitoring / Paused filter, and Add commute on one row (#21).</li>
+<li><span class="tag add">new</span>Build version <code>261028</code> fixed bottom-right (#28).</li>
+<li><span class="tag chg">changed</span>Each route card has its own error fallback with Retry (#25). Card sparklines are now an opt-in advanced panel (#47).</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-ui-batch/dashboard-before.png" alt="Dashboard before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-ui-batch/dashboard-after.png" alt="Dashboard after"></figure>
+</div>
+</section>
+
+<section>
+<h2>Dashboard on a phone</h2>
+<ul>
+<li><span class="tag add">new</span>Search and the filter wrap onto their own lines; Add stays in the bottom nav. The version sits above the nav.</li>
+</ul>
+<div class="pair narrow">
+<figure><figcaption>Before</figcaption><img src="261028-ui-batch/dashboard-mobile-before.png" alt="Phone dashboard before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-ui-batch/dashboard-mobile-after.png" alt="Phone dashboard after"></figure>
+</div>
+</section>
+
+<section>
+<h2>New commute</h2>
+<ul>
+<li><span class="tag chg">changed</span>Default window is 03:00 to midnight (was now to now + 6h), on all 7 days (was Mon–Fri). One shared default for both schedule editors (#42).</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-ui-batch/create-before.png" alt="New commute before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-ui-batch/create-after.png" alt="New commute after"></figure>
+</div>
+</section>
+
+<section>
+<h2>Commute page</h2>
+<ul>
+<li><span class="tag add">new</span>Tabs: Overview, Schedule, History (#24). History appears only when the weekly pattern or weather impact is switched on.</li>
+<li><span class="tag chg">changed</span>Map, weekly pattern and weather impact are hidden by default and switched on in Settings (#47).</li>
+<li><span class="tag add">new</span>Skeleton while loading (#27); each panel has its own error fallback (#25).</li>
+<li><span class="tag add">new</span>Today's chart shades rainy, snowy, stormy and foggy stretches and names the weather in the tooltip (#3). Not visible here: the seeded commute has no samples yet.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-ui-batch/route-before.png" alt="Commute page before"></figure>
+<figure><figcaption>After: Overview tab</figcaption><img src="261028-ui-batch/route-after.png" alt="Commute page after"></figure>
+</div>
+</section>
+
+<section>
+<h2>Commute page: schedule</h2>
+<ul>
+<li><span class="tag chg">changed</span>The schedule editor and return trip moved to their own tab, with the 03:00–midnight, all-days default.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before (schedule was in the sidebar)</figcaption><img src="261028-ui-batch/route-schedule-before.png" alt="Schedule before"></figure>
+<figure><figcaption>After: Schedule tab</figcaption><img src="261028-ui-batch/route-schedule-after.png" alt="Schedule after"></figure>
+</div>
+</section>
+
+<section>
+<h2>Commute page on a phone</h2>
+<div class="pair narrow">
+<figure><figcaption>Before</figcaption><img src="261028-ui-batch/route-mobile-before.png" alt="Phone commute page before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-ui-batch/route-mobile-after.png" alt="Phone commute page after"></figure>
+</div>
+</section>
+
+<section>
+<h2>Settings</h2>
+<ul>
+<li><span class="tag add">new</span>"Advanced panels": card sparklines, route map, weekly pattern and weather impact, all off by default and saved on this device (#47).</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-ui-batch/settings-before.png" alt="Settings before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-ui-batch/settings-after.png" alt="Settings after"></figure>
+</div>
+<p class="note">Not shown in screenshots: the countdown ring pulse in the last 60 seconds (#17), the shared once-a-second timer (#43), "midnight" in window summaries (#41), and the admin tables turning into cards on phones (#23, admin only).</p>
+</section>
+</main>
+</body>
+</html>

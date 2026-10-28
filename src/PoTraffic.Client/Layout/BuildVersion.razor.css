@@ -1,0 +1,22 @@
+/* Muted enough to ignore, legible enough to read out on a support call. --pt-fg-faint
+   is defined for both themes (and for high contrast), so it holds in light and dark. */
+.pt-build-version {
+    bottom: var(--pt-space-1);
+    color: var(--pt-fg-faint);
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+    position: fixed;
+    right: var(--pt-space-2);
+    user-select: none;
+    z-index: var(--pt-z-nav);
+}
+
+/* On a phone the bottom nav owns the bottom edge; the stamp rides just above it
+   rather than over the nav's last button. 640px is the breakpoint BottomNav uses. */
+@media (max-width: 640px) {
+    .pt-build-version {
+        bottom: calc(var(--pt-bottom-nav-safe) + var(--pt-space-1));
+    }
+}

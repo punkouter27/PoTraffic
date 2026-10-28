@@ -215,3 +215,37 @@
 .pt-trend-selection-clear:hover {
     color: var(--pt-fg-body);
 }
+
+/* ── Tabs ───────────────────────────────────────────────────────────────────
+   Overview / Schedule / History. Radzen draws the strip; this only gives the
+   panels the same breathing room the stacked cards had between them. The
+   wrapper div carries the class: a class on RadzenTabs lands on an element
+   without this page's scope attribute, which ::deep cannot anchor to. */
+.pt-route-tabs ::deep .rz-tabview-panels {
+    padding: var(--pt-space-4) 0 0;
+}
+
+/* With the map switched off, today's chart is the only card on its row and
+   takes the whole of it — the two-track grid would leave half the row empty. */
+@container pt-main (min-width: 44rem) {
+    .pt-route-evidence-single {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.pt-route-history {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-space-4);
+    min-width: 0;
+}
+
+/* ── First-load skeleton ────────────────────────────────────────────────────
+   Roughly the loaded page's footprint: title, answer card, chart card. */
+.pt-route-skeleton {
+    margin-top: var(--pt-space-4);
+}
+
+.pt-route-skeleton-chart {
+    min-height: 14rem;
+}

@@ -1,15 +1,20 @@
 @implements IDisposable
+@inject ClockTicker Clock
 
 @* ──────────────────────────────────────────────────────────────────────
    #4 — a countdown that actually counts down.
 
    The Next Sample ETA used to be computed once per 15s data refresh, so the
-   number sat frozen and then jumped. This owns a 1-second ticker and re-renders
-   only itself, so the page feels alive between polls without re-running the
+   number sat frozen and then jumped. This re-renders only itself on the shared
+   ClockTicker, so the page feels alive between polls without re-running the
    parent's seven-request refresh.
+
+   It used to own a Timer each; now every countdown on screen rides the one
+   heartbeat, and one an hour or more out re-renders once a minute — the only
+   cadence its "in 2h 05m" text can visibly change at.
    ────────────────────────────────────────────────────────────────────── *@
 
-<span class="pt-countdown @(Elapsed ? "pt-countdown-due" : "")">
+<span class="pt-countdown @StateClass">
     @if (ShowRing)
     {
         <span class="pt-countdown-ring" style="--pt-countdown-pct:@ProgressPercent" aria-hidden="true"></span>
@@ -39,25 +44,56 @@
     /// <summary>Draws the draining progress ring beside the text.</summary>
     [Parameter] public bool ShowRing { get; set; } = true;
 
-    private Timer? _ticker;
+    /// <summary>
+    /// The final stretch, in which the ring pulses so a glance catches that the next
+    /// sample is about to land.
+    /// </summary>
+    private static readonly TimeSpan NearThreshold = TimeSpan.FromSeconds(60);
 
-    protected override void OnInitialized() =>
-        _ticker = new Timer(_ => Tick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    /// <summary>Text as last rendered. A far countdown re-renders only when it changes.</summary>
+    private string? _renderedText;
+    private bool _subscribed;
+
+    protected override void OnInitialized()
+    {
+        Clock.Tick += OnTick;
+        _subscribed = true;
+    }
+
+    protected override void OnAfterRender(bool firstRender) => _renderedText = Text;
 
     /// <summary>
-    /// A tick can land in the window between the renderer tearing down and the timer
-    /// being disposed, where InvokeAsync throws. Nothing to recover — just stop.
+    /// An hour or more out the text reads "in 2h 05m" and the ring is pinned full, so a
+    /// per-second render would redraw an identical span 59 times a minute. Below an hour
+    /// the seconds show and every tick is a real change.
+    ///
+    /// A tick can land in the window between the renderer tearing down and the
+    /// unsubscribe, where InvokeAsync throws. Nothing to recover — just stop listening.
     /// </summary>
-    private void Tick()
+    private void OnTick()
     {
+        if (Remaining is { } r && r >= TimeSpan.FromHours(1) && Text == _renderedText)
+            return;
+
         try { InvokeAsync(StateHasChanged); }
-        catch (ObjectDisposedException) { _ticker?.Dispose(); }
+        catch (ObjectDisposedException) { Unsubscribe(); }
+    }
+
+    private void Unsubscribe()
+    {
+        if (!_subscribed) return;
+        _subscribed = false;
+        Clock.Tick -= OnTick;
     }
 
     private TimeSpan? Remaining =>
         TargetUtc is { } target ? target - DateTimeOffset.UtcNow : null;
 
     private bool Elapsed => Remaining is { } r && r <= TimeSpan.Zero;
+
+    private bool Near => Remaining is { } r && r > TimeSpan.Zero && r <= NearThreshold;
+
+    private string StateClass => Elapsed ? "pt-countdown-due" : Near ? "pt-countdown-near" : "";
 
     private string Text
     {
@@ -94,5 +130,5 @@
         }
     }
 
-    public void Dispose() => _ticker?.Dispose();
+    public void Dispose() => Unsubscribe();
 }

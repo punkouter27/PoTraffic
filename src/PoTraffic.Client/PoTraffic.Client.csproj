@@ -37,6 +37,18 @@
     <ProjectReference Include="..\PoTraffic.Shared\PoTraffic.Shared.csproj" />
   </ItemGroup>
 
+  <!-- The build date as YYMMDD, stamped into the client assembly as
+       [AssemblyMetadata("BuildVersion", "…")] and read back by Layout/BuildVersion.razor for
+       the corner watermark. Client-only on purpose: it is the build of the code the user is
+       looking at, and nothing else in the solution reads it, so it does not belong in
+       Directory.Build.props. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildVersion</_Parameter1>
+      <_Parameter2>$([System.DateTime]::Now.ToString('yyMMdd'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />

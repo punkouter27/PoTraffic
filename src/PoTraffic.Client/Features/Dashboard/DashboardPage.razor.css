@@ -22,3 +22,40 @@
     -webkit-backdrop-filter: blur(var(--pt-glass-blur)) saturate(var(--pt-glass-saturate));
     border-color: var(--pt-glass-border);
 }
+
+/* ── Toolbar: search, filter, add — one row ─────────────────────────────────
+   Search takes the slack; the filter and the Add button keep their natural
+   width. On a narrow column the search drops to a row of its own above the
+   other two rather than squeezing to an unreadable sliver. */
+.pt-dash-toolbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pt-space-2) var(--pt-space-3);
+    margin-bottom: var(--pt-space-4);
+}
+
+
+.pt-dash-toolbar ::deep .pt-dash-search {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+/* app.css makes every select bar full-width; on this row that forced the filter (and so
+   everything after it) onto lines of their own. Size it to its segments instead. */
+.pt-dash-toolbar ::deep .rz-selectbar {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+/* Segments size to their labels; the global equal-share basis of 0 collapsed them
+   once the bar stopped being full-width. */
+.pt-dash-toolbar ::deep .rz-selectbar .rz-button {
+    flex: 0 0 auto;
+    padding-inline: var(--pt-space-3);
+}
+
+/* Pushed to the row's end, so it stays where the header used to put it. */
+.pt-dash-toolbar ::deep .pt-dash-add {
+    margin-left: auto;
+}

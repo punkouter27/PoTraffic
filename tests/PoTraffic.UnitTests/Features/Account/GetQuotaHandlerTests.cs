@@ -13,7 +13,8 @@ public sealed class GetQuotaHandlerTests
         var db = new TableStorageContext();
         UserId userId = UserId.New();
         RouteId routeId = RouteId.New();
-        db.Add(new User { Id = userId, Email = "quota@test.dev", Locale = "en-US", CreatedAt = DateTimeOffset.UtcNow });
+        // UTC so "today" below is the user's local day whatever the hour the test runs.
+        db.Add(new User { Id = userId, Email = "quota@test.dev", Locale = "en-US", TimeZoneId = "UTC", CreatedAt = DateTimeOffset.UtcNow });
         db.Add(new EntityRoute
         {
             Id = routeId,

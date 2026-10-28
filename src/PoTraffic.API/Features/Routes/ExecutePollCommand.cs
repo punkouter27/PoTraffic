@@ -44,7 +44,12 @@ public sealed class ExecutePollCommandHandler(
             return false;
         }
 
-        DateOnly today = DateOnly.FromDateTime(DateTimeOffset.UtcNow.Date);
+        // The session is keyed by the window's local date (see MonitoringWindow.LocalDateAt);
+        // a route with no active window falls back to the UTC date.
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateOnly today = db.MonitoringWindows
+            .FirstOrDefault(w => w.RouteId == cmd.RouteId && w.IsActive)?.LocalDateAt(now)
+            ?? DateOnly.FromDateTime(now.UtcDateTime);
 
         MonitoringSession? session = db.MonitoringSessions
             .FirstOrDefault(s => s.RouteId == cmd.RouteId

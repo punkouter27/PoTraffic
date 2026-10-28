@@ -1,0 +1,39 @@
+/* A failed section's stand-in: one quiet line, the same footprint as a short
+   card body, so a failure does not reflow the page around it. */
+.pt-section-error {
+    align-items: center;
+    background: color-mix(in oklab, var(--pt-color-danger-on-surface) 8%, var(--pt-bg-surface));
+    border: 1px solid var(--pt-border-subtle);
+    border-radius: var(--pt-radius-md);
+    color: var(--pt-fg-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--pt-text-sm);
+    gap: var(--pt-space-2);
+    padding: var(--pt-space-3) var(--pt-space-4);
+}
+
+.pt-section-error ::deep .pt-section-error-icon {
+    color: var(--pt-color-danger-on-surface);
+    flex-shrink: 0;
+}
+
+.pt-section-error-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.pt-section-error-retry {
+    background: none;
+    border: 1px solid var(--pt-border-subtle);
+    border-radius: var(--pt-radius-sm);
+    color: var(--pt-color-brand-on-surface);
+    cursor: pointer;
+    font: inherit;
+    font-weight: var(--pt-weight-semibold);
+    padding: var(--pt-space-1) var(--pt-space-3);
+}
+
+.pt-section-error-retry:hover {
+    background: var(--pt-bg-tint);
+}

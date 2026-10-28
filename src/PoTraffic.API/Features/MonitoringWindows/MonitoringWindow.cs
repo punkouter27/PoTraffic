@@ -27,6 +27,16 @@ public sealed class MonitoringWindow
     [JsonIgnore]
     public TimeZoneInfo Zone => UserTime.TryFindZone(TimeZoneId) ?? TimeZoneInfo.Utc;
 
+    /// <summary>
+    /// The calendar day <paramref name="instant"/> falls on in <see cref="Zone"/> — the key for
+    /// the day's <see cref="MonitoringSession"/> and for the per-user daily session quota.
+    /// Keying by the UTC date split a 03:00–00:00 local window in two for anyone west of
+    /// Greenwich (its evening crosses UTC midnight), burning two quota slots per local day.
+    /// Legacy windows have no zone, so they keep the UTC date they were always keyed by.
+    /// </summary>
+    public DateOnly LocalDateAt(DateTimeOffset instant) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, Zone).DateTime);
+
     [JsonIgnore]
     public EntityRoute Route { get; set; } = null!;
 

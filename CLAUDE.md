@@ -17,7 +17,7 @@ never configured).
 ## Commands
 
 ```powershell
-./SCRIPTS/start-dev.ps1        # kills stale dotnet on 5000/5001, starts Azurite, runs API (https profile)
+./SCRIPTS/start-dev.ps1        # stops a stale PoTraffic host, starts PoTraffic's Azurite, runs API (https)
 ./SCRIPTS/stop-dev.ps1         # docker compose down (Azurite)
 dotnet build                   # TreatWarningsAsErrors=true — a warning is a build break
 ./SCRIPTS/setup.ps1            # first-time check: .NET SDK, Docker, az login / Key Vault, then build
@@ -25,11 +25,11 @@ dotnet build                   # TreatWarningsAsErrors=true — a warning is a b
 ```
 
 Port clashes: sibling projects on this machine use the same defaults (5000/5001 for a dev host,
-10000–10002 for Azurite). `start-dev.ps1` only kills *dotnet* processes on 5000/5001, and its
-Azurite readiness probe passes against any Azurite on 10002 — so it can silently hydrate from
-another project's storage. When the ports are taken, run PoTraffic's Azurite on another host
-port and start the API with `--no-launch-profile -- --urls ...` plus a
-`ConnectionStrings__TableStorage` env var pointing at that port.
+10002 for Azurite). PoTraffic's dev Azurite therefore lives on host port **10012**
+(`docker-compose.yml` and `appsettings.Development.json` agree), and `start-dev.ps1` waits on
+that container's own health check, so it can never hydrate from another project's storage. It
+stops only PoTraffic hosts; if another app holds 5001/5000 it falls back to 5011/5010, then
+5021/5020, and prints the URL it chose.
 
 Azure resources are defined in `infra/main.bicep`; production is
 `https://potraffic-api-win2.azurewebsites.net` (app `potraffic-api-win2`).
@@ -124,7 +124,7 @@ derives auth state from `GET /api/auth/me`. Key points in
 
 - **Deny by default**: the authorization `FallbackPolicy` requires an authenticated user, so
   any endpoint without explicit metadata is protected. Genuinely public surfaces (login flow,
-  health, `/diag`, `/error`, SPA shell) must call `.AllowAnonymous()` explicitly.
+  health, `/diag`, SPA shell) must call `.AllowAnonymous()` explicitly.
 - Feature endpoints use `.RequireAuthorization("ProductionMicrosoftAuth")` — Microsoft OAuth
   is required in Development/Staging/Production and GUEST sessions are rejected there; the
   policy is a no-op only in `Testing`.

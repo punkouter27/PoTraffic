@@ -50,4 +50,17 @@ builder.Services.AddScoped<PwaService>();
 // The motion setting that governs the map's traffic flow, the chart draw-in and the 3D heatmap.
 builder.Services.AddScoped<FxService>();
 
-await builder.Build().RunAsync();
+// One once-a-second heartbeat shared by every live countdown, instead of a timer each.
+builder.Services.AddScoped<ClockTicker>();
+
+// Which advanced panels (map, heatmap, weather, sparklines) this browser has switched on.
+builder.Services.AddScoped<UiPreferences>();
+
+WebAssemblyHost host = builder.Build();
+
+// The advanced-panel switches are read before the first render, so a page that draws the
+// map or the heatmap knows it should on its first paint instead of popping them in later.
+// One localStorage read per switch — microseconds, and it never throws.
+await host.Services.GetRequiredService<UiPreferences>().LoadAsync();
+
+await host.RunAsync();

@@ -49,6 +49,13 @@
     /// <summary>Today's active session; carries the server-computed poll schedule.</summary>
     [Parameter] public SessionDto? Session { get; set; }
 
+    /// <summary>
+    /// The route's active window. Starting monitoring before the window opens arms the poll
+    /// chain without creating a session (no quota is spent until the first poll), so with no
+    /// session this is what says when sampling will begin.
+    /// </summary>
+    [Parameter] public MonitoringWindowDto? ArmedWindow { get; set; }
+
     /// <summary>Fired after a successful check so the parent can refresh from the wire.</summary>
     [Parameter] public EventCallback OnProbeCompleted { get; set; }
 
@@ -75,12 +82,45 @@
 
     // Every schedule decision — is the window open, when does it reopen, what cadence is
     // in force — comes from the server on SessionDto.Schedule. The client only formats it.
+    /// <summary>
+    /// "armed · starts today 3:00 AM" for an active window with no session yet, or null when
+    /// there is no active window or none of its days fall within the next week. The next start
+    /// is the first enabled day whose start time is still ahead.
+    /// </summary>
+    private string? ArmedStartText()
+    {
+        if (ArmedWindow is not { IsActive: true } window
+            || !TimeOnly.TryParse(window.StartTime, System.Globalization.CultureInfo.InvariantCulture, out TimeOnly start))
+            return null;
+
+        // Zoned windows store wall-clock times; legacy ones store UTC (see LocalTimeFormatter).
+        string startText = window.TimeZoneId is null
+            ? LocalTimeFormatter.FormatUtcHHmmAsLocal(window.StartTime)
+            : LocalTimeFormatter.FormatWallClock(window.StartTime);
+
+        DateTime now = DateTime.Now;
+        for (int offset = 0; offset < 8; offset++)
+        {
+            DateTime day = now.Date.AddDays(offset);
+            string dayName = day.DayOfWeek.ToString();
+            bool enabled = window.DaysOfWeek.Any(d => dayName.StartsWith(d[..Math.Min(3, d.Length)], StringComparison.OrdinalIgnoreCase));
+            if (!enabled || day.Add(start.ToTimeSpan()) <= now)
+                continue;
+
+            string when = offset switch { 0 => "today", 1 => "tomorrow", _ => day.ToString("ddd") };
+            return $"armed · starts {when} {startText}";
+        }
+        return null;
+    }
+
     private NextSampleInfo NextSample
     {
         get
         {
             if (Session is not { State: SessionState.Active } session)
-                return new NextSampleInfo("waiting for the next window", Live: false);
+                return ArmedStartText() is { } armed
+                    ? new NextSampleInfo(armed, Live: false)
+                    : new NextSampleInfo("waiting for the next window", Live: false);
 
             if (session.Schedule is not { } schedule)
                 return new NextSampleInfo("no polling days scheduled", Live: false);

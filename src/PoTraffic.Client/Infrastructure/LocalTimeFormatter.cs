@@ -43,4 +43,15 @@ public static class LocalTimeFormatter
         TimeOnly.TryParse(hhmm, CultureInfo.InvariantCulture, out TimeOnly t)
             ? t.ToString("h:mm tt", CultureInfo.CurrentCulture)
             : hhmm;
+
+    /// <summary>
+    /// Format a window's wall-clock END. A window that runs to midnight is stored as
+    /// "00:00", and printed verbatim it read "3:00 AM – 12:00 AM" — a window that looks
+    /// as though it ends before it starts. As an end, 00:00 means the end of the day, so it
+    /// says so. Display only: the wire value stays "00:00".
+    /// </summary>
+    public static string FormatWindowEnd(string hhmm) =>
+        TimeOnly.TryParse(hhmm, CultureInfo.InvariantCulture, out TimeOnly t) && t == TimeOnly.MinValue
+            ? "midnight"
+            : FormatWallClock(hhmm);
 }

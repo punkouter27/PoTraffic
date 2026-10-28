@@ -46,13 +46,14 @@ public sealed class CompositeRoutingSampler : Sampler
         if (HasErrorSignal(samplingParameters))
             return Record;
 
-        RateLimiter limiter = IsBackgroundJob() ? _jobs : _healthy;
+        RateLimiter limiter = IsBackgroundJob(samplingParameters) ? _jobs : _healthy;
         return limiter.TryAcquire() ? Record : Drop;
     }
 
-    // Background-job activities originate under the scheduler ActivitySource.
-    private static bool IsBackgroundJob()
-        => Activity.Current?.Source.Name.StartsWith("PoTraffic.Scheduler", StringComparison.OrdinalIgnoreCase) == true;
+    // Judged by the span being sampled, not Activity.Current: at sampling time the new span
+    // is not current yet, so Current is its (absent) parent and a root job span never matched.
+    private static bool IsBackgroundJob(in SamplingParameters p)
+        => p.Name.StartsWith(PoTrafficTelemetry.JobSpanPrefix, StringComparison.Ordinal);
 
     private static bool HasErrorSignal(in SamplingParameters p)
     {

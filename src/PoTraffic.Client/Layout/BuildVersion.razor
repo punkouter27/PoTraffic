@@ -1,0 +1,19 @@
+@using System.Reflection
+
+@* The build stamp, YYMMDD, pinned to the bottom-right corner of every page (AGENTS.md
+   standing requirement). Generated at build time into the client assembly's metadata —
+   see the AssemblyAttribute in PoTraffic.Client.csproj — so it names the build of the
+   code actually running in this tab, which after a service-worker update can differ from
+   what the server is serving. Decoration only: aria-hidden, and pointer-events: none so
+   it can never sit on top of a tap target. *@
+@if (Version is not null)
+{
+    <span class="pt-build-version" aria-hidden="true" title="Build @Version">@Version</span>
+}
+
+@code {
+    /// <summary>Read once per app load; the assembly cannot change under a running tab.</summary>
+    private static readonly string? Version = typeof(BuildVersion).Assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(a => a.Key == "BuildVersion")?.Value;
+}

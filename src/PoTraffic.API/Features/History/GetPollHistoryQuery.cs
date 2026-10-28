@@ -57,7 +57,9 @@ public sealed class GetPollHistoryQueryHandler
                 p.DistanceMetres,
                 (PoTraffic.Shared.Enums.RouteProvider)route.Provider,
                 p.IsRerouted,
-                p.HolidayName))
+                p.HolidayName,
+                p.WeatherCondition,
+                p.PrecipitationMm))
             .ToList();
 
         return new PagedResult<PollRecordDto>(query.Page, query.PageSize, total, items);

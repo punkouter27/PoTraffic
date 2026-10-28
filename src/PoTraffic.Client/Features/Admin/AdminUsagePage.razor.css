@@ -1,2 +1,83 @@
 /* AdminUsagePage — scoped styles. */
 .pt-admin-chart { height: 280px; }
+
+/* ── Grid on wide screens, cards on phones (#23) ───────────────────────────
+   Both are in the DOM; CSS picks one. 640px is the app's phone breakpoint
+   (pt-hide-phone, BottomNav). The cards are hidden by default so a desktop
+   never pays for their layout. */
+.pt-admin-cards {
+    display: none;
+    list-style: none;
+    margin: var(--pt-space-2) 0 0;
+    padding: 0;
+}
+
+@media (max-width: 640px) {
+    .pt-admin-wide { display: none; }
+
+    .pt-admin-cards {
+        display: flex;
+        flex-direction: column;
+        gap: var(--pt-space-2);
+    }
+}
+
+.pt-admin-card,
+.pt-admin-card-empty {
+    background: var(--pt-bg-surface);
+    border: 1px solid var(--pt-border-subtle);
+    border-radius: var(--pt-radius-md);
+    padding: var(--pt-space-3) var(--pt-space-4);
+    min-width: 0;
+}
+
+.pt-admin-card-empty {
+    color: var(--pt-fg-tertiary);
+    font-size: var(--pt-text-sm);
+}
+
+/* Emails and config keys are long unbroken strings; they wrap anywhere rather
+   than push the card wider than the screen. */
+.pt-admin-card-title {
+    align-items: center;
+    color: var(--pt-fg-primary);
+    display: flex;
+    flex-wrap: wrap;
+    font-weight: var(--pt-weight-semibold);
+    gap: var(--pt-space-2);
+    overflow-wrap: anywhere;
+}
+
+/* Label / value pairs, two to a row. */
+.pt-admin-card-fields {
+    display: grid;
+    gap: var(--pt-space-1) var(--pt-space-3);
+    grid-template-columns: max-content minmax(0, 1fr);
+    margin: var(--pt-space-2) 0 0;
+    font-size: var(--pt-text-sm);
+}
+
+.pt-admin-card-fields dt {
+    color: var(--pt-fg-tertiary);
+}
+
+.pt-admin-card-fields dd {
+    color: var(--pt-fg-body);
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.pt-admin-card-value {
+    color: var(--pt-fg-body);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: var(--pt-text-sm);
+    margin-top: var(--pt-space-1);
+    overflow-wrap: anywhere;
+}
+
+.pt-admin-card-desc {
+    color: var(--pt-fg-tertiary);
+    font-size: var(--pt-text-xs);
+    margin-top: var(--pt-space-1);
+}
