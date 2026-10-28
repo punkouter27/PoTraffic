@@ -44,6 +44,28 @@ public static class AdminEndpoints
         })
         .WithName("GetRecentVolatility")
         .Produces<IReadOnlyList<RecentVolatilityPointDto>>();
+
+        grp.MapGet("/spending", async (GetSpendingHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.Handle(new GetSpendingQuery(), ct)))
+        .WithName("GetSpending")
+        .Produces<SpendingDto>();
+
+        // Writes pass CancellationToken.None: a closed tab must not abandon a half-saved change.
+        grp.MapPut("/users/{userId:guid}/daily-quota", async (
+            UserId userId, SetUserDailyQuotaHandler handler, [FromBody] SetUserDailyQuotaRequest body) =>
+        {
+            bool found = await handler.Handle(new SetUserDailyQuotaCommand(userId, body.DailySessionQuota), CancellationToken.None);
+            return found ? Results.NoContent() : Results.NotFound();
+        })
+        .WithName("SetUserDailyQuota");
+
+        grp.MapPut("/configuration/{key}", async (
+            string key, UpdateSystemConfigurationHandler handler, [FromBody] UpdateSystemConfigRequest body) =>
+        {
+            bool found = await handler.Handle(new UpdateSystemConfigurationCommand(key, body.Value), CancellationToken.None);
+            return found ? Results.NoContent() : Results.NotFound();
+        })
+        .WithName("UpdateSystemConfiguration");
         return app;
     }
 }

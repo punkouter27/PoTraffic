@@ -78,6 +78,15 @@ public sealed class ExecutePollCommandHandler(
         }
 
 
+        // 2c. Monthly spending cap: past it, skip the billed call. Returning false leaves the
+        // chain armed, so polling resumes by itself next month or once the cap is raised.
+        if (Config.SpendingCap.IsReached(db, now))
+        {
+            logger.LogWarning(
+                "ExecutePollCommand: monthly spending cap reached — poll for route {RouteId} skipped", cmd.RouteId);
+            return false;
+        }
+
         TravelResult? travelResult;
 
         try

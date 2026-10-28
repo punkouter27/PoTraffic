@@ -31,6 +31,10 @@ public sealed class CheckNowCommandHandler(
         if (route is null)
             return new CheckNowResult(false, null, null, RouteErrorCodes.NotFound);
 
+        // An on-demand check is billed like a poll, so the monthly cap stops it too.
+        if (Config.SpendingCap.IsReached(db, DateTimeOffset.UtcNow))
+            return new CheckNowResult(false, null, null, RouteErrorCodes.SpendingCapReached);
+
         TravelResult? travel = await provider.GetTravelTimeAsync(
             route.OriginCoordinates!, route.DestinationCoordinates!, ct);
 

@@ -180,6 +180,8 @@ public static class RoutesEndpoints
         return result.ErrorCode switch
         {
             RouteErrorCodes.NotFound => Results.NotFound(),
+            // 402: the request is fine, the month's provider budget is not.
+            RouteErrorCodes.SpendingCapReached => Results.StatusCode(StatusCodes.Status402PaymentRequired),
             _ => Results.StatusCode(503)
         };
     }

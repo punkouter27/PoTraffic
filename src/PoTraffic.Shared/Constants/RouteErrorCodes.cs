@@ -17,6 +17,9 @@ public static class RouteErrorCodes
     /// <summary>Origin and destination resolved to the same coordinates.</summary>
     public const string SameCoordinates = "SAME_COORDINATES";
 
+    /// <summary>This month's provider spending cap is reached; billed calls are paused.</summary>
+    public const string SpendingCapReached = "SPENDING_CAP_REACHED";
+
     /// <summary>The target route/window does not exist or is not owned by the caller.</summary>
     public const string NotFound = "NOT_FOUND";
 }

@@ -67,7 +67,8 @@ public sealed class GetUsersHandler
                 LastLoginAt: u.LastLoginAt,
                 TodayPollCount: totalCount,
                 TodayEstimatedCostUsd: totalCost,
-                ProviderBreakdown: breakdown);
+                ProviderBreakdown: breakdown,
+                DailySessionQuota: u.DailySessionQuota);
         }).ToList();
     }
 }

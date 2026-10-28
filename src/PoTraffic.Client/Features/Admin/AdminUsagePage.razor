@@ -1,6 +1,7 @@
 @page "/admin"
 @attribute [Authorize(Roles = "Administrator")]
 @inject HttpClient Http
+@inject NotificationService Notifications
 
 <PageTitle>Admin — PoTraffic</PageTitle>
 
@@ -16,6 +17,33 @@
     <RadzenTabs>
         <Tabs>
             <RadzenTabsItem Text="Usage Insights" Icon="people">
+                @* The month's provider budget, first: when it is spent, polling for every user
+                   is paused, which matters more than any one row below. *@
+                @if (_spending is { } sp)
+                {
+                    <div class="pt-admin-spend @(sp.IsCapReached ? "is-reached" : "")" role="status">
+                        <div class="pt-admin-spend-figure">
+                            @sp.MonthToDateUsd.ToString("C2")
+                            <span class="pt-admin-spend-of">
+                                @(sp.CapUsd is { } cap ? $"of {cap:C0} monthly cap" : "this month · no cap set")
+                            </span>
+                        </div>
+                        @if (sp.CapUsd is { } capUsd)
+                        {
+                            <RadzenProgressBar Value="@((double)Math.Min(100m, sp.MonthToDateUsd / capUsd * 100m))" ShowValue="false"
+                                               ProgressBarStyle="@(sp.IsCapReached ? ProgressBarStyle.Danger : ProgressBarStyle.Primary)"
+                                               aria-label="Monthly spend against cap" />
+                        }
+                        <div class="pt-admin-spend-meta">
+                            @sp.PollsThisMonth polls this month · resets @sp.ResetsAtUtc.UtcDateTime.ToString("MMM d") (UTC)
+                            @if (sp.IsCapReached)
+                            {
+                                <strong> · Polling and Check now are paused for everyone. Raise the cap under System Config to resume.</strong>
+                            }
+                        </div>
+                    </div>
+                }
+
                 <RadzenText TextStyle="TextStyle.H3" class="pt-mb-2 pt-mt-3 pt-section-heading">Daily Usage</RadzenText>
                 <LoadingErrorCard IsLoading="_loading" Error="@_error">
                     @* Virtualized rather than paged.
@@ -49,6 +77,14 @@
                                     @u.TodayEstimatedCostUsd.ToString("C4")
                                 </Template>
                             </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="UserDailyUsageDto" Property="DailySessionQuota" Title="Daily limit" Width="10rem" Sortable="false" Filterable="false">
+                                <Template Context="u">
+                                    <RadzenNumeric TValue="int?" Value="@u.DailySessionQuota" Min="1" Max="200"
+                                                   Placeholder="@DefaultQuotaText" ShowUpDown="false"
+                                                   Change="@(v => SaveUserQuotaAsync(u, v))"
+                                                   aria-label="@($"Daily session limit for {u.Email}")" class="pt-admin-quota" />
+                                </Template>
+                            </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="UserDailyUsageDto" Property="LastLoginAt" Title="Last Login" Width="11rem">
                                 <Template Context="u">
                                     @(u.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")
@@ -75,6 +111,13 @@
                                     <dt>Est. cost</dt><dd>@u.TodayEstimatedCostUsd.ToString("C4")</dd>
                                     <dt>Locale</dt><dd>@u.Locale</dd>
                                     <dt>Last login</dt><dd>@(u.LastLoginAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</dd>
+                                    <dt>Daily limit</dt>
+                                    <dd>
+                                        <RadzenNumeric TValue="int?" Value="@u.DailySessionQuota" Min="1" Max="200"
+                                                   Placeholder="@DefaultQuotaText" ShowUpDown="false"
+                                                   Change="@(v => SaveUserQuotaAsync(u, v))"
+                                                   aria-label="@($"Daily session limit for {u.Email}")" class="pt-admin-quota" />
+                                    </dd>
                                 </dl>
                             </li>
                         }
@@ -140,6 +183,11 @@
                                     {
                                         <span class="pt-diag-sensitive">@c.Value</span>
                                     }
+                                    else if (EditableKeys.Contains(c.Key))
+                                    {
+                                        <RadzenTextBox Value="@c.Value" Change="@(v => SaveConfigAsync(c, v))"
+                                                       aria-label="@($"Value for {c.Key}")" class="pt-admin-config-input" />
+                                    }
                                     else
                                     {
                                         @c.Value
@@ -180,7 +228,15 @@
                                         <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Sensitive" />
                                     }
                                 </div>
-                                <div class="pt-admin-card-value @(c.IsSensitive ? "pt-diag-sensitive" : "")">@c.Value</div>
+                                @if (!c.IsSensitive && EditableKeys.Contains(c.Key))
+                                {
+                                    <RadzenTextBox Value="@c.Value" Change="@(v => SaveConfigAsync(c, v))"
+                                                   aria-label="@($"Value for {c.Key}")" class="pt-admin-config-input" />
+                                }
+                                else
+                                {
+                                    <div class="pt-admin-card-value @(c.IsSensitive ? "pt-diag-sensitive" : "")">@c.Value</div>
+                                }
                                 @if (!string.IsNullOrEmpty(c.Description))
                                 {
                                     <div class="pt-admin-card-desc">@c.Description</div>
@@ -219,10 +275,69 @@
     private bool _cfgLoading = true;
     private string? _cfgError;
 
+    // ── Spending + editable limits ───────────────────────────────────────────
+    private SpendingDto? _spending;
+
+    /// <summary>
+    /// Mirrors the server's UpdateSystemConfigurationValidator.EditableKeys; the server is
+    /// the authority and rejects anything else with 422.
+    /// </summary>
+    private static readonly HashSet<string> EditableKeys =
+        ["quota.daily.default", "cost.monthly.cap.usd", "cost.perpoll.googlemaps"];
+
+    /// <summary>Placeholder for users with no override: the global limit they fall back to.</summary>
+    private string DefaultQuotaText =>
+        $"Default ({_configs.FirstOrDefault(c => c.Key == "quota.daily.default")?.Value ?? "10"})";
+
     protected override async Task OnInitializedAsync()
     {
-        await Task.WhenAll(LoadUsageAsync(), LoadVolatilityAsync(), LoadConfigAsync());
+        await Task.WhenAll(LoadUsageAsync(), LoadVolatilityAsync(), LoadConfigAsync(), LoadSpendingAsync());
     }
+
+    private async Task LoadSpendingAsync()
+    {
+        // The card is extra context, not the page: a failure just leaves it out.
+        try { _spending = await Http.GetFromJsonAsync("/api/admin/spending", AppJsonContext.Default.SpendingDto); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { }
+    }
+
+    private async Task SaveUserQuotaAsync(UserDailyUsageDto user, int? limit)
+    {
+        HttpResponseMessage resp = await Http.PutAsJsonAsync(
+            $"/api/admin/users/{user.UserId}/daily-quota", new SetUserDailyQuotaRequest(limit),
+            AppJsonContext.Default.SetUserDailyQuotaRequest);
+        if (resp.IsSuccessStatusCode)
+        {
+            int i = _users.IndexOf(user);
+            if (i >= 0) _users[i] = user with { DailySessionQuota = limit };
+        }
+        Saved(resp.IsSuccessStatusCode,
+            limit is null ? $"{user.Email} is back on the default limit." : $"{user.Email}: {limit} sessions a day.");
+    }
+
+    private async Task SaveConfigAsync(SystemConfigDto config, string value)
+    {
+        HttpResponseMessage resp = await Http.PutAsJsonAsync(
+            $"/api/admin/configuration/{Uri.EscapeDataString(config.Key)}", new UpdateSystemConfigRequest(value),
+            AppJsonContext.Default.UpdateSystemConfigRequest);
+        if (resp.IsSuccessStatusCode)
+        {
+            int i = _configs.IndexOf(config);
+            if (i >= 0) _configs[i] = config with { Value = value.Trim() };
+            // The cap and the per-poll rate both move the spending card.
+            await LoadSpendingAsync();
+        }
+        Saved(resp.IsSuccessStatusCode, $"{config.Key} = {value.Trim()}");
+    }
+
+    private void Saved(bool ok, string detail) =>
+        Notifications.Notify(new NotificationMessage
+        {
+            Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,
+            Summary = ok ? "Saved" : "Not saved",
+            Detail = ok ? detail : "The server rejected that value.",
+            Duration = 4000
+        });
 
     private async Task LoadUsageAsync()
     {

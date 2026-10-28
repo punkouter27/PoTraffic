@@ -82,6 +82,15 @@ traffic samples at configured intervals until the window closes. Samples are
 stored in Table Storage and used to build baseline travel-time bands per route
 and time slot.
 
+Cost controls, all editable by administrators on the Admin page (System Config tab, or
+`PUT /api/admin/configuration/{key}`):
+
+| Config key | Default | Effect |
+|---|---|---|
+| `quota.daily.default` | `10` | Monitoring sessions per user per local day. A per-user override (`PUT /api/admin/users/{userId}/daily-quota`, null to clear) takes precedence. |
+| `cost.perpoll.googlemaps` | `0.005` | USD per recorded poll, used for every cost figure. |
+| `cost.monthly.cap.usd` | `100` | Monthly provider budget. Once this month's polls × per-poll cost reach it, scheduled polls and Check now pause until the next UTC month or until the cap is raised. `0` disables the cap. Month-to-date spend: `GET /api/admin/spending`. |
+
 Development and Production require Microsoft OAuth. Testing exposes isolated
 auth bypass endpoints for integration and E2E tests; these are not available
 when running the app normally.

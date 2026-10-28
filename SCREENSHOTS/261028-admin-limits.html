@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin limits before/after</title>
+<style>
+:root { --bg:#f6f7f9; --card:#fff; --fg:#1a1d23; --muted:#5b6270; --line:#dde1e7; --add:#1f8a3b; --chg:#b45309; }
+@media (prefers-color-scheme: dark) { :root { --bg:#14161a; --card:#1d2026; --fg:#e8eaee; --muted:#9aa1ad; --line:#2d313a; --add:#4ade80; --chg:#fbbf24; } }
+* { box-sizing: border-box; }
+body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+main { max-width:1200px; margin:0 auto; }
+h1 { margin:0 0 4px; font-size:26px; }
+.lede { color:var(--muted); margin:0 0 28px; }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px; margin-bottom:24px; }
+h2 { margin:0 0 8px; font-size:18px; }
+ul { margin:0 0 14px; padding-left:20px; }
+.tag { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:4px; margin-right:6px; }
+.add { color:var(--add); border:1px solid var(--add); }
+.chg { color:var(--chg); border:1px solid var(--chg); }
+.pair { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.pair.narrow { grid-template-columns:repeat(2, minmax(0, 300px)); }
+figure { margin:0; }
+figcaption { font-size:12px; font-weight:700; color:var(--muted); margin-bottom:4px; text-transform:uppercase; }
+img { width:100%; border:1px solid var(--line); border-radius:6px; display:block; }
+.note { color:var(--muted); font-size:13px; margin-top:10px; }
+@media (max-width:700px) { .pair, .pair.narrow { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>Admin: per-user limits and spending cap</h1>
+<p class="lede">2026-10-28. "Before" is commit 3312e53. "After" was captured after an admin set the cap to $250 and gave commuter@potraffic.dev a limit of 3 through the new endpoints.</p>
+
+<section>
+<h2>Usage Insights</h2>
+<ul>
+<li><span class="tag add">new</span>Spending card: this month's provider spend against the monthly cap, polls this month, and when it resets. Turns red and says polling is paused once the cap is reached.</li>
+<li><span class="tag add">new</span>"Daily limit" column: type a number to give a user their own daily session limit; clear it to put them back on the default shown in grey.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-admin-limits/admin-before.png" alt="Admin usage before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-admin-limits/admin-after.png" alt="Admin usage after"></figure>
+</div>
+</section>
+
+<section>
+<h2>System Config</h2>
+<ul>
+<li><span class="tag chg">changed</span>The daily default, per-poll cost and the new monthly cap are editable in place; changes save when you leave the field. Other rows stay read-only, and the server rejects invalid values.</li>
+</ul>
+<div class="pair">
+<figure><figcaption>Before</figcaption><img src="261028-admin-limits/admin-config-before.png" alt="System config before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-admin-limits/admin-config-after.png" alt="System config after"></figure>
+</div>
+</section>
+
+<section>
+<h2>On a phone</h2>
+<div class="pair narrow">
+<figure><figcaption>Before</figcaption><img src="261028-admin-limits/admin-mobile-before.png" alt="Admin on a phone before"></figure>
+<figure><figcaption>After</figcaption><img src="261028-admin-limits/admin-mobile-after.png" alt="Admin on a phone after"></figure>
+</div>
+<p class="note">The bottom navigation overlapping the last card is an artifact of the full-page capture; on a real phone the page scrolls under it. Not shown: "Check now" saying the month's budget is used up when the cap is reached.</p>
+</section>
+</main>
+</body>
+</html>

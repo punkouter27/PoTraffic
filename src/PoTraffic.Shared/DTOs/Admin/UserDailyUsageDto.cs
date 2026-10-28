@@ -10,7 +10,8 @@ public sealed record UserDailyUsageDto(
     DateTimeOffset? LastLoginAt,
     int TodayPollCount,
     double TodayEstimatedCostUsd,
-    IReadOnlyList<ProviderBreakdownDto> ProviderBreakdown);
+    IReadOnlyList<ProviderBreakdownDto> ProviderBreakdown,
+    int? DailySessionQuota = null);
 
 public sealed record ProviderBreakdownDto(
     RouteProvider Provider,

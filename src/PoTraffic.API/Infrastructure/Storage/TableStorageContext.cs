@@ -542,6 +542,7 @@ public sealed class TableStorageContext
             }
             Ensure(PollCostRates.GoogleMapsKey, PollCostRates.GoogleMapsDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), "Cost per poll - Google Maps", false);
             Ensure("quota.daily.default", "10", "Default daily session quota per user", false);
+            Ensure(SpendingCap.MonthlyCapKey, SpendingCap.MonthlyCapDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), "Monthly provider spending cap (USD); polling pauses when reached, 0 = no cap", false);
         }
     }
 }

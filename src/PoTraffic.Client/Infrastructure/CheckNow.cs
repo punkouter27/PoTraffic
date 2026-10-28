@@ -37,6 +37,7 @@ public static class CheckNow
             {
                 System.Net.HttpStatusCode.ServiceUnavailable => "Traffic provider unavailable — try again in a moment.",
                 System.Net.HttpStatusCode.TooManyRequests => "Too many checks — wait a minute and try again.",
+                System.Net.HttpStatusCode.PaymentRequired => "This month's traffic budget is used up — checks resume next month.",
                 _ => $"Request failed ({(int)resp.StatusCode})."
             });
         }

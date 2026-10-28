@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using PoTraffic.API.Features.Config;
 using PoTraffic.API.Features.Routes;
 using PoTraffic.API.Infrastructure.Storage;
 
@@ -134,5 +135,32 @@ public sealed class ExecutePollHandlerTests
 
         logger.ReceivedWithAnyArgs().Log(
             LogLevel.Warning, default, default!, default, default!);
+    }
+
+    [Fact]
+    public async Task WhenMonthlySpendingCapIsReached_SkipsTheBilledProviderCall()
+    {
+        // Arrange — a $0.01 cap at $0.005 a poll is spent by two polls already this month.
+        (TableStorageContext db, RouteId routeId, SessionId sessionId) = await SeedAsync();
+        db.Add(new SystemConfiguration { Key = PollCostRates.GoogleMapsKey, Value = "0.005" });
+        db.Add(new SystemConfiguration { Key = SpendingCap.MonthlyCapKey, Value = "0.01" });
+        for (int i = 0; i < 2; i++)
+            db.Add(new PollRecord
+            {
+                Id = PollRecordId.New(), RouteId = routeId, SessionId = sessionId,
+                PolledAt = DateTimeOffset.UtcNow.AddMinutes(-10 - i), TravelDurationSeconds = 300
+            });
+        await db.SaveChangesAsync();
+
+        ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
+        var handler = PoTraffic.UnitTests.Helpers.PollHandlerTestHelper.Create(db, mockProvider);
+
+        // Act
+        bool result = await handler.Handle(new ExecutePollCommand(routeId), CancellationToken.None);
+
+        // Assert — no provider call, no new record; the chain stays armed for next month.
+        result.Should().BeFalse();
+        await mockProvider.DidNotReceiveWithAnyArgs().GetTravelTimeAsync(default!, default!, default);
+        db.PollRecords.Count(p => p.RouteId == routeId).Should().Be(2);
     }
 }

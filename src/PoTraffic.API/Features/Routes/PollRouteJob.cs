@@ -183,7 +183,7 @@ public sealed class PollRouteJob
         if (hasActive)
             return true;
 
-        if (SessionsUsedOn(db, route.UserId, today) >= DailySessionQuota(db))
+        if (SessionsUsedOn(db, route.UserId, today) >= DailySessionQuota(db, route.UserId))
         {
             _logger.LogInformation(
                 "PollRouteJob: daily session quota exhausted for user {UserId} — route {RouteId} skips {Date}",
@@ -205,13 +205,17 @@ public sealed class PollRouteJob
     }
 
     /// <summary>
-    /// The daily session limit: the admin-editable <c>quota.daily.default</c> row, falling
-    /// back to <see cref="QuotaConstants.DefaultDailyQuota"/> when it is missing or not a
-    /// positive number. Enforcement and the account page both read it here, so the limit
-    /// shown is the limit enforced.
+    /// The user's daily session limit: their administrator-set override when there is one,
+    /// otherwise the admin-editable <c>quota.daily.default</c> row, falling back to
+    /// <see cref="QuotaConstants.DefaultDailyQuota"/> when that is missing or not a positive
+    /// number. Enforcement and the account page both read it here, so the limit shown is the
+    /// limit enforced.
     /// </summary>
-    internal static int DailySessionQuota(TableStorageContext db)
+    internal static int DailySessionQuota(TableStorageContext db, UserId userId)
     {
+        if (db.Users.FirstOrDefault(u => u.Id == userId)?.DailySessionQuota is int own && own > 0)
+            return own;
+
         string? value = db.SystemConfigurations
             .Where(c => c.Key == "quota.daily.default")
             .Select(c => c.Value)

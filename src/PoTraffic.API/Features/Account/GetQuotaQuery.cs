@@ -21,7 +21,7 @@ public sealed class GetQuotaHandler
         if (!userExists) return null;
 
         // The same limit PollRouteJob and StartWindowCommand enforce.
-        int dailyLimit = PollRouteJob.DailySessionQuota(_db);
+        int dailyLimit = PollRouteJob.DailySessionQuota(_db, query.UserId);
 
         // "Today" is the user's local day: sessions are keyed by their window's local date
         // (MonitoringWindow.LocalDateAt), so a UTC day would split one evening's usage across

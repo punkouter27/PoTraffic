@@ -21,6 +21,12 @@ public sealed class User
     public string Role { get; set; } = "Commuter";
 
     /// <summary>
+    /// Per-user daily session limit set by an administrator. Null means the global
+    /// <c>quota.daily.default</c> applies (see <c>PollRouteJob.DailySessionQuota</c>).
+    /// </summary>
+    public int? DailySessionQuota { get; set; }
+
+    /// <summary>
     /// Identity provider that minted the most recent session for this user.
     /// One of: "guest", "microsoft". Used by the production Microsoft-only
     /// auth policy (Rule 13).

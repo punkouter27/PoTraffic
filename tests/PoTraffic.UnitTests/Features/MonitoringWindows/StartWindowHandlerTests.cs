@@ -134,12 +134,13 @@ public sealed class StartWindowHandlerTests
     }
 
     [Fact]
-    public async Task StartWindow_EnforcesTheConfiguredDailyQuota_NotTheConstant()
+    public async Task StartWindow_EnforcesTheUsersOwnLimit_OverTheConfiguredDefault()
     {
-        // Arrange — an admin lowered quota.daily.default to 2, and 2 sessions are used today:
-        // well under the constant (10), but at the configured limit the account page shows.
+        // Arrange — the global default is 5, but an admin gave this user their own limit of 2,
+        // and 2 sessions are used today: under the default (and the constant 10), at their own.
         (TableStorageContext db, UserId userId, WindowId windowId) = await SeedWithSessionsAsync(2);
-        db.Add(new SystemConfiguration { Key = "quota.daily.default", Value = "2" });
+        db.Add(new SystemConfiguration { Key = "quota.daily.default", Value = "5" });
+        db.Users.Single(u => u.Id == userId).DailySessionQuota = 2;
 
         IJobScheduler scheduler = Substitute.For<IJobScheduler>();
         var handler = new StartWindowCommandHandler(db, scheduler, NullLogger<StartWindowCommandHandler>.Instance);

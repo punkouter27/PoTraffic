@@ -83,7 +83,7 @@ public sealed class StartWindowCommandHandler
         try
         {
             int todaySessionCount = PollRouteJob.SessionsUsedOn(_db, cmd.UserId, today);
-            int dailyQuota = PollRouteJob.DailySessionQuota(_db);
+            int dailyQuota = PollRouteJob.DailySessionQuota(_db, cmd.UserId);
 
             // 2. Idempotent guard — return existing session if one already exists for this route today
             MonitoringSession? existingSession = _db.MonitoringSessions
