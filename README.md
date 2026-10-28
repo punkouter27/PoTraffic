@@ -88,8 +88,11 @@ Cost controls, all editable by administrators on the Admin page (System Config t
 | Config key | Default | Effect |
 |---|---|---|
 | `quota.daily.default` | `10` | Monitoring sessions per user per local day. A per-user override (`PUT /api/admin/users/{userId}/daily-quota`, null to clear) takes precedence. |
-| `cost.perpoll.googlemaps` | `0.005` | USD per recorded poll, used for every cost figure. |
-| `cost.monthly.cap.usd` | `100` | Monthly provider budget. Once this month's polls × per-poll cost reach it, scheduled polls and Check now pause until the next UTC month or until the cap is raised. `0` disables the cap. Month-to-date spend: `GET /api/admin/spending`. |
+| `cost.perpoll.googlemaps` | `0.005` | USD per Distance Matrix call: each recorded poll and each Check now. |
+| `cost.pergeocode.googlemaps` | `0.005` | USD per address geocode (two per route created). |
+| `cost.perdirections.googlemaps` | `0.005` | USD per Directions call (a route map's road shape, fetched once per route). |
+| `cost.perautocomplete.googlemaps` | `0.00283` | USD per Places Autocomplete request (address suggestions while typing). |
+| `cost.monthly.cap.usd` | `100` | Monthly provider budget. Spend is this UTC month's polls plus the Check now, geocode, directions and autocomplete calls (counted in the `ProviderUsage` table), each at its rate. Once it reaches the cap, scheduled polls and Check now pause until the next month or until the cap is raised; route creation and suggestions keep working. `0` disables the cap. Breakdown: `GET /api/admin/spending`. |
 
 Development and Production require Microsoft OAuth. Testing exposes isolated
 auth bypass endpoints for integration and E2E tests; these are not available

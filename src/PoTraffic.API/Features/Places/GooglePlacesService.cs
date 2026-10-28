@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using PoTraffic.API.Infrastructure.Resilience;
+using PoTraffic.API.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Routes;
 
 namespace PoTraffic.API.Features.Places;
@@ -14,6 +15,7 @@ namespace PoTraffic.API.Features.Places;
 public sealed class GooglePlacesService(
     HttpClient http,
     IConfiguration config,
+    TableStorageContext db,
     ILogger<GooglePlacesService> logger)
 {
     private const string AutocompleteUrl = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
@@ -26,6 +28,8 @@ public sealed class GooglePlacesService(
             return [];
 
         string url = $"{AutocompleteUrl}?input={Uri.EscapeDataString(input.Trim())}&types=address&key={key}";
+        // Counted toward the monthly spend (persisted with the next save, not per keystroke).
+        Config.SpendingCap.Record(db, Config.ProviderCallKind.Autocomplete, DateTimeOffset.UtcNow);
         try
         {
             PlacesResponse? resp = await http.GetFromJsonAsync<PlacesResponse>(url, ct);

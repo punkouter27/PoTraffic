@@ -9,7 +9,14 @@ public sealed record SpendingDto(
     decimal MonthToDateUsd,
     decimal? CapUsd,
     bool IsCapReached,
-    DateTimeOffset ResetsAtUtc);
+    DateTimeOffset ResetsAtUtc,
+    IReadOnlyList<SpendingLineDto>? Lines = null);
+
+/// <summary>
+/// One kind of billed call this month: "Poll" (scheduled), "CheckNow", "Geocode",
+/// "Directions" or "Autocomplete".
+/// </summary>
+public sealed record SpendingLineDto(string Kind, int Calls, decimal CostUsd);
 
 /// <summary>Body of <c>PUT /api/admin/users/{userId}/daily-quota</c>; null restores the default.</summary>
 public sealed record SetUserDailyQuotaRequest(int? DailySessionQuota);

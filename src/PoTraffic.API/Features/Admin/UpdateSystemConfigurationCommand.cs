@@ -22,6 +22,9 @@ public sealed class UpdateSystemConfigurationValidator : AbstractValidator<Updat
                                            && n is >= 1 and <= SetUserDailyQuotaValidator.MaxQuota,
             [SpendingCap.MonthlyCapKey] = v => IsNonNegativeDecimal(v),
             [PollCostRates.GoogleMapsKey] = v => IsNonNegativeDecimal(v),
+            [SpendingCap.Rates[ProviderCallKind.Geocode].Key] = v => IsNonNegativeDecimal(v),
+            [SpendingCap.Rates[ProviderCallKind.Directions].Key] = v => IsNonNegativeDecimal(v),
+            [SpendingCap.Rates[ProviderCallKind.Autocomplete].Key] = v => IsNonNegativeDecimal(v),
         };
 
     public UpdateSystemConfigurationValidator()

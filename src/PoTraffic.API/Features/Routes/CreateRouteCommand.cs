@@ -93,6 +93,8 @@ public sealed class CreateRouteCommandHandler(
         // is deliberately NOT caught here — GlobalExceptionHandler maps it to the same 422 +
         // MAPS_KEY_MISSING for every geocoding call site, not just this one.
         string? originCoords = await provider.GeocodeAsync(cmd.OriginAddress, ct);
+        // Each lookup is billed, found or not; counted toward the monthly spend.
+        Config.SpendingCap.Record(db, Config.ProviderCallKind.Geocode, DateTimeOffset.UtcNow);
         if (originCoords is null)
         {
             logger.LogWarning("Geocode failed for origin address {AddressRef}", PiiRedactor.Redact(cmd.OriginAddress));
@@ -100,6 +102,7 @@ public sealed class CreateRouteCommandHandler(
         }
 
         string? destCoords = await provider.GeocodeAsync(cmd.DestinationAddress, ct);
+        Config.SpendingCap.Record(db, Config.ProviderCallKind.Geocode, DateTimeOffset.UtcNow);
         if (destCoords is null)
         {
             logger.LogWarning("Geocode failed for destination address {AddressRef}", PiiRedactor.Redact(cmd.DestinationAddress));

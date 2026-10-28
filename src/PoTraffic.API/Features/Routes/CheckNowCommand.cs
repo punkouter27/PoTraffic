@@ -37,6 +37,8 @@ public sealed class CheckNowCommandHandler(
 
         TravelResult? travel = await provider.GetTravelTimeAsync(
             route.OriginCoordinates!, route.DestinationCoordinates!, ct);
+        // Billed whether or not it returned a result; it leaves no PollRecord to price.
+        Config.SpendingCap.Record(db, Config.ProviderCallKind.CheckNow, DateTimeOffset.UtcNow);
 
         if (travel is null)
         {

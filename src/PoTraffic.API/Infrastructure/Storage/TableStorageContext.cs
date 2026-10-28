@@ -52,6 +52,8 @@ public sealed class TableStorageContext
         // Alerts partition by user for efficient per-user reads.
         [typeof(Alert)] = new("Alerts", e => ((Alert)e).UserId.ToString(), e => ((Alert)e).Id.ToString(), c => c._alerts),
         [typeof(UserPushSubscription)] = new("PushSubscriptions", e => ((UserPushSubscription)e).UserId.ToString(), e => ((UserPushSubscription)e).Id.ToString(), c => c._pushSubscriptions),
+        // A handful of rows a month (one per call kind), so one partition is plenty.
+        [typeof(ProviderUsage)] = new("ProviderUsage", _ => "main", e => ((ProviderUsage)e).Key, c => c._providerUsage),
     };
 
     private static readonly JsonSerializerOptions JsonOpts = new(); // nav properties carry [JsonIgnore]
@@ -73,6 +75,7 @@ public sealed class TableStorageContext
     internal readonly List<SystemConfiguration> _configs = new();
     internal readonly List<Alert> _alerts = new();
     internal readonly List<UserPushSubscription> _pushSubscriptions = new();
+    internal readonly List<ProviderUsage> _providerUsage = new();
 
     private readonly object _gate = new();
     private readonly ITableStore? _store;
@@ -143,6 +146,11 @@ public sealed class TableStorageContext
     public IQueryable<UserPushSubscription> PushSubscriptions
     {
         get { lock (_gate) return _pushSubscriptions.AsQueryable(); }
+    }
+
+    public IQueryable<ProviderUsage> ProviderUsages
+    {
+        get { lock (_gate) return _providerUsage.AsQueryable(); }
     }
 
     // ── Legacy aliases (post-refactor) ──────────────────────────────────────
@@ -542,6 +550,8 @@ public sealed class TableStorageContext
             }
             Ensure(PollCostRates.GoogleMapsKey, PollCostRates.GoogleMapsDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), "Cost per poll - Google Maps", false);
             Ensure("quota.daily.default", "10", "Default daily session quota per user", false);
+            foreach ((string rateKey, decimal rateDefault, string rateDescription) in SpendingCap.Rates.Values)
+                Ensure(rateKey, rateDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), rateDescription, false);
             Ensure(SpendingCap.MonthlyCapKey, SpendingCap.MonthlyCapDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), "Monthly provider spending cap (USD); polling pauses when reached, 0 = no cap", false);
         }
     }

@@ -34,8 +34,20 @@
                                                ProgressBarStyle="@(sp.IsCapReached ? ProgressBarStyle.Danger : ProgressBarStyle.Primary)"
                                                aria-label="Monthly spend against cap" />
                         }
+                        @if (sp.Lines is { Count: > 0 } lines)
+                        {
+                            @* Where the money went: polls usually dominate, but autocomplete
+                               and Check now can surprise, and they never show up anywhere else. *@
+                            <dl class="pt-admin-spend-lines">
+                                @foreach (SpendingLineDto line in lines)
+                                {
+                                    <dt>@SpendLabel(line.Kind)</dt>
+                                    <dd>@line.Calls · @line.CostUsd.ToString("C2")</dd>
+                                }
+                            </dl>
+                        }
                         <div class="pt-admin-spend-meta">
-                            @sp.PollsThisMonth polls this month · resets @sp.ResetsAtUtc.UtcDateTime.ToString("MMM d") (UTC)
+                            resets @sp.ResetsAtUtc.UtcDateTime.ToString("MMM d") (UTC)
                             @if (sp.IsCapReached)
                             {
                                 <strong> · Polling and Check now are paused for everyone. Raise the cap under System Config to resume.</strong>
@@ -283,7 +295,8 @@
     /// the authority and rejects anything else with 422.
     /// </summary>
     private static readonly HashSet<string> EditableKeys =
-        ["quota.daily.default", "cost.monthly.cap.usd", "cost.perpoll.googlemaps"];
+        ["quota.daily.default", "cost.monthly.cap.usd", "cost.perpoll.googlemaps",
+         "cost.pergeocode.googlemaps", "cost.perdirections.googlemaps", "cost.perautocomplete.googlemaps"];
 
     /// <summary>Placeholder for users with no override: the global limit they fall back to.</summary>
     private string DefaultQuotaText =>
@@ -329,6 +342,16 @@
         }
         Saved(resp.IsSuccessStatusCode, $"{config.Key} = {value.Trim()}");
     }
+
+    private static string SpendLabel(string kind) => kind switch
+    {
+        "Poll" => "Scheduled polls",
+        "CheckNow" => "Check now",
+        "Geocode" => "Address lookups",
+        "Directions" => "Route maps",
+        "Autocomplete" => "Address suggestions",
+        _ => kind
+    };
 
     private void Saved(bool ok, string detail) =>
         Notifications.Notify(new NotificationMessage

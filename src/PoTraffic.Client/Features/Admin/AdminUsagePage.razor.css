@@ -119,3 +119,15 @@
     max-width: 100%;
     width: 100%;
 }
+
+/* Spend by call kind: label left, "calls · cost" right, compact. */
+.pt-admin-spend-lines {
+    display: grid;
+    gap: var(--pt-space-1) var(--pt-space-4);
+    grid-template-columns: max-content max-content;
+    margin: 0;
+    font-size: var(--pt-text-sm);
+}
+
+.pt-admin-spend-lines dt { color: var(--pt-fg-tertiary); }
+.pt-admin-spend-lines dd { margin: 0; color: var(--pt-fg-primary); font-variant-numeric: tabular-nums; }

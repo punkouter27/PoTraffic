@@ -81,6 +81,7 @@ public sealed class GetRoutePathQueryHandler(
 
         RouteGeometry? geometry = await provider.GetRouteGeometryAsync(
             route.OriginCoordinates, route.DestinationCoordinates, ct);
+        Config.SpendingCap.Record(db, Config.ProviderCallKind.Directions, DateTimeOffset.UtcNow);
 
         if (geometry is null)
             route.PathUnavailableAt = DateTimeOffset.UtcNow;

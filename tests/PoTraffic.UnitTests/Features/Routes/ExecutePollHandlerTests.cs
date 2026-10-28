@@ -140,16 +140,18 @@ public sealed class ExecutePollHandlerTests
     [Fact]
     public async Task WhenMonthlySpendingCapIsReached_SkipsTheBilledProviderCall()
     {
-        // Arrange — a $0.01 cap at $0.005 a poll is spent by two polls already this month.
+        // Arrange — a $0.01 cap at $0.005 a call: one poll alone stays under it; the Check now
+        // made this month is what reaches it, so calls that leave no PollRecord count too.
         (TableStorageContext db, RouteId routeId, SessionId sessionId) = await SeedAsync();
         db.Add(new SystemConfiguration { Key = PollCostRates.GoogleMapsKey, Value = "0.005" });
         db.Add(new SystemConfiguration { Key = SpendingCap.MonthlyCapKey, Value = "0.01" });
-        for (int i = 0; i < 2; i++)
-            db.Add(new PollRecord
-            {
-                Id = PollRecordId.New(), RouteId = routeId, SessionId = sessionId,
-                PolledAt = DateTimeOffset.UtcNow.AddMinutes(-10 - i), TravelDurationSeconds = 300
-            });
+        db.Add(new PollRecord
+        {
+            Id = PollRecordId.New(), RouteId = routeId, SessionId = sessionId,
+            PolledAt = DateTimeOffset.UtcNow.AddMinutes(-10), TravelDurationSeconds = 300
+        });
+        SpendingCap.IsReached(db, DateTimeOffset.UtcNow).Should().BeFalse("one poll is half the cap");
+        SpendingCap.Record(db, ProviderCallKind.CheckNow, DateTimeOffset.UtcNow);
         await db.SaveChangesAsync();
 
         ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
@@ -161,6 +163,6 @@ public sealed class ExecutePollHandlerTests
         // Assert — no provider call, no new record; the chain stays armed for next month.
         result.Should().BeFalse();
         await mockProvider.DidNotReceiveWithAnyArgs().GetTravelTimeAsync(default!, default!, default);
-        db.PollRecords.Count(p => p.RouteId == routeId).Should().Be(2);
+        db.PollRecords.Count(p => p.RouteId == routeId).Should().Be(1);
     }
 }
