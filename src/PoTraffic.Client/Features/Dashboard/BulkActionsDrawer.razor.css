@@ -1,0 +1,82 @@
+/* Bulk actions drawer — the list and its footer. The panel itself is PtDialog's
+   (app.css); these rules only reach markup written in BulkActionsDrawer.razor. */
+
+.pt-bulk-all {
+    align-items: center;
+    border-bottom: 1px solid var(--pt-border-subtle);
+    display: flex;
+    gap: var(--pt-space-2);
+    margin-bottom: var(--pt-space-2);
+    padding-bottom: var(--pt-space-3);
+}
+
+.pt-bulk-count {
+    color: var(--pt-fg-tertiary);
+    font-size: var(--pt-text-sm);
+    font-variant-numeric: tabular-nums;
+    margin-left: auto;
+}
+
+.pt-bulk-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-space-1);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pt-bulk-item {
+    align-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--pt-radius-md);
+    display: flex;
+    gap: var(--pt-space-2);
+    padding: var(--pt-space-2);
+    transition: background-color var(--pt-ix-dur) var(--pt-ix-ease),
+                border-color var(--pt-ix-dur) var(--pt-ix-ease);
+}
+
+@media (hover: hover) {
+    .pt-bulk-item:hover { background: var(--pt-bg-tint); }
+}
+
+.pt-bulk-item.is-selected {
+    background: color-mix(in oklab, var(--pt-color-brand-500) 10%, transparent);
+    border-color: color-mix(in oklab, var(--pt-color-brand-500) 30%, transparent);
+}
+
+.pt-bulk-item ::deep .pt-bulk-label {
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pt-bulk-state {
+    color: var(--pt-fg-tertiary);
+    flex-shrink: 0;
+    font-size: var(--pt-text-xs);
+}
+
+.pt-bulk-message {
+    background: var(--pt-bg-tint);
+    border-radius: var(--pt-radius-sm);
+    color: var(--pt-fg-body);
+    font-size: var(--pt-text-sm);
+    margin-top: var(--pt-space-3);
+    padding: var(--pt-space-2) var(--pt-space-3);
+}
+
+.pt-bulk-message.is-error {
+    color: var(--pt-color-danger-on-surface);
+}
+
+.pt-bulk-confirm {
+    color: var(--pt-fg-body);
+    flex-basis: 100%;
+    font-size: var(--pt-text-sm);
+    margin: 0;
+}

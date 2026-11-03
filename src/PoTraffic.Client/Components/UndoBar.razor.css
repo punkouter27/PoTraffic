@@ -3,12 +3,13 @@
 .pt-undo-bar {
     align-items: center;
     animation: pt-slide-up var(--pt-dur-base) var(--pt-ease);
+    -webkit-backdrop-filter: blur(var(--pt-glass-blur)) saturate(var(--pt-glass-saturate));
     backdrop-filter: blur(var(--pt-glass-blur)) saturate(var(--pt-glass-saturate));
     background: var(--pt-glass-bg-strong);
     border: 1px solid var(--pt-glass-border);
     border-radius: var(--pt-radius-full);
     bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
-    box-shadow: var(--pt-elev-3);
+    box-shadow: var(--pt-elev-3), inset 0 1px 0 var(--pt-glass-highlight);
     display: flex;
     gap: var(--pt-space-3);
     left: 50%;
@@ -44,11 +45,16 @@
     font-weight: var(--pt-weight-semibold);
     gap: 0.4rem;
     padding: 0.35rem 0.85rem;
-    transition: background-color var(--pt-dur-fast) var(--pt-ease);
+    transition: background-color var(--pt-ix-dur) var(--pt-ix-ease),
+                transform var(--pt-ix-dur) var(--pt-ix-ease);
 }
 
 .pt-undo-action:hover {
     background: var(--pt-color-brand-700);
+}
+
+.pt-undo-action:active {
+    transform: scale(var(--pt-ix-press-scale));
 }
 
 /* Ring drains over the grace period. --pt-undo-pct is 0–100 remaining. */

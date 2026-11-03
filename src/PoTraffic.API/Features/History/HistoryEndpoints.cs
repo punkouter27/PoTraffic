@@ -1,15 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
-using PoTraffic.API.Features.Routes;
 using PoTraffic.API.Infrastructure.Http;
 using PoTraffic.API.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.History;
-using PoTraffic.Shared.DTOs.Routes;
 
 namespace PoTraffic.API.Features.History;
 
 /// <summary>
-/// Minimal API group for history / baseline / sessions endpoints.
-/// All endpoints require authentication (JWT bearer).
+/// Read-only history for one route: poll samples, sessions, departure advice, the heatmap and
+/// the weather split. All require an authenticated (cookie) session. The route itself
+/// (<c>GET /api/routes/{routeId}</c>) is mapped by the Routes slice.
 /// </summary>
 public static class HistoryEndpoints
 {
@@ -94,17 +93,6 @@ public static class HistoryEndpoints
             UserId userId = ctx.User.GetUserId();
             var result = await handler.Handle(new GetWeatherImpactQuery(routeId, userId), ctx.RequestAborted);
             return ConditionalJson.Ok(ctx, result);
-        });
-
-        // GET /api/routes/{routeId} — single route (drives the return-trip link, #3)
-        group.MapGet("", async (
-            RouteId routeId,
-            GetRouteByIdQueryHandler handler,
-            HttpContext ctx) =>
-        {
-            UserId userId = ctx.User.GetUserId();
-            RouteDto? route = await handler.Handle(new GetRouteByIdQuery(routeId, userId), ctx.RequestAborted);
-            return route is null ? Results.NotFound() : ConditionalJson.Ok(ctx, route);
         });
 
         return routes;

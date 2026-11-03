@@ -5,10 +5,17 @@
 // when it is jammed. That mapping is the whole reason this exists — a coloured line
 // says "bad", a crawling line says "bad, and this is what bad feels like".
 //
-// Drawn on a Leaflet custom pane with WebGL2 additive point sprites, falling back to
-// canvas2D where WebGL2 is missing. Both draw the same thing; the shader version
-// gets a proper soft bloom out of the fragment stage for free, whereas the 2D
-// fallback approximates it with a radial gradient.
+// Drawn in Leaflet's overlay pane by the best renderer the browser has, tried in order:
+//   1. WebGPU — one instanced draw of camera-facing quads (WebGPU has no point
+//      sprites), additive blend, the same two-stage falloff in WGSL.
+//   2. WebGL2 — additive point sprites.
+//   3. Canvas2D — the same particles as radial gradients.
+// All three draw the same picture from the same per-frame Float32Array; only the
+// upload differs. A canvas can hold exactly one kind of context, and WebGPU's adapter
+// request is asynchronous, so nothing claims the canvas until that answer is in — a
+// frame or two of no particles, never a canvas stuck with the wrong context. A WebGPU
+// device lost mid-session (driver reset, GPU process crash) swaps in a fresh canvas
+// on the WebGL2 path rather than leaving the line dark.
 //
 // PERFORMANCE: the particle positions are advanced in JS (a few dozen floats) and
 // uploaded once per frame as a single buffer. There is no per-particle draw call and
@@ -56,6 +63,118 @@ void main() {
     fragColor = vec4(u_colour * a, a);   // premultiplied, blended additively
 }`;
 
+const WGSL = `
+struct Uniforms {
+    px: vec2f,       // clip-space units per device pixel (2/width, 2/height)
+    dpr: f32,
+    pad: f32,
+    colour: vec4f,
+};
+@group(0) @binding(0) var<uniform> u: Uniforms;
+
+struct VOut {
+    @builtin(position) pos: vec4f,
+    @location(0) corner: vec2f,
+    @location(1) alpha: f32,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) vi: u32,
+      @location(0) centre: vec2f,
+      @location(1) size: f32,
+      @location(2) alpha: f32) -> VOut {
+    var corners = array<vec2f, 6>(
+        vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0),
+        vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0));
+    let c = corners[vi];
+    var o: VOut;
+    // size is the sprite's diameter in CSS px, exactly as gl_PointSize uses it.
+    o.pos = vec4f(centre + c * (size * u.dpr * 0.5) * u.px, 0.0, 1.0);
+    o.corner = c;
+    o.alpha = alpha;
+    return o;
+}
+
+@fragment
+fn fs(v: VOut) -> @location(0) vec4f {
+    let d = length(v.corner);
+    let core = 1.0 - smoothstep(0.0, 0.35, d);
+    let halo = 1.0 - smoothstep(0.0, 1.0, d);
+    let intensity = core * 0.85 + halo * halo * 0.5;
+    if (intensity <= 0.002) { discard; }
+    let a = intensity * v.alpha;
+    return vec4f(u.colour.rgb * a, a);   // premultiplied, blended additively
+}`;
+
+/**
+ * Builds the WebGPU path on `canvas`, or resolves null (never rejects) so the
+ * caller can fall through to WebGL2 on the same, still-unclaimed canvas.
+ */
+async function createGpuRenderer(canvas, maxParticles) {
+    if (!navigator.gpu) return null;
+    let device = null;
+    try {
+        const adapter = await navigator.gpu.requestAdapter({ powerPreference: "low-power" });
+        if (!adapter) return null;
+        device = await adapter.requestDevice();
+
+        const context = canvas.getContext("webgpu");
+        if (!context) { device.destroy(); return null; }
+        const format = navigator.gpu.getPreferredCanvasFormat();
+        // Premultiplied so the transparent clear really is transparent over the tiles.
+        context.configure({ device, format, alphaMode: "premultiplied" });
+
+        const module = device.createShaderModule({ code: WGSL });
+        const pipeline = await device.createRenderPipelineAsync({
+            layout: "auto",
+            vertex: {
+                module, entryPoint: "vs",
+                buffers: [{
+                    arrayStride: 16,
+                    stepMode: "instance",
+                    attributes: [
+                        { shaderLocation: 0, offset: 0, format: "float32x2" },
+                        { shaderLocation: 1, offset: 8, format: "float32" },
+                        { shaderLocation: 2, offset: 12, format: "float32" },
+                    ],
+                }],
+            },
+            fragment: {
+                module, entryPoint: "fs",
+                targets: [{
+                    format,
+                    // Additive, as on the WebGL2 path: a bunched-up jam glows hotter.
+                    blend: {
+                        color: { srcFactor: "one", dstFactor: "one", operation: "add" },
+                        alpha: { srcFactor: "one", dstFactor: "one", operation: "add" },
+                    },
+                }],
+            },
+            primitive: { topology: "triangle-list" },
+        });
+
+        const instances = device.createBuffer({
+            size: maxParticles * 16,
+            usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+        });
+        const uniforms = device.createBuffer({
+            size: 32,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+        const bindGroup = device.createBindGroup({
+            layout: pipeline.getBindGroupLayout(0),
+            entries: [{ binding: 0, resource: { buffer: uniforms } }],
+        });
+
+        return { device, context, pipeline, instances, uniforms, bindGroup, uniformData: new Float32Array(8) };
+    } catch {
+        // A pipeline that failed to compile throws here. The canvas may now be claimed
+        // by "webgpu"; the caller checks for that and starts on a fresh one.
+        device?.destroy();
+        return null;
+    }
+}
+
 /** Particle counts. Fewer when the device has already shown it cannot keep up. */
 const COUNT_FULL = 44;
 const COUNT_DEGRADED = 16;
@@ -92,13 +211,10 @@ export function createFlow(L) {
         onAdd(map) {
             this._map = map;
 
-            const pane = map.getPane("overlayPane");
-            const canvas = this._canvas = L.DomUtil.create("canvas", "pt-flow-canvas");
-            canvas.setAttribute("aria-hidden", "true");
-            pane.appendChild(canvas);
-
-            this._initGl();
+            this._removed = false;
+            this._createCanvas();
             this._seed();
+            this._initRenderer();
 
             // Redraw on any view change. During a pinch or a fling Leaflet fires these
             // continuously, which is fine — the draw is one buffer upload.
@@ -112,14 +228,14 @@ export function createFlow(L) {
         },
 
         onRemove(map) {
+            this._removed = true;
             this._stop();
             map.off("moveend zoomend resize", this._reset, this);
             map.off("zoomanim", this._onZoomAnim, this);
             map.off("load", this._reset, this);
-            this._gl?.getExtension("WEBGL_lose_context")?.loseContext();
+            this._releaseRenderer();
             this._canvas?.remove();
             this._canvas = null;
-            this._gl = null;
         },
 
         /** Swaps the path and verdict without tearing the layer down. */
@@ -133,7 +249,69 @@ export function createFlow(L) {
             this._start();
         },
 
-        // ── GL setup ─────────────────────────────────────────────────────────
+        // ── Renderer setup ───────────────────────────────────────────────────
+
+        _createCanvas() {
+            const pane = this._map.getPane("overlayPane");
+            const canvas = this._canvas = L.DomUtil.create("canvas", "pt-flow-canvas");
+            canvas.setAttribute("aria-hidden", "true");
+            pane.appendChild(canvas);
+        },
+
+        /**
+         * WebGPU first, then WebGL2, then (implicitly, in _step) canvas2D. A device
+         * that has already shed detail skips WebGPU: the adapter request alone can
+         * cost more than this layer would save.
+         */
+        async _initRenderer() {
+            this._ready = false;
+            const canvas = this._canvas;
+
+            const gpu = fx.isDegraded() ? null : await createGpuRenderer(canvas, COUNT_FULL);
+            // Removed, or the canvas replaced, while the adapter was being asked for.
+            if (this._removed || canvas !== this._canvas) {
+                gpu?.device.destroy();
+                return;
+            }
+
+            if (gpu) {
+                this._gpu = gpu;
+                gpu.device.lost.then((info) => {
+                    if (this._removed || info.reason === "destroyed" || this._gpu !== gpu) return;
+                    this._gpu = null;
+                    this._replaceCanvas();
+                    this._initGl();
+                    this._reset();
+                });
+            } else {
+                // A failed WebGPU attempt can leave this canvas claimed by "webgpu", where
+                // getContext("webgl2") returns null forever. Start the fallback on a clean one.
+                if (navigator.gpu) this._replaceCanvas();
+                this._initGl();
+            }
+
+            this._ready = true;
+            this._reset();
+        },
+
+        _replaceCanvas() {
+            this._canvas?.remove();
+            this._createCanvas();
+        },
+
+        _releaseRenderer() {
+            this._ready = false;
+            if (this._gpu) {
+                const gpu = this._gpu;
+                this._gpu = null;
+                gpu.instances.destroy();
+                gpu.uniforms.destroy();
+                gpu.device.destroy();
+            }
+            this._gl?.getExtension("WEBGL_lose_context")?.loseContext();
+            this._gl = null;
+            this._ctx = null;
+        },
 
         _initGl() {
             const gl = fx.gl2(this._canvas);
@@ -246,6 +424,7 @@ export function createFlow(L) {
             this._total = total;
             this._incidentT = this._incident ? this._nearestT(map.latLngToContainerPoint(this._incident)) : null;
 
+            // WebGPU needs nothing here: getCurrentTexture() follows the canvas size.
             this._gl?.viewport(0, 0, this._canvas.width, this._canvas.height);
             this._colourRgb = fx.resolveRgb(this._canvas.parentElement, this._colour, [0.23, 0.51, 0.96]);
         },
@@ -319,7 +498,7 @@ export function createFlow(L) {
         },
 
         _step(dt, now) {
-            if (!this._canvas || !this._total) return;
+            if (!this._canvas || !this._total || !this._ready) return;
             if (this._canvas.width <= 0 || this._canvas.height <= 0) { this._reset(); return; }
 
             const speed = this._speed();
@@ -350,8 +529,41 @@ export function createFlow(L) {
                 data[o + 3] = fade * pulse * 0.9;
             }
 
-            if (this._gl) this._drawGl(data);
+            if (this._gpu) this._drawGpu(data);
+            else if (this._gl) this._drawGl(data);
             else this._draw2d(data);
+        },
+
+        _drawGpu(data) {
+            const gpu = this._gpu;
+            const count = Math.min(data.length / 4, COUNT_FULL);
+            const u = gpu.uniformData;
+            u[0] = 2 / this._canvas.width;
+            u[1] = 2 / this._canvas.height;
+            u[2] = fx.dpr();
+            u[4] = this._colourRgb[0];
+            u[5] = this._colourRgb[1];
+            u[6] = this._colourRgb[2];
+            u[7] = 1;
+
+            gpu.device.queue.writeBuffer(gpu.uniforms, 0, u);
+            gpu.device.queue.writeBuffer(gpu.instances, 0, data, 0, count * 4);
+
+            const encoder = gpu.device.createCommandEncoder();
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [{
+                    view: gpu.context.getCurrentTexture().createView(),
+                    clearValue: { r: 0, g: 0, b: 0, a: 0 },
+                    loadOp: "clear",
+                    storeOp: "store",
+                }],
+            });
+            pass.setPipeline(gpu.pipeline);
+            pass.setBindGroup(0, gpu.bindGroup);
+            pass.setVertexBuffer(0, gpu.instances);
+            pass.draw(6, count);
+            pass.end();
+            gpu.device.queue.submit([encoder.finish()]);
         },
 
         _drawGl(data) {

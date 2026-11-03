@@ -1,0 +1,92 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+@* ──────────────────────────────────────────────────────────────────────
+   Keyboard shortcuts, app-wide, and the "?" overlay that lists them.
+
+   One listener in the layout (js/pt-keys.js), ignored while focus is in a field
+   so typing a "c" into an address never fires a check. Pages opt in by marking
+   the element a key acts on — data-shortcut="/" on the dashboard's search box,
+   data-shortcut="c" on the route page's Check now — so this component holds no
+   knowledge of either page, and a key with nothing marked on screen does nothing.
+
+   The list below is the help overlay's content. Keep it in step with the marks.
+   ────────────────────────────────────────────────────────────────────── *@
+
+<PtDialog @bind-Open="_helpOpen" Title="Keyboard shortcuts" Class="pt-shortcuts">
+    <dl class="pt-shortcut-list">
+        @foreach ((string key, string action) in Shortcuts)
+        {
+            <div class="pt-shortcut-row">
+                <dt><kbd class="pt-kbd">@key</kbd></dt>
+                <dd>@action</dd>
+            </div>
+        }
+    </dl>
+    <p class="pt-shortcut-note">Shortcuts pause while you're typing in a field. Esc closes this.</p>
+</PtDialog>
+
+@code {
+    private static readonly (string Key, string Action)[] Shortcuts =
+    [
+        ("/", "Search commutes (dashboard)"),
+        ("n", "New commute"),
+        ("c", "Check now (commute page)"),
+        ("?", "Show or hide this list"),
+        ("Esc", "Close a panel or this list"),
+    ];
+
+    private bool _helpOpen;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _listener;
+    private DotNetObjectReference<KeyboardShortcuts>? _self;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/pt-keys.js");
+            _self = DotNetObjectReference.Create(this);
+            _listener = await _module.InvokeAsync<IJSObjectReference>("attachShortcuts", _self);
+        }
+        catch (JSException) { /* shortcuts are an accelerator; everything has a pointer path */ }
+        catch (JSDisconnectedException) { }
+    }
+
+    [JSInvokable]
+    public Task OnShortcut(string key)
+    {
+        switch (key)
+        {
+            case "?":
+                _helpOpen = !_helpOpen;
+                StateHasChanged();
+                break;
+            case "n" when !Nav.Uri.Contains("/routes/create", StringComparison.OrdinalIgnoreCase):
+                Nav.NavigateTo("/routes/create");
+                break;
+        }
+        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_listener is not null)
+            {
+                await _listener.InvokeVoidAsync("dispose");
+                await _listener.DisposeAsync();
+            }
+            if (_module is not null)
+                await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { /* page already gone */ }
+        catch (JSException) { }
+        _self?.Dispose();
+    }
+}

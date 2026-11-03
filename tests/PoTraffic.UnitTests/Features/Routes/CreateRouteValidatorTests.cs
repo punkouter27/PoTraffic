@@ -1,8 +1,6 @@
 using FluentAssertions;
-using FluentValidation.TestHelper;
-using NSubstitute;
+using FluentValidation.Results;
 using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Infrastructure.Providers;
 using PoTraffic.Shared.Constants;
 using PoTraffic.Shared.Enums;
 
@@ -16,92 +14,35 @@ public sealed class CreateRouteValidatorTests
 {
     private readonly CreateRouteValidator _validator = new();
 
-    [Fact]
-    public void Validator_WhenOriginIsEmpty_ShouldHaveValidationError()
-    {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "",
-            DestinationAddress: "10 Downing Street, London",
-            Provider: RouteProvider.GoogleMaps);
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.OriginAddress);
-    }
+    private static CreateRouteCommand Valid() => new(
+        UserId: UserId.New(),
+        OriginAddress: "Baker Street, London",
+        DestinationAddress: "Waterloo Station, London",
+        Provider: RouteProvider.GoogleMaps,
+        StartTime: "07:30",
+        EndTime: "09:00",
+        DaysOfWeekMask: 0x1F); // Mon–Fri
 
     [Fact]
-    public void Validator_WhenDestinationIsEmpty_ShouldHaveValidationError()
+    public void Validator_RejectsEachInvalidField_OnTheFieldItConcerns()
     {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "1 Infinite Loop, Cupertino",
-            DestinationAddress: "",
-            Provider: RouteProvider.GoogleMaps);
+        (CreateRouteCommand Command, string Property, string Because)[] cases =
+        [
+            (Valid() with { OriginAddress = "" }, nameof(CreateRouteCommand.OriginAddress), "origin is required"),
+            (Valid() with { DestinationAddress = "" }, nameof(CreateRouteCommand.DestinationAddress), "destination is required"),
+            (Valid() with { OriginAddress = new string('A', ValidationConstants.AddressMaxLength + 1) },
+                nameof(CreateRouteCommand.OriginAddress), "origin is capped at the max address length"),
+            (Valid() with { Provider = (RouteProvider)99 }, nameof(CreateRouteCommand.Provider), "provider must be a defined enum value"),
+            (Valid() with { StartTime = "7:00" }, nameof(CreateRouteCommand.StartTime), "times need a leading zero (HH:mm)"),
+            (Valid() with { StartTime = "09:00", EndTime = "09:00" }, nameof(CreateRouteCommand.EndTime), "a zero-length window never fires"),
+            (Valid() with { DaysOfWeekMask = 0 }, nameof(CreateRouteCommand.DaysOfWeekMask), "at least one day must be selected"),
+        ];
 
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.DestinationAddress);
-    }
-
-    [Fact]
-    public void Validator_WhenOriginExceedsMaxLength_ShouldHaveValidationError()
-    {
-        string longAddress = new('A', ValidationConstants.AddressMaxLength + 1);
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: longAddress,
-            DestinationAddress: "Valid Destination",
-            Provider: RouteProvider.GoogleMaps);
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.OriginAddress);
-    }
-
-    [Fact]
-    public void Validator_WhenProviderIsInvalidEnum_ShouldHaveValidationError()
-    {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "Valid Origin",
-            DestinationAddress: "Valid Destination",
-            Provider: (RouteProvider)99); // invalid enum value
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.Provider);
-    }
-
-    [Fact]
-    public void Validator_WhenStartTimeIsInvalidFormat_ShouldHaveValidationError()
-    {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "Baker Street, London",
-            DestinationAddress: "Waterloo Station, London",
-            Provider: RouteProvider.GoogleMaps,
-            StartTime: "7:00"); // missing leading zero
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.StartTime);
-    }
-
-    [Fact]
-    public void Validator_WhenEndTimeEqualsStartTime_ShouldHaveValidationError()
-    {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "Baker Street, London",
-            DestinationAddress: "Waterloo Station, London",
-            Provider: RouteProvider.GoogleMaps,
-            StartTime: "09:00",
-            EndTime: "09:00"); // zero-length window — never fires
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.EndTime);
+        foreach ((CreateRouteCommand command, string property, string because) in cases)
+        {
+            ValidationResult result = _validator.Validate(command);
+            result.Errors.Should().Contain(e => e.PropertyName == property, because);
+        }
     }
 
     /// <summary>
@@ -110,50 +51,10 @@ public sealed class CreateRouteValidatorTests
     /// must not reject it — the "start now, end six hours later" default depends on this.
     /// </summary>
     [Fact]
-    public void Validator_WhenWindowWrapsMidnight_ShouldNotHaveValidationError()
+    public void Validator_AcceptsAValidSchedule_IncludingOneThatWrapsMidnightUtc()
     {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "Baker Street, London",
-            DestinationAddress: "Waterloo Station, London",
-            Provider: RouteProvider.GoogleMaps,
-            StartTime: "19:00",
-            EndTime: "01:00");
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldNotHaveValidationErrorFor(x => x.EndTime);
-    }
-
-    [Fact]
-    public void Validator_WhenDaysOfWeekMaskIsZero_ShouldHaveValidationError()
-    {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "Baker Street, London",
-            DestinationAddress: "Waterloo Station, London",
-            Provider: RouteProvider.GoogleMaps,
-            DaysOfWeekMask: 0); // no days selected
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldHaveValidationErrorFor(x => x.DaysOfWeekMask);
-    }
-
-    [Fact]
-    public void Validator_WhenScheduleIsValid_ShouldNotHaveValidationErrors()
-    {
-        var command = new CreateRouteCommand(
-            UserId: UserId.New(),
-            OriginAddress: "Baker Street, London",
-            DestinationAddress: "Waterloo Station, London",
-            Provider: RouteProvider.GoogleMaps,
-            StartTime: "07:30",
-            EndTime: "09:00",
-            DaysOfWeekMask: 0x1F); // Mon–Fri
-
-        TestValidationResult<CreateRouteCommand> result = _validator.TestValidate(command);
-
-        result.ShouldNotHaveAnyValidationErrors();
+        _validator.Validate(Valid()).IsValid.Should().BeTrue();
+        _validator.Validate(Valid() with { StartTime = "19:00", EndTime = "01:00" }).IsValid
+            .Should().BeTrue("a window that wraps midnight UTC is legitimate");
     }
 }

@@ -26,6 +26,10 @@
          in our source. All other trim warnings remain build-breaking. -->
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <NoWarn>$(NoWarn);IL2111</NoWarn>
+    <!-- Required by the [JSImport] source generator (SYSLIB1074): its marshalling stubs are
+         unsafe code. Infrastructure/FxInterop.cs passes the chart and terrain series to JS as
+         typed memory views through it; no hand-written code in this project uses unsafe. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- Do NOT mark the Blazor WASM app assembly IsTrimmable. Routable @page components are
          discovered by the framework's runtime route-table scan, which the trimmer can't see;
          member-trimming the app assembly strips those pages from the published build (the "/"

@@ -143,8 +143,8 @@ public sealed class ExecutePollHandlerTests
         // Arrange — a $0.01 cap at $0.005 a call: one poll alone stays under it; the Check now
         // made this month is what reaches it, so calls that leave no PollRecord count too.
         (TableStorageContext db, RouteId routeId, SessionId sessionId) = await SeedAsync();
-        db.Add(new SystemConfiguration { Key = PollCostRates.GoogleMapsKey, Value = "0.005" });
-        db.Add(new SystemConfiguration { Key = SpendingCap.MonthlyCapKey, Value = "0.01" });
+        db.Add(new SystemConfiguration { Key = SystemSettings.PerPollKey, Value = "0.005" });
+        db.Add(new SystemConfiguration { Key = SystemSettings.MonthlyCapKey, Value = "0.01" });
         db.Add(new PollRecord
         {
             Id = PollRecordId.New(), RouteId = routeId, SessionId = sessionId,

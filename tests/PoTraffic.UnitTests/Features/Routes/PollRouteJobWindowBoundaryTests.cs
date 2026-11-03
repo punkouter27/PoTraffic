@@ -1,4 +1,3 @@
-// filepath: tests/PoTraffic.IntegrationTests/Unit/Features/Routes/PollRouteJobWindowBoundaryTests.cs
 using System;
 using System.Reflection;
 using FluentAssertions;
@@ -39,179 +38,85 @@ public sealed class PollRouteJobWindowBoundaryTests
     private static DateTimeOffset? NextStart(MonitoringWindow w, DateTimeOffset now) =>
         (DateTimeOffset?)NextWindowStartMethod.Invoke(null, [w, now])!;
 
-    [Theory]
-    // Closed-open interval — start time inclusive, end time exclusive.
-    [InlineData("2026-07-01T08:00:00Z", true,  "08:00", "09:00", "08:00 exactly is inside")]
-    [InlineData("2026-07-01T09:00:00Z", false, "08:00", "09:00", "09:00 exactly is OUT (closed-open)")]
-    [InlineData("2026-07-01T07:59:59Z", false, "08:00", "09:00", "before window start")]
-    public void IsWithinWindow_HonoursClosedOpenIntervalAndUtcTime(
-        string nowIso, bool expected, string start, string end, string because)
+    private static MonitoringWindow Window(byte days, TimeOnly start, TimeOnly end) => new()
     {
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = AllDays,
-            StartTime = TimeOnly.Parse(start),
-            EndTime = TimeOnly.Parse(end),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        DateTimeOffset now = DateTimeOffset.Parse(nowIso);
+        Id = WindowId.New(),
+        RouteId = RouteId.New(),
+        DaysOfWeekMask = days,
+        StartTime = start,
+        EndTime = end,
+        IsActive = true,
+        CreatedAt = DateTimeOffset.UtcNow
+    };
 
-        IsWithin(window, now).Should().Be(expected, because);
+    /// <summary>
+    /// Start inclusive, end exclusive — for a plain window and for one that wraps midnight UTC.
+    /// Regression for the wrap: an Eastern-time user picking 09:21–21:21 local submits a window
+    /// stored as 13:21–01:21 UTC. Pre-fix the validator rejected it and the polling chain never
+    /// fired; IsWithinWindow must include [start, 24:00) ∪ [00:00, end) on the same day.
+    /// </summary>
+    [Fact]
+    public void IsWithinWindow_IsClosedOpen_ForPlainAndMidnightWrappingWindows()
+    {
+        MonitoringWindow plain = Window(AllDays, new TimeOnly(8, 0), new TimeOnly(9, 0));
+        MonitoringWindow wrap = Window(AllDays, new TimeOnly(13, 21), new TimeOnly(1, 21));
+
+        (MonitoringWindow Window, string NowIso, bool Expected, string Because)[] cases =
+        [
+            (plain, "2026-07-01T08:00:00Z", true, "08:00 exactly is inside"),
+            (plain, "2026-07-01T09:00:00Z", false, "09:00 exactly is OUT (closed-open)"),
+            (plain, "2026-07-01T07:59:59Z", false, "before window start"),
+            (wrap, "2026-07-01T13:21:00Z", true, "13:21 exactly — start of the wrap"),
+            (wrap, "2026-07-01T13:20:59Z", false, "one second before start — outside the wrap"),
+            (wrap, "2026-07-01T01:20:59Z", true, "just before the wrap's end"),
+            (wrap, "2026-07-01T01:21:00Z", false, "01:21 exactly is OUT (closed-open end)"),
+        ];
+
+        foreach ((MonitoringWindow w, string nowIso, bool expected, string because) in cases)
+            IsWithin(w, DateTimeOffset.Parse(nowIso)).Should().Be(expected, because);
     }
 
+    /// <summary>Polling happens only on the days the user ticked — wrap-around windows included.</summary>
     [Fact]
-    public void IsWithinWindow_RejectsWhenDayNotEnabled()
+    public void IsWithinWindow_RespectsTheDayMask_EvenAcrossAWrap()
     {
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = Wed | Thu,                 // only Wed + Thu
-            StartTime = new TimeOnly(0, 0),
-            EndTime = new TimeOnly(23, 59),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        // Tuesday 12:00 UTC — outside enabled days even though inside time bounds
-        IsWithin(window, new DateTimeOffset(2026, 7, 7, 12, 0, 0, TimeSpan.Zero))
+        MonitoringWindow wedThu = Window(Wed | Thu, new TimeOnly(0, 0), new TimeOnly(23, 59));
+        IsWithin(wedThu, new DateTimeOffset(2026, 7, 7, 12, 0, 0, TimeSpan.Zero))
             .Should().BeFalse("Tuesday is not in the Wednesday+Thursday mask");
-    }
 
-    /// <summary>
-    /// Regression: an Eastern-time user picking 09:21–21:21 local submits a
-    /// window stored as 13:21–01:21 UTC (wraps midnight UTC). Pre-fix the
-    /// validator rejected this and the polling chain never fired — "Failed to
-    /// save schedule" in production. Post-fix the validator permits wrap-around
-    /// and IsWithinWindow must include any UTC time on the same day that lies
-    /// within [start, 24:00) ∪ [00:00, end).
-    /// </summary>
-    [Theory]
-    // Same-day (afternoon / evening leg of the wrap)
-    [InlineData("2026-07-01T13:21:00Z", true,  "13:21 exactly — start of window")]
-    [InlineData("2026-07-01T13:20:59Z", false, "one second before start — outside the wrap")]
-    // Same-day (early-morning leg of the wrap)
-    [InlineData("2026-07-01T01:20:59Z", true,  "just before window end")]
-    [InlineData("2026-07-01T01:21:00Z", false, "01:21 exactly is OUT (closed-open end)")]
-    public void IsWithinWindow_WrapAroundMidnightUtc(string nowIso, bool expected, string because)
-    {
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = AllDays,
-            StartTime = new TimeOnly(13, 21),
-            EndTime = new TimeOnly(1, 21),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        DateTimeOffset now = DateTimeOffset.Parse(nowIso);
-
-        IsWithin(window, now).Should().Be(expected, because);
-    }
-
-    /// <summary>
-    /// A wrap-around window still needs to respect the day mask: polling must
-    /// only happen on the days the user ticked.
-    /// </summary>
-    [Fact]
-    public void IsWithinWindow_WrapAround_StillRespectsDayMask()
-    {
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = Mon | Wed | Fri,
-            StartTime = new TimeOnly(22, 0), // 22:00 → 02:00 next day
-            EndTime = new TimeOnly(2, 0),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        // Tuesday 23:00 UTC — even though in time range, Tuesday not enabled
-        IsWithin(window, new DateTimeOffset(2026, 7, 7, 23, 0, 0, TimeSpan.Zero))
+        MonitoringWindow wrap = Window(Mon | Wed | Fri, new TimeOnly(22, 0), new TimeOnly(2, 0));
+        IsWithin(wrap, new DateTimeOffset(2026, 7, 7, 23, 0, 0, TimeSpan.Zero))
             .Should().BeFalse("Tuesday is not in Mon|Wed|Fri mask");
-        // Wednesday 23:00 UTC — Wednesday enabled, in afternoon leg of wrap
-        IsWithin(window, new DateTimeOffset(2026, 7, 8, 23, 0, 0, TimeSpan.Zero))
+        IsWithin(wrap, new DateTimeOffset(2026, 7, 8, 23, 0, 0, TimeSpan.Zero))
             .Should().BeTrue("Wednesday is enabled and 23:00 is within the wrap");
-        // Wednesday 01:00 UTC — Wednesday still counts (morning leg of same day's wrap)
-        IsWithin(window, new DateTimeOffset(2026, 7, 8, 1, 0, 0, TimeSpan.Zero))
+        IsWithin(wrap, new DateTimeOffset(2026, 7, 8, 1, 0, 0, TimeSpan.Zero))
             .Should().BeTrue("Wednesday is enabled and 01:00 is in the morning leg");
     }
 
+    /// <summary>
+    /// NextWindowStart returns the first strictly-future slot start on an enabled day, or null
+    /// when no day is enabled so the chain stops. (Inside the window the chain uses its own
+    /// "next poll" delay; NextWindowStart is consulted only once fully outside it.)
+    /// </summary>
     [Fact]
-    public void NextWindowStart_WhenInsideNow_ReturnsNextDaysStart_NotTodays()
+    public void NextWindowStart_IsTheFirstFutureStartOnAnEnabledDay_OrNullWhenNoneIs()
     {
-        // Today is Wednesday 2026-07-01. Window covers 08:00–10:00 every day.
-        // The implementation of NextWindowStart strictly returns the first
-        // strictly-future slot start — at 09:30 UTC today's 08:00 has already
-        // passed, so the next start is tomorrow at 08:00 UTC. (The polling
-        // chain uses a separate "schedule next poll" delay to step inside
-        // the current window; NextWindowStart is only consulted when fully
-        // outside the window.)
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = AllDays,
-            StartTime = new TimeOnly(8, 0),
-            EndTime = new TimeOnly(10, 0),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        DateTimeOffset now = new(2026, 7, 1, 9, 30, 0, TimeSpan.Zero);
-        DateTimeOffset? next = NextStart(window, now);
-
+        // Wednesday 09:30, inside an every-day 08:00–10:00 window: today's start has passed.
+        DateTimeOffset? next = NextStart(Window(AllDays, new TimeOnly(8, 0), new TimeOnly(10, 0)),
+            new DateTimeOffset(2026, 7, 1, 9, 30, 0, TimeSpan.Zero));
         next.Should().NotBeNull();
-        next!.Value.Date.Should().Be(new DateTime(2026, 7, 2),
-            "next strictly-future start after 09:30 today is tomorrow at 08:00");
+        next!.Value.Date.Should().Be(new DateTime(2026, 7, 2), "the next strictly-future start is tomorrow");
         next.Value.Hour.Should().Be(8);
-    }
 
-    [Fact]
-    public void NextWindowStart_WhenOutsideWindow_RollsToNextEnabledDay()
-    {
-        // Window is Mon-Fri 08:00–10:00 UTC; current time is Saturday 12:00 UTC.
-        // The very next open slot should be Monday 08:00 UTC.
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = Weekdays,
-            StartTime = new TimeOnly(8, 0),
-            EndTime = new TimeOnly(10, 0),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        DateTimeOffset now = new(2026, 7, 4, 12, 0, 0, TimeSpan.Zero); // Saturday
-        DateTimeOffset? next = NextStart(window, now);
-
+        // Saturday 12:00 with a Mon–Fri window rolls to Monday.
+        next = NextStart(Window(Weekdays, new TimeOnly(8, 0), new TimeOnly(10, 0)),
+            new DateTimeOffset(2026, 7, 4, 12, 0, 0, TimeSpan.Zero));
         next.Should().NotBeNull();
         next!.Value.DayOfWeek.Should().Be(DayOfWeek.Monday);
         next.Value.Date.Should().Be(new DateTime(2026, 7, 6));
-    }
 
-    [Fact]
-    public void NextWindowStart_WhenAllDaysDisabled_ReturnsNullSoChainStops()
-    {
-        var window = new MonitoringWindow
-        {
-            Id = WindowId.New(),
-            RouteId = RouteId.New(),
-            DaysOfWeekMask = 0, // no days
-            StartTime = new TimeOnly(8, 0),
-            EndTime = new TimeOnly(10, 0),
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        DateTimeOffset now = new(2026, 7, 1, 12, 0, 0, TimeSpan.Zero);
-        NextStart(window, now).Should().BeNull("no enabled days → polling chain must stop");
+        NextStart(Window(0, new TimeOnly(8, 0), new TimeOnly(10, 0)), new DateTimeOffset(2026, 7, 1, 12, 0, 0, TimeSpan.Zero))
+            .Should().BeNull("no enabled days → polling chain must stop");
     }
 
     /// <summary>
@@ -259,16 +164,21 @@ public sealed class PollRouteJobWindowBoundaryTests
         CreatedAt = DateTimeOffset.UtcNow
     };
 
-    [Theory]
-    // Friday 17:00 PDT is Saturday 00:00 UTC — still Friday on the user's clock.
-    [InlineData("2026-07-11T00:00:00Z", true,  "Friday 17:00 PDT is inside a Mon–Fri window")]
-    // Sunday 17:00 PDT is Monday 00:00 UTC — still Sunday on the user's clock.
-    [InlineData("2026-07-13T00:00:00Z", false, "Sunday 17:00 PDT is outside a Mon–Fri window")]
-    // Winter: 16:30 PST is 00:30 UTC; the window must not drift an hour with DST.
-    [InlineData("2026-12-02T00:30:00Z", true,  "Tuesday 16:30 PST is inside")]
-    public void IsWithinWindow_WithZone_UsesTheUsersWeekdayAndWallClock(string nowIso, bool expected, string because)
+    [Fact]
+    public void IsWithinWindow_WithZone_UsesTheUsersWeekdayAndWallClock()
     {
-        IsWithin(PacificWeekdayEvening(), DateTimeOffset.Parse(nowIso)).Should().Be(expected, because);
+        (string NowIso, bool Expected, string Because)[] cases =
+        [
+            // Friday 17:00 PDT is Saturday 00:00 UTC — still Friday on the user's clock.
+            ("2026-07-11T00:00:00Z", true, "Friday 17:00 PDT is inside a Mon–Fri window"),
+            // Sunday 17:00 PDT is Monday 00:00 UTC — still Sunday on the user's clock.
+            ("2026-07-13T00:00:00Z", false, "Sunday 17:00 PDT is outside a Mon–Fri window"),
+            // Winter: 16:30 PST is 00:30 UTC; the window must not drift an hour with DST.
+            ("2026-12-02T00:30:00Z", true, "Tuesday 16:30 PST is inside"),
+        ];
+
+        foreach ((string nowIso, bool expected, string because) in cases)
+            IsWithin(PacificWeekdayEvening(), DateTimeOffset.Parse(nowIso)).Should().Be(expected, because);
     }
 
     [Fact]

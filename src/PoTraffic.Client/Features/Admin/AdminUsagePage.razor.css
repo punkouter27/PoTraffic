@@ -1,6 +1,54 @@
 /* AdminUsagePage — scoped styles. */
 .pt-admin-chart { height: 280px; }
 
+/* ── No horizontal scroll at 390px (#24) ──────────────────────────────────
+   Three things used to push the page wider than a phone: the card's fixed 24px
+   padding on top of .content's, the tab strip (three labelled tabs with icons do
+   not fit in 340px and Radzen's strip does not wrap), and the spend breakdown's
+   max-content columns. Each is bounded below; every wrapper is min-width: 0 so a
+   long email or config value wraps inside its card instead of widening the page. */
+.pt-admin {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.pt-admin ::deep .pt-admin-card-root {
+    max-width: 100%;
+    min-width: 0;
+    padding: clamp(var(--pt-space-3), 4vw, var(--pt-space-6));
+}
+
+.pt-admin ::deep .rz-tabview,
+.pt-admin ::deep .rz-tabview-panels,
+.pt-admin ::deep .rz-tabview-panel {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.pt-admin ::deep .pt-admin-chart {
+    max-width: 100%;
+}
+
+@media (max-width: 640px) {
+    .pt-admin ::deep .rz-tabview-nav {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .pt-admin ::deep .rz-tabview-nav li { flex: 1 0 auto; }
+
+    .pt-admin ::deep .rz-tabview-nav li a {
+        justify-content: center;
+        padding-inline: var(--pt-space-3);
+    }
+
+    .pt-admin ::deep .rz-tabview-nav .rz-tabview-icon { display: none; }
+
+    .pt-admin ::deep .rz-tabview-panels { padding-inline: 0; }
+}
+
 /* ── Grid on wide screens, cards on phones (#23) ───────────────────────────
    Both are in the DOM; CSS picks one. 640px is the app's phone breakpoint
    (pt-hide-phone, BottomNav). The cards are hidden by default so a desktop
@@ -84,6 +132,8 @@
 
 /* ── Monthly spend against the cap ─────────────────────────────────────────── */
 .pt-admin-spend {
+    min-width: 0;
+    overflow-wrap: anywhere;
     background: var(--pt-bg-surface);
     border: 1px solid var(--pt-border-subtle);
     border-radius: var(--pt-radius-md);
@@ -124,7 +174,7 @@
 .pt-admin-spend-lines {
     display: grid;
     gap: var(--pt-space-1) var(--pt-space-4);
-    grid-template-columns: max-content max-content;
+    grid-template-columns: minmax(0, max-content) minmax(0, max-content);
     margin: 0;
     font-size: var(--pt-text-sm);
 }

@@ -21,6 +21,7 @@
         </Actions>
     </PageHeader>
 
+    <SectionErrorBoundary Label="the connection status">
     @if (!_loading && _error is null)
     {
         <div class="pt-health-summary" data-status="@OverallStatus">
@@ -58,6 +59,7 @@
             }
         </ul>
     </LoadingErrorCard>
+    </SectionErrorBoundary>
 </div>
 
 @code {

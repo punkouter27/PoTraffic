@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager Nav
 
 @* Radzen service host components — must be present exactly once in the root layout *@
 <RadzenNotification />
@@ -15,7 +17,11 @@
 
     <main id="main-content" tabindex="-1">
         <article class="content">
-            @Body
+            @* Page-level containment: a page that throws keeps the shell and gets a
+               Retry. Its own sections carry their own boundaries inside this one. *@
+            <SectionErrorBoundary @ref="_pageBoundary" Label="this page">
+                @Body
+            </SectionErrorBoundary>
         </article>
     </main>
 
@@ -23,10 +29,10 @@
 </div>
 
 @* Global overlay — one instance, above the page so it survives navigation.
-   The command palette used to live here too. It was removed: a Ctrl+K launcher,
-   a hotkey layer and a fuzzy matcher are a lot of machinery for an app with
-   three destinations and a bottom nav, and everything it offered was reachable
-   in one tap already. *@
+   The command palette used to live here too. It was removed: a Ctrl+K launcher
+   and a fuzzy matcher are a lot of machinery for an app with three destinations
+   and a bottom nav. What survives is four single-key shortcuts (below), each a
+   faster path to a control that is already on screen. *@
 <UndoBar />
 
 @* Registers the service worker on first render, then offers the reload when a newer
@@ -34,6 +40,21 @@
    the notice is not lost by navigating. *@
 <PwaUpdateBar />
 
+@* "/", "n", "c" and "?" — see KeyboardShortcuts for how pages opt in. *@
+<KeyboardShortcuts />
+
 @* Build stamp, bottom-right — a standing layout requirement (AGENTS.md). Keep it here. *@
 <BuildVersion />
 
+
+@code {
+    private SectionErrorBoundary? _pageBoundary;
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    /// <summary>A failed page must not stay failed once the user has gone somewhere else.</summary>
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() => _pageBoundary?.Recover());
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

@@ -1,0 +1,51 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PoTraffic Glass — frosted surfaces for the panes that hold text.
+
+   app.css glasses only the chrome that floats (header, nav, toasts). This file
+   extends the treatment to route cards, drawers and panels, now that the
+   dashboard has an ambient wash behind them (js/pt-ambient.js) worth seeing
+   through. Text-bearing glass uses its own, more opaque tokens
+   (--pt-glass-card-* / --pt-glass-panel-bg in pt-tokens.css) so body copy keeps
+   its contrast; those tokens collapse to the solid surface under
+   prefers-reduced-transparency, prefers-contrast: more, and wherever
+   backdrop-filter is unsupported — so nothing here needs its own fallback.
+
+   Opt in with a class rather than by component: `.pt-glass` for a card-weight
+   pane, `.pt-glass-panel` for a drawer or popover. Markup elsewhere can change
+   freely; the class is the contract. Linked AFTER the scoped-CSS bundle in
+   index.html so the utility wins a specificity tie with a component's own
+   background.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pt-glass,
+.pt-glass-panel {
+    background: var(--pt-glass-card-bg);
+    border: 1px solid var(--pt-glass-card-border);
+    -webkit-backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    /* The top-edge highlight is what makes a translucent rectangle read as a pane
+       of glass catching light rather than as a faded card. */
+    box-shadow: var(--pt-elev-2), inset 0 1px 0 var(--pt-glass-highlight);
+}
+
+.pt-glass-panel {
+    background: var(--pt-glass-panel-bg);
+    box-shadow: var(--pt-elev-3), inset 0 1px 0 var(--pt-glass-highlight);
+}
+
+/* Drawers and sheets the shell already renders. Doubled class selectors so they
+   beat the owning component's scoped rule on specificity; only the surface is
+   touched — layout, radius and motion stay with the component. */
+.pt-dialog.pt-dialog-drawer,
+.pt-bottom-sheet.pt-bottom-sheet {
+    background: var(--pt-glass-panel-bg);
+    -webkit-backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+}
+
+/* The dashboard's ambient wash sits behind the page, under <body>. app.css paints
+   both <html> and <body> with the page colour; body's own paint would cover the
+   wash, so while one is mounted only <html> carries the colour. */
+html:has(.pt-ambient) body {
+    background: transparent;
+}

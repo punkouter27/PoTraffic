@@ -9,6 +9,20 @@
 //
 // Colours resolve from the design tokens on the element, so the chart follows the
 // light/dark theme instead of baking in one palette.
+//
+// DATA PATH: TrendChart.razor hands the numbers over through [JSImport] as typed
+// memory views (`renderTyped`), not as a JSON object through IJSRuntime. The series is
+// the bulk of every refresh, and serialising a few hundred doubles to text and parsing
+// them back on every fifteen-second tick is work neither side needed. The views are
+// copied into Float64Arrays on arrival (a span is only valid for the duration of the
+// call) and the chart works on typed arrays from there on. `render` still accepts the
+// plain-object shape for any caller that is not .NET.
+//
+// MOTION: the first draw of a series draws itself in; every later change MORPHS — each
+// sample glides from where the old line was to where the new one is, and the scale
+// glides with it — so a refresh or a zoom reads as the same line moving rather than a
+// new chart replacing the old one. Both run on the shared ticker (pt-fx.js) and both
+// are skipped below motion "full".
 
 import * as fx from "./pt-fx.js";
 
@@ -33,6 +47,45 @@ const BLOOM_CHEAP = [{ width: 5, blur: 8, alpha: 0.18 }];
 /** How long the draw-in takes. Long enough to read as motion, short enough to ignore. */
 const REVEAL_SECONDS = 0.85;
 
+/** How long a change of data or range takes to morph. Shorter than the reveal: it is a correction. */
+const MORPH_SECONDS = 0.55;
+
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+/**
+ * `values` stretched or squeezed to `n` samples by linear interpolation, so an old
+ * series of any length can morph into a new one sample-for-sample.
+ */
+function resample(values, n) {
+    const out = new Float64Array(n);
+    if (values.length === 0) return out;
+    if (values.length === 1 || n === 1) { out.fill(values[0]); return out; }
+    const scale = (values.length - 1) / (n - 1);
+    for (let i = 0; i < n; i++) {
+        const pos = i * scale;
+        const lo = Math.floor(pos);
+        const hi = Math.min(values.length - 1, lo + 1);
+        out[i] = values[lo] + (values[hi] - values[lo]) * (pos - lo);
+    }
+    return out;
+}
+
+/** What is on screen this frame: the target view, or the morph between the old one and it. */
+function displayed(st) {
+    const m = st.morph;
+    if (!m) return st.view;
+
+    const e = easeInOutCubic(Math.min(1, m.t));
+    const to = st.view.points;
+    const buf = m.buf;
+    for (let i = 0; i < buf.length; i++) buf[i] = m.from[i] + (to[i] - m.from[i]) * e;
+    return {
+        points: buf,
+        min: m.fromMin + (st.view.min - m.fromMin) * e,
+        max: m.fromMax + (st.view.max - m.fromMax) * e,
+    };
+}
+
 /**
  * The first `fraction` of a series, with the final point interpolated so the leading
  * end advances smoothly instead of snapping from sample to sample.
@@ -44,10 +97,10 @@ function revealed(values, fraction) {
     const whole = Math.floor(exact);
     const rest = exact - whole;
 
-    const out = values.slice(0, whole + 1);
-    if (whole + 1 < values.length) {
-        out.push(values[whole] + (values[whole + 1] - values[whole]) * rest);
-    }
+    const partial = whole + 1 < values.length;
+    const out = new Float64Array(whole + 1 + (partial ? 1 : 0));
+    out.set(values.subarray ? values.subarray(0, whole + 1) : values.slice(0, whole + 1));
+    if (partial) out[whole + 1] = values[whole] + (values[whole + 1] - values[whole]) * rest;
     return out;
 }
 
@@ -205,10 +258,13 @@ function draw(canvas) {
     if (!st) return;
 
     const { ctx, w, h, view, theme } = st;
-    const points = view.points;
+    // Mid-morph the line and the scale are both in between; labels and weather are
+    // the new view's from the first frame, since text cannot be interpolated.
+    const shownView = displayed(st);
+    const points = shownView.points;
     const count = points.length;
     const plot = plotOf(w, h);
-    const { min, max } = view;
+    const { min, max } = shownView;
 
     ctx.clearRect(0, 0, w, h);
     ctx.font = "11px Inter, system-ui, sans-serif";
@@ -368,11 +424,15 @@ function draw(canvas) {
 }
 
 function buildView(data) {
-    const points = data.points ?? [];
+    const points = data.points instanceof Float64Array ? data.points : Float64Array.from(data.points ?? []);
+
+    // A loop, not Math.min(...points): spreading a long series blows the call stack.
+    let lo = Infinity, hi = -Infinity;
+    for (const v of points) { if (v < lo) lo = v; if (v > hi) hi = v; }
 
     // An all-empty chart still needs a sane axis so gridlines and labels render.
-    const min = points.length ? Math.min(...points) * 0.95 : 0;
-    const max = points.length ? Math.max(...points) * 1.05 : 60;
+    const min = points.length ? lo * 0.95 : 0;
+    const max = points.length ? hi * 1.05 : 60;
 
     return {
         points,
@@ -484,11 +544,28 @@ export function render(canvas, data) {
     const previous = states.get(canvas) ?? {};
     const view = buildView(data);
 
-    // The reveal replays only when the SHAPE of the data changes. This page refreshes
-    // every fifteen seconds; re-animating an unchanged line on every tick would be a
-    // chart that never stops twitching.
-    const signature = `${view.points.length}:${view.points[0] ?? ""}:${view.points[view.points.length - 1] ?? ""}`;
+    // Animation replays only when the data actually changes. This page refreshes every
+    // fifteen seconds; re-animating an unchanged line on every tick would be a chart
+    // that never stops twitching.
+    const signature = signatureOf(view.points);
     const changed = signature !== previous.signature;
+
+    // First data on this canvas draws in; a change after that morphs from whatever is
+    // on screen — including a morph still in flight, so a quick second change bends
+    // the line onward instead of snapping it back first.
+    const animate = changed && fx.animates() && view.points.length >= 2;
+    const hadLine = previous.view && previous.view.points.length >= 2;
+    let morph = null;
+    if (animate && hadLine) {
+        const from = displayed(previous);
+        morph = {
+            from: resample(from.points, view.points.length),
+            fromMin: from.min,
+            fromMax: from.max,
+            buf: new Float64Array(view.points.length),
+            t: 0,
+        };
+    }
 
     states.set(canvas, {
         ...previous,
@@ -498,7 +575,10 @@ export function render(canvas, data) {
         view,
         signature,
         theme: readTheme(canvas),
-        reveal: changed && fx.animates() && view.points.length >= 2 ? 0 : 1,
+        // Unchanged data keeps whatever animation is in flight; changed data either
+        // draws in (first line) or morphs, carrying an unfinished draw-in along with it.
+        reveal: !changed ? (previous.reveal ?? 1) : animate ? (hadLine ? (previous.reveal ?? 1) : 0) : 1,
+        morph: !changed ? (previous.morph ?? null) : morph,
         // A hover index from a longer previous series would point at nothing.
         hoverIndex: previous.hoverIndex !== undefined
             && previous.hoverIndex !== null
@@ -508,29 +588,69 @@ export function render(canvas, data) {
         brush: previous.brush ?? null
     });
 
-    if (changed && fx.animates() && view.points.length >= 2) startReveal(canvas);
+    if (animate) startAnimation(canvas);
 
     draw(canvas);
     updateTooltip(canvas);
 }
 
+/** Cheap content hash over the whole series, so any changed sample counts as a change. */
+function signatureOf(points) {
+    let h = points.length | 0;
+    for (let i = 0; i < points.length; i++) h = (Math.imul(h, 31) + Math.round(points[i] * 100)) | 0;
+    return h;
+}
+
 /**
- * Runs the draw-in. Registered under a per-canvas key so two charts on one page
- * animate independently, and unregistered the moment it completes — a finished
- * chart costs nothing.
+ * Runs the draw-in and/or the morph. Registered under a per-canvas key so two charts
+ * on one page animate independently (re-registering replaces, so a new change simply
+ * takes over the slot), and unregistered the moment both finish — a settled chart
+ * costs nothing.
  */
-function startReveal(canvas) {
-    const key = `chart-reveal-${revealKey(canvas)}`;
+function startAnimation(canvas) {
+    const key = `chart-anim-${revealKey(canvas)}`;
 
     const stop = fx.register(key, (dt) => {
         const st = states.get(canvas);
         // The canvas can be detached mid-animation by a navigation.
         if (!st || !canvas.isConnected) { stop(); return; }
 
-        st.reveal = Math.min(1, (st.reveal ?? 0) + dt / REVEAL_SECONDS);
-        draw(canvas);
+        if ((st.reveal ?? 1) < 1) st.reveal = Math.min(1, st.reveal + dt / REVEAL_SECONDS);
+        if (st.morph) st.morph.t = Math.min(1, st.morph.t + dt / MORPH_SECONDS);
 
-        if (st.reveal >= 1) stop();
+        draw(canvas);
+        updateTooltip(canvas);
+
+        if (st.morph && st.morph.t >= 1) st.morph = null;
+        if (!st.morph && (st.reveal ?? 1) >= 1) stop();
+    });
+}
+
+/** Weather codes as sent by TrendChart.razor's typed path. 0 = nothing worth shading. */
+const WEATHER_CODES = [null, "Rain", "Snow", "Storm", "Fog"];
+
+/**
+ * The [JSImport] entry point (TrendChart.razor → ChartInterop). The canvas is found by
+ * its data-pt-chart id because an ElementReference does not cross this boundary.
+ *
+ * @param {string} id               the canvas's data-pt-chart value
+ * @param {{slice: () => Float64Array}} points         minutes per sample
+ * @param {{slice: () => Float64Array}} precipitation  mm per sample, NaN where unrecorded
+ * @param {{slice: () => Uint8Array}}   weather        WEATHER_CODES index per sample
+ * @param {string[]} labels         per-sample tooltip / axis labels
+ */
+export function renderTyped(id, points, precipitation, weather, labels) {
+    const canvas = document.querySelector(`canvas[data-pt-chart="${CSS.escape(id)}"]`);
+    if (!canvas) return;
+
+    // slice() copies out of WASM memory; the views die when this call returns.
+    const mm = precipitation.slice();
+    const codes = weather.slice();
+    render(canvas, {
+        points: points.slice(),
+        labels,
+        weather: Array.from(codes, (c) => WEATHER_CODES[c] ?? null),
+        precipitation: Array.from(mm, (v) => (Number.isNaN(v) ? null : v)),
     });
 }
 

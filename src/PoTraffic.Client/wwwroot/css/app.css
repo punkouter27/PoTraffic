@@ -1505,11 +1505,336 @@ code {
 }
 
 /* Field-level validation message. Global: the dashboard, New Route and the schedule
-   editor all use it, and a scoped copy only ever reached one of them. */
+   editor all use it, and a scoped copy only ever reached one of them. Its look is
+   shared with Radzen's validator messages — see "Validation messages" below. */
+
+/* ═══════════════════════════════════════════════════════════════
+   Micro-interactions — one set of tokens for hover, press, focus and panels.
+
+   Every control used to pick its own: the route card lifted 1px over 150ms, the
+   undo pill darkened, the section Retry tinted, Radzen's buttons did whatever the
+   theme did, and nothing pressed at all. These tokens are the one source; the
+   rules below apply them at zero specificity (:where), so any component that
+   states its own transition still wins.
+
+   Nothing here may change a box's size. Hover changes colour and shadow; press
+   is a transform (paint-only, no reflow); focus is an outline. That is also why
+   no hover rule anywhere in the app may touch font-weight, padding or border
+   width — those reflow the line they sit on.
+
+   pt-tokens.css owns the base durations and easings; these are aliases scoped to
+   interaction so a later retune is one edit. Reduced motion (the OS setting, or
+   Motion: Still/Off in Settings) zeroes the movement but keeps the colour change,
+   which is information, not decoration.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    --pt-ix-dur: var(--pt-dur-fast, 150ms);
+    --pt-ix-ease: var(--pt-ease, ease);
+    --pt-ix-press-scale: 0.97;
+    --pt-ix-lift: -1px;
+    --pt-ix-focus-ring: 0 0 0 3px color-mix(in oklab, var(--pt-color-brand-500) 35%, transparent);
+
+    /* Panels, drawers, dialogs and disclosures. */
+    --pt-panel-dur: var(--pt-dur-slow, 320ms);
+    --pt-panel-ease: var(--pt-ease-out, ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --pt-ix-press-scale: 1;
+        --pt-ix-lift: 0px;
+        --pt-panel-dur: 0ms;
+    }
+}
+
+:root[data-motion="off"],
+:root[data-motion="reduced"] {
+    --pt-ix-press-scale: 1;
+    --pt-ix-lift: 0px;
+    --pt-panel-dur: 0ms;
+}
+
+:where(.rz-button, .pt-tap, .pt-section-error-retry, .pt-trend-selection-clear, .app-nav-link,
+       .pt-bottom-nav-link, .pt-dropdown-item, .pt-bottom-sheet-item, .pt-page-title-edit) {
+    transition: background-color var(--pt-ix-dur) var(--pt-ix-ease),
+                border-color var(--pt-ix-dur) var(--pt-ix-ease),
+                color var(--pt-ix-dur) var(--pt-ix-ease),
+                box-shadow var(--pt-ix-dur) var(--pt-ix-ease),
+                transform var(--pt-ix-dur) var(--pt-ix-ease);
+}
+
+/* Press: a small inward scale on anything that is a button. */
+:where(.rz-button, .pt-tap, .pt-section-error-retry, .pt-trend-selection-clear,
+       .pt-page-title-edit):active:not(:disabled, .rz-state-disabled) {
+    transform: scale(var(--pt-ix-press-scale));
+}
+
+/* The route card presses as a whole — it is the control — and lifts by the shared
+   amount where there is a cursor (the lift itself is declared with the card). */
+.pt-route-card:active {
+    transform: scale(calc((1 + var(--pt-ix-press-scale)) / 2));
+}
+
+@media (hover: hover) {
+    .pt-route-card:hover {
+        transform: translateY(var(--pt-ix-lift));
+    }
+}
+
+/* Focus: the outline from :focus-visible above, plus a soft ring on Radzen inputs,
+   which draw their own border and look unfocused with an outline alone. */
+:where(.rz-textbox, .rz-dropdown, .rz-datepicker, .rz-numeric):focus-within {
+    box-shadow: var(--pt-ix-focus-ring);
+}
+
+/* Active nav items: a weight change reflowed the label on every navigation (the
+   bottom nav's sits under the thumb). Weight is fixed now; colour, fill and the
+   filled icon mark the active item. */
+.pt-bottom-nav-link.active,
+.app-nav-link.active {
+    font-weight: var(--pt-weight-medium);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Validation messages — one look, whoever renders them.
+
+   Radzen validators render .rz-messages-error; the app's own field messages are
+   .pt-field-error. They now share colour, size, weight and flow, so a missing
+   address on New commute and a missing start time read as the same message.
+   ═══════════════════════════════════════════════════════════════ */
+.rz-messages-error,
 .pt-field-error {
-    display: block;
-    margin: 0 0 var(--pt-space-3);
     color: var(--pt-color-danger-on-surface);
+    display: block;
     font-size: var(--pt-text-xs);
     font-weight: var(--pt-weight-medium);
+    padding: var(--pt-space-1) 0 0;
+    position: static;
+}
+
+.pt-field-error {
+    margin: 0 0 var(--pt-space-3);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Layout-shift reserves (#26).
+
+   Async content gets its final footprint before it arrives. The chart, map and
+   heatmap already size themselves (240px canvas, min(16rem, 32vh) map, 18rem
+   terrain); what moved the page was everything AROUND them: skeletons of a
+   different shape from the cards they stood in for, and sections that rendered
+   only once their data had landed.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* A dashboard skeleton card is a route card: name line, time line, the body
+   padding and the 5px ambient border. It sits in the real .pt-route-cards grid,
+   so the column count is the final one as well. */
+.pt-skeleton-route-card {
+    border-left: 5px solid var(--pt-border-subtle);
+    gap: var(--pt-space-2);
+    justify-content: center;
+    min-height: 4.375rem;
+    padding: var(--pt-space-3) var(--pt-space-5);
+}
+
+.pt-dash-skeleton .pt-skeleton-route-card {
+    height: 100%;
+}
+
+.pt-dash-skeleton > :nth-child(2) .pt-skeleton-card::after { animation-delay: 0.12s; }
+.pt-dash-skeleton > :nth-child(3) .pt-skeleton-card::after { animation-delay: 0.24s; }
+.pt-dash-skeleton > :nth-child(4) .pt-skeleton-card::after { animation-delay: 0.36s; }
+
+/* The map frame holds the canvas height while Leaflet initialises. */
+.pt-map-frame {
+    min-height: min(16rem, 32vh);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PtDialog — native <dialog>, centred or as a drawer (Components/PtDialog.razor).
+
+   Global rather than scoped because it leans on @starting-style and ::backdrop,
+   which the scoped-CSS rewriter does not reliably stamp. Motion is the panel
+   tokens above, so reduced motion makes both variants snap.
+   ═══════════════════════════════════════════════════════════════ */
+.pt-dialog {
+    background: var(--pt-bg-surface);
+    border: 1px solid var(--pt-glass-border, var(--pt-border-subtle));
+    box-shadow: var(--pt-elev-4);
+    color: var(--pt-fg-primary);
+    display: none;
+    flex-direction: column;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+    transition: opacity var(--pt-panel-dur) var(--pt-panel-ease),
+                transform var(--pt-panel-dur) var(--pt-panel-ease),
+                display var(--pt-panel-dur) allow-discrete,
+                overlay var(--pt-panel-dur) allow-discrete;
+}
+
+.pt-dialog[open] {
+    display: flex;
+    opacity: 1;
+}
+
+.pt-dialog::backdrop {
+    background: rgb(15 23 42 / 0);
+    transition: background-color var(--pt-panel-dur) var(--pt-panel-ease),
+                display var(--pt-panel-dur) allow-discrete,
+                overlay var(--pt-panel-dur) allow-discrete;
+}
+
+.pt-dialog[open]::backdrop {
+    background: rgb(15 23 42 / 0.45);
+}
+
+@starting-style {
+    .pt-dialog[open] { opacity: 0; }
+    .pt-dialog[open]::backdrop { background: rgb(15 23 42 / 0); }
+}
+
+/* The page behind a modal does not scroll under it. */
+html:has(.pt-dialog[open]) {
+    overflow: hidden;
+}
+
+.pt-dialog-center {
+    border-radius: var(--pt-radius-lg);
+    max-height: min(36rem, calc(100dvh - 2rem));
+    max-width: calc(100vw - 2rem);
+    transform: translateY(0.5rem) scale(0.98);
+    width: 28rem;
+}
+
+.pt-dialog-center[open] { transform: none; }
+
+@starting-style {
+    .pt-dialog-center[open] { transform: translateY(0.5rem) scale(0.98); }
+}
+
+/* Drawer: full height from the inline end; a bottom sheet on a phone. */
+.pt-dialog-drawer {
+    border-radius: var(--pt-radius-lg) 0 0 var(--pt-radius-lg);
+    height: 100dvh;
+    inset: 0 0 0 auto;
+    margin: 0;
+    max-height: none;
+    max-width: 100vw;
+    transform: translateX(100%);
+    width: min(24rem, 100vw);
+}
+
+.pt-dialog-drawer[open] { transform: none; }
+
+@starting-style {
+    .pt-dialog-drawer[open] { transform: translateX(100%); }
+}
+
+@media (max-width: 640px) {
+    .pt-dialog-drawer {
+        border-radius: var(--pt-radius-lg) var(--pt-radius-lg) 0 0;
+        height: auto;
+        inset: auto 0 0 0;
+        max-height: 85dvh;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        transform: translateY(100%);
+        width: 100vw;
+    }
+
+    @starting-style {
+        .pt-dialog-drawer[open] { transform: translateY(100%); }
+    }
+}
+
+.pt-dialog-head {
+    align-items: center;
+    border-bottom: 1px solid var(--pt-border-subtle);
+    display: flex;
+    flex-shrink: 0;
+    gap: var(--pt-space-3);
+    padding: var(--pt-space-3) var(--pt-space-4);
+}
+
+.pt-dialog-title {
+    flex: 1;
+    font-size: var(--pt-text-lg);
+    font-weight: var(--pt-weight-semibold);
+    min-width: 0;
+}
+
+.pt-dialog-close {
+    align-items: center;
+    background: none;
+    border: none;
+    border-radius: var(--pt-radius-sm);
+    color: var(--pt-fg-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 2rem;
+    min-width: 2rem;
+}
+
+.pt-dialog-close:hover {
+    background: var(--pt-bg-tint);
+    color: var(--pt-fg-primary);
+}
+
+.pt-dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: var(--pt-space-4);
+}
+
+.pt-dialog-foot {
+    border-top: 1px solid var(--pt-border-subtle);
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: var(--pt-space-2);
+    padding: var(--pt-space-3) var(--pt-space-4);
+}
+
+/* ── Keyboard shortcut help (Layout/KeyboardShortcuts.razor) ─────────────── */
+.pt-shortcut-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-space-2);
+    margin: 0;
+}
+
+.pt-shortcut-row {
+    align-items: center;
+    display: grid;
+    gap: var(--pt-space-3);
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+}
+
+.pt-shortcut-row dd {
+    color: var(--pt-fg-body);
+    font-size: var(--pt-text-sm);
+    margin: 0;
+}
+
+.pt-kbd {
+    background: var(--pt-bg-sunken);
+    border: 1px solid var(--pt-border-subtle);
+    border-bottom-width: 2px;
+    border-radius: var(--pt-radius-sm);
+    color: var(--pt-fg-primary);
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: var(--pt-text-sm);
+    min-width: 1.75rem;
+    padding: 0.1rem 0.45rem;
+    text-align: center;
+}
+
+.pt-shortcut-note {
+    color: var(--pt-fg-tertiary);
+    font-size: var(--pt-text-xs);
+    margin-top: var(--pt-space-4);
 }

@@ -84,13 +84,8 @@ public static class TableStorageExtensions
                 tableOptions));
         }
 
-        // Scheduler job-state table client (see TableStorageJobScheduler).
-        services.AddSingleton<TableClient>(sp =>
-        {
-            string tableName = configuration["AzureTable:TableName"] ?? "TrafficPolls";
-            return sp.GetRequiredService<TableServiceClient>().GetTableClient(tableName);
-        });
-
+        // Every table client is derived from the TableServiceClient on demand: AzureTableStore
+        // per entity table, TableStorageJobScheduler for "ScheduledJobs".
         return services;
     }
 

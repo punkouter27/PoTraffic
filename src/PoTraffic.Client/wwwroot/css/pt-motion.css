@@ -238,3 +238,91 @@ article.content { animation: pt-slide-up var(--pt-dur-base) var(--pt-ease); }
 [data-motion="off"] ::view-transition-new(root) {
     animation: none;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Dashboard ambient wash (js/pt-ambient.js)
+   ═══════════════════════════════════════════════════════════════
+
+   A body-level element behind the whole page. The gradient below IS the static
+   fallback: it is what shows without WebGL2, at reduced motion, and before the
+   shader's first frame. pt-ambient.js keeps --pt-ambient-tint in step with the
+   shader's colour, so the hand-over is invisible, and sets [data-live] once the
+   canvas is drawing. Motion "off" means no decoration at all. */
+.pt-ambient {
+    --pt-ambient-c: var(--pt-ambient-tint, var(--pt-traffic-normal));
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(120% 75% at 12% -10%, color-mix(in oklab, var(--pt-ambient-c) 20%, transparent), transparent 70%),
+        radial-gradient(90% 60% at 95% 0%, color-mix(in oklab, var(--pt-ambient-c) 13%, transparent), transparent 72%);
+    transition: background var(--pt-dur-slow) var(--pt-ease);
+}
+
+.pt-ambient[data-live] { background: none; }
+
+.pt-ambient-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+[data-motion="off"] .pt-ambient { display: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Particle burst (js/pt-burst.js) — a check that beat the baseline
+   ═══════════════════════════════════════════════════════════════ */
+.pt-burst-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: calc(var(--pt-z-toast) + 10);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Live map pins (js/pt-map.js)
+   ═══════════════════════════════════════════════════════════════
+
+   The start and end pins pulse in the colour of the route's verdict, at a rate
+   set by how far the latest sample runs over the usual: a slow breath when the
+   commute is on time, a quick beat when it is badly late. pt-map.js supplies
+   both as custom properties on the pin, so CSS owns the animation and the
+   motion settings below can still it. Stilled, the ring stays as a solid halo —
+   the colour keeps its meaning when the movement goes. */
+@keyframes pt-pin-pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pt-pin-colour, var(--pt-traffic-unknown)) 70%, transparent); }
+    70%  { box-shadow: 0 0 0 12px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.pt-map-pin-live::before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: var(--pt-radius-full);
+    pointer-events: none;
+    animation: pt-pin-pulse var(--pt-pin-period, 2.4s) var(--pt-ease) infinite;
+}
+
+.pt-map-pin-live .pt-map-pin-dot {
+    border-color: var(--pt-pin-colour, var(--pt-bg-surface));
+}
+
+[data-motion="reduced"] .pt-map-pin-live::before,
+[data-motion="off"] .pt-map-pin-live::before {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pt-pin-colour, var(--pt-traffic-unknown)) 35%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pt-map-pin-live::before {
+        animation: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--pt-pin-colour, var(--pt-traffic-unknown)) 35%, transparent);
+    }
+}

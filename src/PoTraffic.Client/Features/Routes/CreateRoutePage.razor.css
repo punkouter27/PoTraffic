@@ -6,15 +6,3 @@
     max-width: 40rem;
     margin-inline: auto;
 }
-
-.pt-create-arrive {
-    display: flex;
-    align-items: center;
-    gap: var(--pt-space-3);
-    margin-bottom: var(--pt-space-3);
-}
-
-.pt-create-optional {
-    font-weight: var(--pt-weight-regular);
-    color: var(--pt-fg-tertiary);
-}

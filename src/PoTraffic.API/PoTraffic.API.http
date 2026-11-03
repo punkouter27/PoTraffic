@@ -1,184 +1,80 @@
-@PoTraffic.API_HostAddress = http://localhost:5000
-@PoTraffic.API_HttpsAddress = https://localhost:5001
-
 ###############################################################################
-# PoTraffic API - HTTP File for Development & Testing
-# Use with VS Code REST Client extension or .NET http requirements
+# PoTraffic API — requests for the VS Code REST Client / Visual Studio .http runner.
+#
+# Sign-in is a cookie (BFF); there is no bearer token. Outside Production the X-Fake-User
+# header authenticates a request as that user (X-Fake-Roles: Administrator for admin
+# routes), which is what every request below uses. Run against the Development host.
 ###############################################################################
 
-### ============================================================================
-# HEALTH & DIAGNOSTICS
-# ============================================================================
+@host = https://localhost:5001
+@user = dev@potraffic.local
+@routeId = 00000000-0000-0000-0000-000000000000
+@windowId = 00000000-0000-0000-0000-000000000000
 
-# Health check endpoint - returns JSON status of all dependencies
-GET {{PoTraffic.API_HostAddress}}/health/json
-Accept: application/json
-
-###
-
-# Connection health (admin only) - detailed status of external connections
-GET {{PoTraffic.API_HostAddress}}/api/admin/connection-health
-Authorization: Bearer {{token}}
-Accept: application/json
+### ── Health (anonymous) ───────────────────────────────────────────────────────
+GET {{host}}/health/live
 
 ###
-
-# Diagnostics page - HTML page showing connection status and masked secrets
-GET {{PoTraffic.API_HostAddress}}/diag
-Accept: text/html
+GET {{host}}/health/ready
 
 ###
-
-### ============================================================================
-# AUTHENTICATION
-# ============================================================================
-
-# Get available OAuth providers
-GET {{PoTraffic.API_HostAddress}}/api/auth/providers
-Accept: application/json
+GET {{host}}/health/json
 
 ###
+GET {{host}}/health/connections
 
-# Register new user
-POST {{PoTraffic.API_HostAddress}}/api/auth/register
+### ── Auth ─────────────────────────────────────────────────────────────────────
+GET {{host}}/api/auth/providers
+
+###
+GET {{host}}/api/auth/me
+X-Fake-User: {{user}}
+
+###
+# Development and Testing only: a fresh GUEST account and session cookie.
+POST {{host}}/api/auth/guest-login
+
+### ── Config (anonymous) ───────────────────────────────────────────────────────
+GET {{host}}/api/system/features
+
+### ── Account ──────────────────────────────────────────────────────────────────
+GET {{host}}/api/account/profile
+X-Fake-User: {{user}}
+
+###
+PUT {{host}}/api/account/profile
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "email": "test@example.com",
-  "password": "Test123!",
-  "locale": "en-US"
-}
+{ "locale": "en-US" }
 
 ###
-
-# Login with email/password
-# @name loginResponse
-POST {{PoTraffic.API_HostAddress}}/api/auth/login
+PUT {{host}}/api/account/timezone
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "email": "admin@potraffic.dev",
-  "password": "Admin123!"
-}
+{ "timeZoneId": "America/New_York" }
 
 ###
-
-# Extract token from login response
-@token = {{loginResponse.response.body.accessToken}}
+GET {{host}}/api/account/quota
+X-Fake-User: {{user}}
 
 ###
+GET {{host}}/api/account/export
+X-Fake-User: {{user}}
 
-# Refresh token
-POST {{PoTraffic.API_HostAddress}}/api/auth/refresh-token
+###
+DELETE {{host}}/api/account/
+X-Fake-User: {{user}}
+
+### ── Routes ───────────────────────────────────────────────────────────────────
+GET {{host}}/api/routes?page=1&pageSize=20
+X-Fake-User: {{user}}
+
+###
+POST {{host}}/api/routes
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
-
-{
-  "refreshToken": "{{token}}"
-}
-
-###
-
-# Logout
-POST {{PoTraffic.API_HostAddress}}/api/auth/logout
-Authorization: Bearer {{token}}
-
-###
-
-# Confirm email
-GET {{PoTraffic.API_HostAddress}}/api/auth/confirm-email?token=verification_token
-Accept: application/json
-
-###
-
-### ============================================================================
-# ACCOUNT
-# ============================================================================
-
-# Get user profile
-GET {{PoTraffic.API_HostAddress}}/api/account/profile
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Update profile
-PUT {{PoTraffic.API_HostAddress}}/api/account/profile
-Authorization: Bearer {{token}}
-Content-Type: application/json
-Accept: application/json
-
-{
-  "locale": "en-US"
-}
-
-###
-
-# Change password
-POST {{PoTraffic.API_HostAddress}}/api/account/change-password
-Authorization: Bearer {{token}}
-Content-Type: application/json
-Accept: application/json
-
-{
-  "currentPassword": "Admin123!",
-  "newPassword": "NewPassword123!",
-  "confirmNewPassword": "NewPassword123!"
-}
-
-###
-
-# Get quota
-GET {{PoTraffic.API_HostAddress}}/api/account/quota
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Delete account
-DELETE {{PoTraffic.API_HostAddress}}/api/account/
-Authorization: Bearer {{token}}
-
-###
-
-### ============================================================================
-# ROUTES
-# ============================================================================
-
-# Get all routes
-GET {{PoTraffic.API_HostAddress}}/api/routes?page=1&pageSize=20
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Get available providers
-GET {{PoTraffic.API_HostAddress}}/api/routes/providers
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Verify single address
-POST {{PoTraffic.API_HostAddress}}/api/routes/verify-address
-Authorization: Bearer {{token}}
-Content-Type: application/json
-Accept: application/json
-
-{
-  "address": "123 Main St, New York, NY",
-  "provider": 0
-}
-
-###
-
-# Create route
-POST {{PoTraffic.API_HostAddress}}/api/routes
-Authorization: Bearer {{token}}
-Content-Type: application/json
-Accept: application/json
 
 {
   "originAddress": "123 Main St, New York, NY 10001",
@@ -190,234 +86,165 @@ Accept: application/json
 }
 
 ###
-
-# Get route by ID
-GET {{PoTraffic.API_HostAddress}}/api/routes/{routeId}
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Update route
-PUT {{PoTraffic.API_HostAddress}}/api/routes/{routeId}
-Authorization: Bearer {{token}}
+POST {{host}}/api/routes/sample
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "originAddress": "789 New Address, New York, NY",
-  "destinationAddress": "456 Broadway, New York, NY 10002",
-  "provider": 1
-}
+{ "utcOffsetMinutes": 0 }
 
 ###
-
-# Delete route
-DELETE {{PoTraffic.API_HostAddress}}/api/routes/{routeId}
-Authorization: Bearer {{token}}
+GET {{host}}/api/routes/{{routeId}}
+X-Fake-User: {{user}}
 
 ###
-
-# Check now (instant poll)
-POST {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/check-now
-Authorization: Bearer {{token}}
-Accept: application/json
+DELETE {{host}}/api/routes/{{routeId}}
+X-Fake-User: {{user}}
 
 ###
-
-### ============================================================================
-# MONITORING WINDOWS
-# ============================================================================
-
-# Get all windows for a route
-GET {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/windows
-Authorization: Bearer {{token}}
-Accept: application/json
+POST {{host}}/api/routes/{{routeId}}/check-now
+X-Fake-User: {{user}}
 
 ###
+POST {{host}}/api/routes/{{routeId}}/return-trip
+X-Fake-User: {{user}}
 
-# Create monitoring window
-POST {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/windows
-Authorization: Bearer {{token}}
+###
+GET {{host}}/api/routes/{{routeId}}/path
+X-Fake-User: {{user}}
+
+###
+PUT {{host}}/api/routes/{{routeId}}/name
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "startTime": "07:00",
-  "endTime": "09:00",
-  "daysOfWeekMask": 31
-}
+{ "name": "School run" }
 
 ###
-
-# Delete monitoring window
-DELETE {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/windows/{windowId}
-Authorization: Bearer {{token}}
-
-###
-
-# Start monitoring window
-POST {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/windows/{windowId}/start
-Authorization: Bearer {{token}}
+PUT {{host}}/api/routes/{{routeId}}/arrive-by
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{}
+{ "arriveBy": "08:45" }
 
 ###
-
-# Stop monitoring window
-POST {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/windows/{windowId}/stop
-Authorization: Bearer {{token}}
+PUT {{host}}/api/routes/{{routeId}}/addresses
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "sessionId": "00000000-0000-0000-0000-000000000000"
-}
+{ "originAddress": "123 Main St, New York, NY 10001", "destinationAddress": "1 Wall St, New York, NY 10005" }
 
 ###
-
-### ============================================================================
-# HISTORY
-# ============================================================================
-
-# Get poll history
-GET {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/poll-history?page=1&pageSize=50
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Get baseline for day of week
-GET {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/baseline?dayOfWeek=Monday
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Get sessions
-GET {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/sessions
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Get optimal departure
-GET {{PoTraffic.API_HostAddress}}/api/routes/{routeId}/optimal-departure?dayOfWeek=Monday
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-### ============================================================================
-# ADMIN (requires AdminOnly role)
-# ============================================================================
-
-# Get all users
-GET {{PoTraffic.API_HostAddress}}/api/admin/users
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Get system configuration
-GET {{PoTraffic.API_HostAddress}}/api/admin/configuration
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Update system configuration
-PUT {{PoTraffic.API_HostAddress}}/api/admin/configuration/{key}
-Authorization: Bearer {{token}}
+PUT {{host}}/api/routes/{{routeId}}/paused
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "value": "new_value"
-}
+{ "paused": true }
 
-###
-
-# Get global volatility
-GET {{PoTraffic.API_HostAddress}}/api/admin/global-volatility
-Authorization: Bearer {{token}}
-Accept: application/json
+### ── Monitoring windows ───────────────────────────────────────────────────────
+GET {{host}}/api/routes/{{routeId}}/windows
+X-Fake-User: {{user}}
 
 ###
-
-# Get recent volatility
-GET {{PoTraffic.API_HostAddress}}/api/admin/global-volatility/recent?hours=24
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Get poll cost summary
-GET {{PoTraffic.API_HostAddress}}/api/admin/poll-cost-summary
-Authorization: Bearer {{token}}
-Accept: application/json
-
-###
-
-# Start triple test
-POST {{PoTraffic.API_HostAddress}}/api/admin/triple-test
-Authorization: Bearer {{token}}
+POST {{host}}/api/routes/{{routeId}}/windows
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "originAddress": "123 Main St, New York, NY",
-  "destinationAddress": "456 Broadway, New York, NY",
-  "provider": 0,
-  "startAt": null
-}
+{ "startTime": "07:00", "endTime": "09:00", "daysOfWeekMask": 31 }
 
 ###
-
-# Get triple test session
-GET {{PoTraffic.API_HostAddress}}/api/admin/triple-test/{sessionId}
-Authorization: Bearer {{token}}
-Accept: application/json
+DELETE {{host}}/api/routes/{{routeId}}/windows/{{windowId}}
+X-Fake-User: {{user}}
 
 ###
+POST {{host}}/api/routes/{{routeId}}/windows/{{windowId}}/start
+X-Fake-User: {{user}}
 
-# Seed database
-POST {{PoTraffic.API_HostAddress}}/api/admin/seed-data
-Authorization: Bearer {{token}}
+###
+POST {{host}}/api/routes/{{routeId}}/windows/{{windowId}}/stop
+X-Fake-User: {{user}}
 Content-Type: application/json
-Accept: application/json
 
-{
-  "routeCount": 3,
-  "daysOfHistory": 14
-}
+{ "sessionId": "00000000-0000-0000-0000-000000000000" }
 
-###
-
-# Clear database
-POST {{PoTraffic.API_HostAddress}}/api/admin/clear-data
-Authorization: Bearer {{token}}
-Accept: application/json
-
-{}
+### ── History ──────────────────────────────────────────────────────────────────
+GET {{host}}/api/routes/{{routeId}}/poll-history?page=1&pageSize=50
+X-Fake-User: {{user}}
 
 ###
-
-### ============================================================================
-# SYSTEM / CONFIG
-# ============================================================================
-
-# Get system endpoints info
-GET {{PoTraffic.API_HostAddress}}/api/system/info
-Accept: application/json
+GET {{host}}/api/routes/{{routeId}}/sessions
+X-Fake-User: {{user}}
 
 ###
-
-# Get feature flags
-GET {{PoTraffic.API_HostAddress}}/api/system/features
-Accept: application/json
+GET {{host}}/api/routes/{{routeId}}/optimal-departure?dayOfWeek=Monday
+X-Fake-User: {{user}}
 
 ###
+GET {{host}}/api/routes/{{routeId}}/departure-plan?dayOfWeek=Monday
+X-Fake-User: {{user}}
 
+###
+GET {{host}}/api/routes/{{routeId}}/heatmap
+X-Fake-User: {{user}}
+
+###
+GET {{host}}/api/routes/{{routeId}}/weather-impact
+X-Fake-User: {{user}}
+
+### ── Places ───────────────────────────────────────────────────────────────────
+GET {{host}}/api/places/autocomplete?q=1600%20Amph
+X-Fake-User: {{user}}
+
+### ── Alerts and push ──────────────────────────────────────────────────────────
+GET {{host}}/api/alerts?unreadOnly=true
+X-Fake-User: {{user}}
+
+###
+POST {{host}}/api/alerts/read-all
+X-Fake-User: {{user}}
+
+###
+GET {{host}}/api/push/key
+X-Fake-User: {{user}}
+
+### ── Admin (Administrator role) ───────────────────────────────────────────────
+GET {{host}}/api/admin/users
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator
+
+###
+PUT {{host}}/api/admin/users/00000000-0000-0000-0000-000000000000/daily-quota
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator
+Content-Type: application/json
+
+{ "dailySessionQuota": 20 }
+
+###
+GET {{host}}/api/admin/configuration
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator
+
+###
+# Editable keys: cost.*, cost.monthly.cap.usd, quota.daily.default,
+# feature.mockproviders.enabled, feature.weather.enabled. Takes effect without a restart.
+PUT {{host}}/api/admin/configuration/feature.weather.enabled
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator
+Content-Type: application/json
+
+{ "value": "true" }
+
+###
+GET {{host}}/api/admin/spending
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator
+
+###
+GET {{host}}/api/admin/global-volatility/recent?hours=24
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator
+
+### ── Diagnostics (Administrator role) ─────────────────────────────────────────
+GET {{host}}/diag/keyvault?secret=GoogleMaps:ApiKey
+X-Fake-User: {{user}}
+X-Fake-Roles: Administrator

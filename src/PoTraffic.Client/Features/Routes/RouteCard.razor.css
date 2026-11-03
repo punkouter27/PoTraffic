@@ -7,3 +7,30 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ── Glass ───────────────────────────────────────────────────────────────
+   The card is frosted over the dashboard's ambient wash (js/pt-ambient.js).
+   Tokens only (pt-tokens.css): they carry the opacity that keeps the card's
+   text at full contrast, and they collapse to the solid surface under
+   prefers-reduced-transparency, prefers-contrast: more, and wherever
+   backdrop-filter is unsupported — so the fallback needs no rule here.
+   Scoped, so it outranks app.css's solid .pt-route-card without !important;
+   the ambient border-left colour is left alone. */
+.pt-route-card {
+    background: var(--pt-glass-card-bg);
+    /* Not the border-color shorthand: it would repaint the ambient left edge too. */
+    border-top-color: var(--pt-glass-card-border);
+    border-right-color: var(--pt-glass-card-border);
+    border-bottom-color: var(--pt-glass-card-border);
+    -webkit-backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    box-shadow: var(--pt-elev-2), inset 0 1px 0 var(--pt-glass-highlight);
+}
+
+/* Same specificity as app.css's hover lift and loaded after it, so the lift's
+   stronger shadow is restated here with the glass highlight kept. */
+@media (hover: hover) {
+    .pt-route-card:hover {
+        box-shadow: var(--pt-elev-3), inset 0 1px 0 var(--pt-glass-highlight);
+    }
+}

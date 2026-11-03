@@ -115,10 +115,19 @@
         }
     }
 
+    /// <summary>
+    /// async void because the event is an Action; everything is caught so a sign-out that
+    /// lands while this component is being torn down cannot crash the renderer.
+    /// </summary>
     private async void HandleAuthStateChanged(Task<AuthenticationState> stateTask)
     {
-        UpdateUserState(await stateTask);
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            UpdateUserState(await stateTask);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { /* layout torn down mid-change */ }
+        catch (InvalidOperationException) { /* renderer gone */ }
     }
 
     private void UpdateUserState(AuthenticationState authState)

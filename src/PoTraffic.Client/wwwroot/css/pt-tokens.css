@@ -233,6 +233,17 @@
     --pt-glass-blur: 16px;
     --pt-glass-saturate: 180%;
 
+    /* Glass for surfaces that hold TEXT — route cards, drawers, panels (pt-glass.css).
+       More opaque than the floating-chrome tokens above: body copy over a pane must
+       keep its contrast whatever drifts behind it, so these stay at 0.7+ and the blur
+       does the rest. Every one collapses to the solid surface below when the reader
+       asked for less transparency, more contrast, or the engine has no backdrop-filter. */
+    --pt-glass-card-bg:     light-dark(rgb(255 255 255 / 0.74), rgb(19 28 46 / 0.70));
+    --pt-glass-panel-bg:    light-dark(rgb(255 255 255 / 0.82), rgb(19 28 46 / 0.84));
+    --pt-glass-card-border: light-dark(rgb(255 255 255 / 0.60), rgb(148 163 184 / 0.20));
+    --pt-glass-highlight:   light-dark(rgb(255 255 255 / 0.70), rgb(255 255 255 / 0.06));
+    --pt-glass-card-blur: 14px;
+
     /* ── Radzen theme mapping (so Radzen components inherit brand) ────── */
     --rz-primary:            light-dark(var(--pt-color-brand-600), var(--pt-color-brand-400));
     --rz-primary-light:      var(--pt-color-brand-300);
@@ -329,6 +340,12 @@
         --pt-glass-border:    var(--pt-border-strong);
         --pt-glass-blur: 0px;
         --pt-glass-saturate: 100%;
+
+        --pt-glass-card-bg:     var(--pt-bg-surface);
+        --pt-glass-panel-bg:    var(--pt-bg-surface);
+        --pt-glass-card-border: var(--pt-border-strong);
+        --pt-glass-highlight:   transparent;
+        --pt-glass-card-blur: 0px;
     }
 }
 
@@ -341,5 +358,23 @@
         --pt-glass-bg-strong: var(--pt-bg-surface);
         --pt-glass-blur: 0px;
         --pt-glass-saturate: 100%;
+
+        --pt-glass-card-bg:     var(--pt-bg-surface);
+        --pt-glass-panel-bg:    var(--pt-bg-surface);
+        --pt-glass-card-border: var(--pt-border-subtle);
+        --pt-glass-highlight:   transparent;
+        --pt-glass-card-blur: 0px;
+    }
+}
+
+/* No backdrop-filter at all: a translucent pane with nothing blurring what is behind
+   it is just low contrast. The text-bearing glass goes solid; the floating chrome
+   keeps its own fallback in app.css. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root {
+        --pt-glass-card-bg:     var(--pt-bg-surface);
+        --pt-glass-panel-bg:    var(--pt-bg-surface);
+        --pt-glass-card-border: var(--pt-border-subtle);
+        --pt-glass-card-blur: 0px;
     }
 }

@@ -5,6 +5,7 @@ using PoTraffic.API.Features.Admin;
 using PoTraffic.API.Features.Alerts;
 using PoTraffic.API.Features.Auth;
 using PoTraffic.API.Features.Config;
+using PoTraffic.API.Features.Diagnostics;
 using PoTraffic.API.Features.History;
 using PoTraffic.API.Features.Maintenance;
 using PoTraffic.API.Features.MonitoringWindows;
@@ -165,7 +166,7 @@ try
     app.MapHistoryEndpoints();
     app.MapAlertsEndpoints();
     app.MapPlacesEndpoints();
-    app.MapSystemEndpoints();
+    app.MapConfigEndpoints();
     app.MapTestingEndpoints(app.Environment);
 
     app.MapPoTrafficHealthChecks();   // /health + /health/ready

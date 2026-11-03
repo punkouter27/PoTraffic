@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Resilience;
 using PoTraffic.API.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Routes;
 
@@ -11,7 +10,7 @@ namespace PoTraffic.API.Features.Places;
 /// BFF proxy to the Google Places Autocomplete API (#9). The Google key stays server-side
 /// (reuses <c>GoogleMaps:ApiKey</c>); the client only ever sees address suggestions. Failures
 /// and a missing key degrade gracefully to an empty list so free-text entry still works.
-/// With mock providers on (Testing, or <c>Features:UseMockProviders</c>) it answers with canned
+/// With mock providers on (<see cref="FeatureFlags.UseMockProviders"/>) it answers with canned
 /// suggestions instead, so the dropdown can be exercised locally without a key or a bill.
 /// </summary>
 public sealed class GooglePlacesService(
@@ -38,7 +37,7 @@ public sealed class GooglePlacesService(
 
         string url = $"{AutocompleteUrl}?input={Uri.EscapeDataString(input.Trim())}&types=address&key={key}";
         // Counted toward the monthly spend (persisted with the next save, not per keystroke).
-        Config.SpendingCap.Record(db, Config.ProviderCallKind.Autocomplete, DateTimeOffset.UtcNow);
+        SpendingCap.Record(db, ProviderCallKind.Autocomplete, DateTimeOffset.UtcNow);
         try
         {
             PlacesResponse? resp = await http.GetFromJsonAsync<PlacesResponse>(url, ct);
@@ -73,26 +72,4 @@ public sealed class GooglePlacesService(
     private sealed record Prediction(
         [property: JsonPropertyName("description")] string Description,
         [property: JsonPropertyName("place_id")] string PlaceId);
-}
-
-public static class PlacesServiceExtensions
-{
-    internal static IServiceCollection AddPlacesServices(this IServiceCollection services)
-    {
-        services.AddHttpClient<GooglePlacesService>()
-            .AddResilienceHandler(ResiliencePipelineExtensions.TrafficPipeline);
-        return services;
-    }
-
-    public static IEndpointRouteBuilder MapPlacesEndpoints(this IEndpointRouteBuilder app)
-    {
-        // GET /api/places/autocomplete?q=<partial address> — BFF-proxied suggestions (#9)
-        app.MapGet("/api/places/autocomplete", async (
-                string? q, GooglePlacesService places, CancellationToken ct) =>
-                Results.Ok(await places.AutocompleteAsync(q, ct)))
-            .RequireAuthorization("ProductionMicrosoftAuth")
-            .RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.Autocomplete)
-            .WithTags("Places");
-        return app;
-    }
 }

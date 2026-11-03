@@ -1,11 +1,16 @@
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 @implements IAsyncDisposable
 
 @* Canvas trend chart: observed travel times, dashed baseline, shaded ±1σ band.
 
    #8 — hovering snaps a crosshair to the nearest sample and shows how far it sat
    from the baseline; dragging across the plot zooms into that span; clicking a
-   sample raises OnPointSelected so the page can scroll the raw table to it. *@
+   sample raises OnPointSelected so the page can scroll the raw table to it.
+
+   Data reaches the canvas as typed memory views through [JSImport] (FxInterop), not as
+   JSON through IJSRuntime; the pointer wiring still uses IJSRuntime because it needs a
+   DotNetObjectReference. Both land in the same pt-chart.js module instance. *@
 
 @if (Points.Count == 0)
 {
@@ -18,7 +23,7 @@
 else
 {
     <div class="pt-trend-host">
-        <canvas @ref="_canvas" class="pt-trend-canvas"
+        <canvas @ref="_canvas" class="pt-trend-canvas" data-pt-chart="@_chartId"
                 aria-label="Travel time trend chart. Drag to zoom, click a point for details."></canvas>
     </div>
 
@@ -56,6 +61,9 @@ else
     [Parameter] public EventCallback<int> OnPointSelected { get; set; }
 
     private ElementReference _canvas;
+
+    /// <summary>How pt-chart.js finds this canvas on the typed path, which cannot carry an ElementReference.</summary>
+    private readonly string _chartId = Guid.NewGuid().ToString("N");
     private IJSObjectReference? _module;
     private IJSObjectReference? _detach;
     private DotNetObjectReference<TrendChart>? _selfRef;
@@ -143,19 +151,58 @@ else
         if (_module is null)
             return;
 
+        IReadOnlyList<double> points = Slice(Points);
+        IReadOnlyList<string> labels = Slice(Labels);
+        IReadOnlyList<string?> weather = Slice(Weather);
+        IReadOnlyList<double?> precipitation = Slice(Precipitation);
+
+        if (OperatingSystem.IsBrowser() && await RenderTypedAsync(points, labels, weather, precipitation))
+            return;
+
         try
         {
-            await _module.InvokeVoidAsync("render", _canvas, new
-            {
-                points = Slice(Points),
-                labels = Slice(Labels),
-                weather = Slice(Weather),
-                precipitation = Slice(Precipitation)
-            });
+            await _module.InvokeVoidAsync("render", _canvas, new { points, labels, weather, precipitation });
         }
         catch
         {
             // A failed draw must not take the page down; the next tick redraws.
+        }
+    }
+
+    /// <summary>
+    /// The typed path: the series as a <c>Span&lt;double&gt;</c> memory view, weather as a
+    /// byte code per sample, a missing precipitation reading as NaN. False when the
+    /// [JSImport] module could not be used, so the caller falls back to the JSON path.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("browser")]
+    private async Task<bool> RenderTypedAsync(
+        IReadOnlyList<double> points,
+        IReadOnlyList<string> labels,
+        IReadOnlyList<string?> weather,
+        IReadOnlyList<double?> precipitation)
+    {
+        int n = points.Count;
+        double[] values = new double[n];
+        double[] mm = new double[n];
+        byte[] codes = new byte[n];
+        string[] text = new string[n];
+        for (int i = 0; i < n; i++)
+        {
+            values[i] = points[i];
+            mm[i] = i < precipitation.Count && precipitation[i] is { } p ? p : double.NaN;
+            codes[i] = i < weather.Count ? FxInterop.WeatherCode(weather[i]) : (byte)0;
+            text[i] = i < labels.Count ? labels[i] : string.Empty;
+        }
+
+        try
+        {
+            await FxInterop.EnsureChartAsync(Nav.BaseUri);
+            FxInterop.RenderChart(_chartId, values, mm, codes, text);
+            return true;
+        }
+        catch (System.Runtime.InteropServices.JavaScript.JSException)
+        {
+            return false;
         }
     }
 

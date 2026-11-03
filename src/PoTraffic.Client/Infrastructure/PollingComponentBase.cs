@@ -63,17 +63,11 @@ public abstract class PollingComponentBase : ComponentBase, IAsyncDisposable
     /// </summary>
     protected bool IsFirstLoad { get; private set; } = true;
 
-    /// <summary>True while a refresh is in flight. Drives subtle "syncing" affordances.</summary>
-    protected bool IsRefreshing { get; private set; }
-
     /// <summary>True when the browser reports no connectivity.</summary>
     protected bool IsOffline => !Activity.IsOnline;
 
     /// <summary>True when the most recent refresh attempt failed, so the view is stale.</summary>
     protected bool IsStale => _consecutiveFailures > 0;
-
-    /// <summary>When data last landed successfully; null until the first success.</summary>
-    protected DateTimeOffset? LastSuccessUtc { get; private set; }
 
     /// <summary>
     /// Identifies what this page is currently showing. Return the route parameter(s) the
@@ -167,11 +161,9 @@ public abstract class PollingComponentBase : ComponentBase, IAsyncDisposable
         if (!await _refreshGate.WaitAsync(0))
             return;
 
-        IsRefreshing = true;
         try
         {
             await LoadDataAsync();
-            LastSuccessUtc = DateTimeOffset.UtcNow;
             _consecutiveFailures = 0;
         }
         catch
@@ -181,7 +173,6 @@ public abstract class PollingComponentBase : ComponentBase, IAsyncDisposable
         finally
         {
             IsFirstLoad = false;
-            IsRefreshing = false;
             _refreshGate.Release();
         }
     }

@@ -10,12 +10,19 @@
 // from this route's samples against its own baseline. It is deliberately one colour for
 // the whole line: PoTraffic measures the trip end to end, so pretending to know which
 // individual road is jammed would be a picture the data cannot support.
+//
+// The start and end pins pulse in that same colour, faster the further the latest
+// sample runs over the usual time (pt-motion.css owns the animation, so the motion
+// settings still it). One glance at a pin is the verdict and its urgency.
 
 import * as fx from "./pt-fx.js";
 import { createFlow } from "./pt-flow.js";
 
 /** @type {WeakMap<HTMLElement, object>} */
 const maps = new WeakMap();
+
+/** Per-map id for its slot on the shared ticker. */
+let mapCounter = 0;
 
 /** Leaflet layer class for the animated flow. Built once, after Leaflet has loaded. */
 let FlowLayer = null;
@@ -87,6 +94,18 @@ const LEVEL_TOKENS = {
     unknown: ["var(--pt-traffic-unknown)", "#64748b"],
 };
 
+/** Pulse period, in seconds, at and beyond the ends of the delay range. */
+const PULSE_CALM_S = 3.2;   // on time or better: a slow breath
+const PULSE_URGENT_S = 0.8; // 60% over the usual or worse: a quick beat
+const PULSE_UNKNOWN_S = 2.6;
+
+/** latest ÷ typical → pulse period. Linear between on-time and 1.6×; null ratio is neutral. */
+function pulsePeriod(ratio) {
+    if (!Number.isFinite(ratio)) return PULSE_UNKNOWN_S;
+    const k = Math.max(0, Math.min(1, (ratio - 1) / 0.6));
+    return PULSE_CALM_S + (PULSE_URGENT_S - PULSE_CALM_S) * k;
+}
+
 /**
  * Draws (or redraws) the route in `container`.
  *
@@ -94,7 +113,8 @@ const LEVEL_TOKENS = {
  * @param {{encodedPolyline: string|null, originLat: number, originLng: number,
  *          destinationLat: number, destinationLng: number, trafficLevel: string,
  *          isApproximate: boolean, originLabel: string, destinationLabel: string,
- *          incident: {lat: number, lng: number, description: string}|null}} data
+ *          incident: {lat: number, lng: number, description: string}|null,
+ *          delayRatio: number|null}} data   latest ÷ typical, null without enough history
  */
 export async function render(container, data) {
     if (!container) return;
@@ -125,7 +145,7 @@ export async function render(container, data) {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
-        state = { map, line: null, markers: [], flow: null };
+        state = { map, line: null, markers: [], flow: null, id: ++mapCounter, cancelMeasure: null };
         maps.set(container, state);
     }
 
@@ -159,7 +179,7 @@ export async function render(container, data) {
         lineCap: "round",
     }).addTo(map);
 
-    const pin = (latlng, label, cls) => {
+    const pin = (latlng, label, cls, live = false) => {
         const marker = L.marker(latlng, {
             icon: L.divIcon({
                 className: "pt-map-pin " + cls,
@@ -171,11 +191,16 @@ export async function render(container, data) {
             alt: label,
         }).addTo(map);
         marker.bindTooltip(label, { direction: "top", offset: [0, -10] });
+        if (live) {
+            const el = marker.getElement();
+            el?.style.setProperty("--pt-pin-colour", colour);
+            el?.style.setProperty("--pt-pin-period", `${pulsePeriod(data.delayRatio).toFixed(2)}s`);
+        }
         state.markers.push(marker);
     };
 
-    pin(origin, data.originLabel || "Start", "pt-map-pin-origin");
-    pin(destination, data.destinationLabel || "End", "pt-map-pin-dest");
+    pin(origin, data.originLabel || "Start", "pt-map-pin-origin pt-map-pin-live", true);
+    pin(destination, data.destinationLabel || "End", "pt-map-pin-dest pt-map-pin-live", true);
 
     // Where the delay is. The rings are CSS, so reduced motion stills them for free.
     const incident = data.incident ? [data.incident.lat, data.incident.lng] : null;
@@ -207,8 +232,10 @@ export async function render(container, data) {
     // Leaflet measures the container on creation. Inside a card that was still laying
     // out (or a <details> that just opened) that measurement is stale and the tiles
     // render into a strip. Re-measuring after layout settles is the documented fix.
-    requestAnimationFrame(() => {
-        if (!container.isConnected) return;
+    // On the shared frame (pt-fx), so it coalesces with the flow's own first draw.
+    state.cancelMeasure = fx.nextFrame(`map-measure-${state.id}`, () => {
+        state.cancelMeasure = null;
+        if (!container.isConnected || !state.line) return;
         map.invalidateSize();
         map.fitBounds(state.line.getBounds(), { padding: [28, 28] });
     });
@@ -220,6 +247,7 @@ export function destroy(container) {
     if (!state) return;
     // The flow layer holds a GL context and a ticker registration; removing the map
     // fires its onRemove, which releases both.
+    state.cancelMeasure?.();
     try { state.map.remove(); } catch { /* already gone */ }
     maps.delete(container);
 }

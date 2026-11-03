@@ -1,4 +1,3 @@
-using System.Globalization;
 using FluentValidation;
 using PoTraffic.API.Features.Config;
 using PoTraffic.API.Infrastructure.Storage;
@@ -6,40 +5,25 @@ using PoTraffic.API.Infrastructure.Storage;
 namespace PoTraffic.API.Features.Admin;
 
 /// <summary>
-/// Updates one administrator-editable configuration value. Only the keys in
-/// <see cref="UpdateSystemConfigurationValidator.EditableKeys"/> can be changed here; every
-/// other row (including anything sensitive) stays read-only.
+/// Updates one administrator-editable configuration value. Only the keys catalogued in
+/// <see cref="SystemSettings.All"/> (cost rates, limits, feature flags) can be changed here;
+/// every other row (including anything sensitive) stays read-only. Readers look the value up on
+/// every use, so a change takes effect on the next poll or request — no restart.
 /// </summary>
 public sealed record UpdateSystemConfigurationCommand(string Key, string Value);
 
 public sealed class UpdateSystemConfigurationValidator : AbstractValidator<UpdateSystemConfigurationCommand>
 {
-    /// <summary>Editable keys and the check each value must pass.</summary>
-    public static readonly IReadOnlyDictionary<string, Func<string, bool>> EditableKeys =
-        new Dictionary<string, Func<string, bool>>
-        {
-            ["quota.daily.default"] = v => int.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n)
-                                           && n is >= 1 and <= SetUserDailyQuotaValidator.MaxQuota,
-            [SpendingCap.MonthlyCapKey] = v => IsNonNegativeDecimal(v),
-            [PollCostRates.GoogleMapsKey] = v => IsNonNegativeDecimal(v),
-            [SpendingCap.Rates[ProviderCallKind.Geocode].Key] = v => IsNonNegativeDecimal(v),
-            [SpendingCap.Rates[ProviderCallKind.Directions].Key] = v => IsNonNegativeDecimal(v),
-            [SpendingCap.Rates[ProviderCallKind.Autocomplete].Key] = v => IsNonNegativeDecimal(v),
-        };
-
     public UpdateSystemConfigurationValidator()
     {
         RuleFor(c => c.Key)
-            .Must(EditableKeys.ContainsKey)
+            .Must(SystemSettings.ByKey.ContainsKey)
             .WithMessage("This setting cannot be changed here.");
         RuleFor(c => c.Value)
-            .Must((c, v) => EditableKeys.TryGetValue(c.Key, out Func<string, bool>? check) && check(v.Trim()))
-            .When(c => EditableKeys.ContainsKey(c.Key))
+            .Must((c, v) => SystemSettings.ByKey.TryGetValue(c.Key, out SystemSetting? setting) && setting.IsValid(v.Trim()))
+            .When(c => SystemSettings.ByKey.ContainsKey(c.Key))
             .WithMessage("That is not a valid value for this setting.");
     }
-
-    private static bool IsNonNegativeDecimal(string v) =>
-        decimal.TryParse(v, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal d) && d >= 0;
 }
 
 public sealed class UpdateSystemConfigurationHandler(TableStorageContext db)

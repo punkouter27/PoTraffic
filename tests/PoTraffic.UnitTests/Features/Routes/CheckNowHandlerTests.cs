@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Features.Routes;
 using PoTraffic.API.Infrastructure.Storage;
 
 using PoTraffic.API.Infrastructure.Providers;
@@ -69,25 +68,6 @@ public sealed class CheckNowHandlerTests
     }
 
     [Fact]
-    public async Task CheckNow_WhenRouteNotFound_ReturnsNotFoundError()
-    {
-        // Arrange
-        TableStorageContext db = TestDoubles.CreateDb();
-
-        ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
-        var handler = new CheckNowCommandHandler(db, mockProvider,
-            NullLogger<CheckNowCommandHandler>.Instance);
-
-        // Act — route does not exist
-        CheckNowResult result = await handler.Handle(
-            new CheckNowCommand(RouteId.New(), UserId.New()), CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("NOT_FOUND");
-    }
-
-    [Fact]
     public async Task CheckNow_WhenProviderReturnsNull_ReturnsProviderError()
     {
         // Arrange
@@ -127,18 +107,14 @@ public sealed class CheckNowHandlerTests
     }
 
     [Fact]
-    public async Task CheckNow_WhenRouteBelongsToDifferentUser_ReturnsNotFoundError()
+    public async Task CheckNow_ForAnUnknownRouteOrAnotherUsersRoute_ReturnsNotFound()
     {
-        // Arrange
         TableStorageContext db = TestDoubles.CreateDb();
-
         RouteId routeId = RouteId.New();
-        UserId realOwner = UserId.New();
-
         db.Add(new EntityRoute
         {
             Id = routeId,
-            UserId = realOwner,
+            UserId = UserId.New(),
             OriginAddress = "A",
             OriginCoordinates = "1.0,1.0",
             DestinationAddress = "B",
@@ -148,17 +124,18 @@ public sealed class CheckNowHandlerTests
             CreatedAt = DateTimeOffset.UtcNow
         });
         await db.SaveChangesAsync();
-
         ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
-        var handler = new CheckNowCommandHandler(db, mockProvider,
-            NullLogger<CheckNowCommandHandler>.Instance);
+        var handler = new CheckNowCommandHandler(db, mockProvider, NullLogger<CheckNowCommandHandler>.Instance);
 
-        // Act — different user ID supplied
-        CheckNowResult result = await handler.Handle(
-            new CheckNowCommand(routeId, UserId.New()), CancellationToken.None);
+        CheckNowResult unknown = await handler.Handle(new CheckNowCommand(RouteId.New(), UserId.New()), CancellationToken.None);
+        // Cross-user must behave identically to not-found (no info leak).
+        CheckNowResult otherUsers = await handler.Handle(new CheckNowCommand(routeId, UserId.New()), CancellationToken.None);
 
-        // Assert — cross-user check must behave identically to not-found (no info leak)
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("NOT_FOUND");
+        foreach (CheckNowResult result in new[] { unknown, otherUsers })
+        {
+            result.IsSuccess.Should().BeFalse();
+            result.ErrorCode.Should().Be("NOT_FOUND");
+        }
+        await mockProvider.DidNotReceiveWithAnyArgs().GetTravelTimeAsync(default!, default!, default);
     }
 }

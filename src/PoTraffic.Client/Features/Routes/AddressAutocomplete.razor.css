@@ -13,6 +13,22 @@
     font: inherit;
 }
 
+/* Same tokens as every other control's states (app.css): hover darkens the border,
+   focus draws the brand ring, invalid takes the danger colour. None of them change
+   the box's size. */
+.pt-ac-input {
+    transition: border-color var(--pt-ix-dur) var(--pt-ix-ease),
+                box-shadow var(--pt-ix-dur) var(--pt-ix-ease);
+}
+
+@media (hover: hover) {
+    .pt-ac-input:hover { border-color: var(--pt-fg-tertiary); }
+}
+
+.pt-ac-input[aria-invalid="true"] {
+    border-color: var(--pt-color-danger-on-surface);
+}
+
 .pt-ac-input:focus {
     outline: none;
     border-color: var(--pt-color-brand-400);

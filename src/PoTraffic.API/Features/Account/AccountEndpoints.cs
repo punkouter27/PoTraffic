@@ -10,6 +10,8 @@ public static class AccountEndpoints
 {
     public static IEndpointRouteBuilder MapAccountEndpoints(this IEndpointRouteBuilder app)
     {
+        // Reads pass RequestAborted; writes pass CancellationToken.None so a closed tab cannot
+        // abandon a half-applied change (same rule as every other slice).
         RouteGroupBuilder grp = app.MapGroup("/api/account")
             .RequireAuthorization("ProductionMicrosoftAuth")
             .WithTags("Account");
@@ -27,11 +29,10 @@ public static class AccountEndpoints
         grp.MapPut("/profile", async (
             ClaimsPrincipal user,
             [FromBody] UpdateProfileRequest body,
-            UpdateProfileHandler handler,
-            CancellationToken ct) =>
+            UpdateProfileHandler handler) =>
         {
             UserId userId = user.GetUserId();
-            ProfileDto? updated = await handler.Handle(new UpdateProfileCommand(userId, body.Locale), ct);
+            ProfileDto? updated = await handler.Handle(new UpdateProfileCommand(userId, body.Locale), CancellationToken.None);
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         })
         .WithName("UpdateProfile")
@@ -41,17 +42,16 @@ public static class AccountEndpoints
         grp.MapPut("/timezone", async (
             ClaimsPrincipal user,
             [FromBody] SetTimeZoneRequest body,
-            SetTimeZoneHandler handler,
-            CancellationToken ct) =>
+            SetTimeZoneHandler handler) =>
         {
-            bool found = await handler.Handle(new SetTimeZoneCommand(user.GetUserId(), body.TimeZoneId), ct);
+            bool found = await handler.Handle(new SetTimeZoneCommand(user.GetUserId(), body.TimeZoneId), CancellationToken.None);
             return found ? Results.NoContent() : Results.NotFound();
         })
         .WithName("SetTimeZone")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);
 
-        grp.MapGet("/quota",async (ClaimsPrincipal user, GetQuotaHandler handler, CancellationToken ct) =>
+        grp.MapGet("/quota", async (ClaimsPrincipal user, GetQuotaHandler handler, CancellationToken ct) =>
         {
             UserId userId = user.GetUserId();
             QuotaDto? quota = await handler.Handle(new GetQuotaQuery(userId), ct);
@@ -75,10 +75,10 @@ public static class AccountEndpoints
         .WithName("ExportAccount");
 
         // FR-031: GDPR Art. 17 — self-service account deletion
-        grp.MapDelete("/", async (ClaimsPrincipal user, DeleteAccountCommandHandler handler, CancellationToken ct) =>
+        grp.MapDelete("/", async (ClaimsPrincipal user, DeleteAccountCommandHandler handler) =>
         {
             UserId userId = user.GetUserId();
-            bool deleted = await handler.Handle(new DeleteAccountCommand(userId), ct);
+            bool deleted = await handler.Handle(new DeleteAccountCommand(userId), CancellationToken.None);
             return deleted ? Results.NoContent() : Results.NotFound();
         })
         .WithName("DeleteAccount")

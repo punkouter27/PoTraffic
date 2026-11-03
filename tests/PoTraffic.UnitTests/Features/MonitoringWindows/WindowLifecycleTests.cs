@@ -63,101 +63,39 @@ public sealed class WindowLifecycleTests
     }
 
     [Fact]
-    public async Task StopWindow_TransitionsSessionToCompleted()
+    public async Task StopWindow_CompletesTheSession_CancelsTheChain_AndClearsItFromTheRoute()
     {
-        // Arrange
-        (TableStorageContext db, SessionId sessionId, _, UserId userId) =
-            await SeedActiveSessionAsync("job-1");
-
-        IJobScheduler scheduler = Substitute.For<IJobScheduler>();
-        var handler = new StopWindowCommandHandler(db, scheduler, NullLogger<StopWindowCommandHandler>.Instance);
-
-        // Act
-        bool result = await handler.Handle(new StopWindowCommand(sessionId, userId), CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-
-        MonitoringSession? session = db.MonitoringSessions.FirstOrDefault(x => x.Id == sessionId);
-        session.Should().NotBeNull();
-        session!.State.Should().Be((int)SessionState.Completed,
-            "StopWindowCommand must transition session to Completed state");
-    }
-
-    [Fact]
-    public async Task StopWindow_DeletesJobChain()
-    {
-        // Arrange
         const string jobId = "job-42";
-        (TableStorageContext db, SessionId sessionId, _, UserId userId) =
-            await SeedActiveSessionAsync(jobId);
-
-        IJobScheduler scheduler = Substitute.For<IJobScheduler>();
-
-        var handler = new StopWindowCommandHandler(db, scheduler, NullLogger<StopWindowCommandHandler>.Instance);
-
-        // Act
-        bool result = await handler.Handle(new StopWindowCommand(sessionId, userId), CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        scheduler.Received(1).Cancel(jobId);
-    }
-
-    [Fact]
-    public async Task StopWindow_ClearsJobChainIdOnRoute()
-    {
-        // Arrange
-        const string jobId = "job-99";
         (TableStorageContext db, SessionId sessionId, RouteId routeId, UserId userId) =
             await SeedActiveSessionAsync(jobId);
-
         IJobScheduler scheduler = Substitute.For<IJobScheduler>();
         var handler = new StopWindowCommandHandler(db, scheduler, NullLogger<StopWindowCommandHandler>.Instance);
 
-        // Act
-        await handler.Handle(new StopWindowCommand(sessionId, userId), CancellationToken.None);
+        bool result = await handler.Handle(new StopWindowCommand(sessionId, userId), CancellationToken.None);
 
-        // Assert — JobChainId should be nulled out
-        Route? route = db.Routes.FirstOrDefault(x => x.Id == routeId);
-        route.Should().NotBeNull();
-        route!.JobChainId.Should().BeNull(
+        result.Should().BeTrue();
+        db.MonitoringSessions.Single(x => x.Id == sessionId).State.Should().Be((int)SessionState.Completed,
+            "StopWindowCommand must transition session to Completed state");
+        scheduler.Received(1).Cancel(jobId);
+        db.Routes.Single(x => x.Id == routeId).JobChainId.Should().BeNull(
             "after stopping monitoring, JobChainId should be cleared to prevent orphaned chains");
     }
 
     [Fact]
-    public async Task StopWindow_WhenSessionNotFound_ReturnsFalse()
+    public async Task StopWindow_WithNoChainOrNoSession_CancelsNothing()
     {
-        // Arrange
-        TableStorageContext db = TestDoubles.CreateDb();
-
+        // A session whose route has no job chain still stops.
+        (TableStorageContext db, SessionId sessionId, _, UserId userId) = await SeedActiveSessionAsync(jobChainId: null);
         IJobScheduler scheduler = Substitute.For<IJobScheduler>();
         var handler = new StopWindowCommandHandler(db, scheduler, NullLogger<StopWindowCommandHandler>.Instance);
 
-        // Act
-        bool result = await handler.Handle(
-            new StopWindowCommand(SessionId.New(), UserId.New()), CancellationToken.None);
+        (await handler.Handle(new StopWindowCommand(sessionId, userId), CancellationToken.None))
+            .Should().BeTrue("session with no job chain should still stop successfully");
 
-        // Assert
-        result.Should().BeFalse();
-        scheduler.DidNotReceive().Cancel(Arg.Any<string>());
-    }
+        // An unknown session is reported, not stopped.
+        (await handler.Handle(new StopWindowCommand(SessionId.New(), UserId.New()), CancellationToken.None))
+            .Should().BeFalse();
 
-    [Fact]
-    public async Task StopWindow_WhenNoJobId_DoesNotCallCancel()
-    {
-        // Arrange — route has no JobChainId
-        (TableStorageContext db, SessionId sessionId, _, UserId userId) =
-            await SeedActiveSessionAsync(jobChainId: null);
-
-        IJobScheduler scheduler = Substitute.For<IJobScheduler>();
-        var handler = new StopWindowCommandHandler(db, scheduler, NullLogger<StopWindowCommandHandler>.Instance);
-
-        // Act
-        bool result = await handler.Handle(new StopWindowCommand(sessionId, userId), CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue("session with no job chain should still stop successfully");
         scheduler.DidNotReceive().Cancel(Arg.Any<string>());
     }
 }

@@ -14,15 +14,23 @@
 
 <PageHeader Title="Account settings" BackHref="/dashboard" BackLabel="Commutes" />
 
-@*  Five sections, one short scroll. There used to be eight — for about eight
-    controls — behind a sticky section index; Motion had its own section with the
-    word "Motion" as both its heading and its only sub-heading. Grouped by what
-    they are about, the page is short enough that it needs no index. *@
+@*  Common settings first, everything niche behind one "Advanced" disclosure.
+
+    The page used to give every control the same billing: density, motion, locale and
+    the quota meter sat at the same level as the theme and notifications, which are
+    what nearly everyone comes here for. Up top now: the theme, this device
+    (notifications, install) and who you are signed in as. Folded under Advanced:
+    density, motion, locale, today's usage and the extra panels. Your data stays
+    last and always visible — export and delete are rare, but must never be hidden.
+
+    Each section is its own error boundary, so one that throws (a bad quota payload,
+    say) leaves the rest of the page usable. *@
 <RadzenCard class="pt-card-pad">
+    <SectionErrorBoundary Label="the appearance settings">
     <section class="pt-settings-section">
         <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Appearance</RadzenText>
         @* RadzenSelectBar owns the roving-tabindex keyboard model, the selected state
-           and the theming; the three pickers sit side by side where there is room. *@
+           and the theming. *@
         <div class="pt-settings-grid">
             <div>
                 <span class="pt-settings-field-label">Theme</span>
@@ -35,41 +43,35 @@
                     </Items>
                 </RadzenSelectBar>
             </div>
-            <div>
-                <span class="pt-settings-field-label">Density</span>
-                <RadzenSelectBar TValue="string" Value="@_density" Change="@OnDensityChanged"
-                                 Size="ButtonSize.Small" aria-label="Density">
-                    <Items>
-                        <RadzenSelectBarItem Value="@("compact")" Text="Compact" Icon="density_small" />
-                        <RadzenSelectBarItem Value="@("normal")" Text="Normal" Icon="density_medium" />
-                        <RadzenSelectBarItem Value="@("comfortable")" Text="Comfortable" Icon="density_large" />
-                    </Items>
-                </RadzenSelectBar>
-            </div>
-            <div>
-                @* Full animates the map's traffic flow and the charts; Still keeps the
-                   colours but stops the movement. *@
-                <span class="pt-settings-field-label">Motion</span>
-                <RadzenSelectBar TValue="MotionLevel" Value="@Fx.Motion" Change="@OnMotionChanged"
-                                 Size="ButtonSize.Small" aria-label="Motion">
-                    <Items>
-                        <RadzenSelectBarItem Value="@MotionLevel.Full" Text="Full" Icon="auto_awesome" />
-                        <RadzenSelectBarItem Value="@MotionLevel.Reduced" Text="Still" Icon="motion_photos_off" />
-                        <RadzenSelectBarItem Value="@MotionLevel.Off" Text="Off" Icon="block" />
-                    </Items>
-                </RadzenSelectBar>
-            </div>
+            @if (_profile is not null)
+            {
+                <div>
+                    @* The sign-in address can't be changed here, so it is text, not a
+                       read-only box that looks editable. *@
+                    <span class="pt-settings-field-label">Signed in as</span>
+                    <p class="pt-settings-value">@_profile.Email</p>
+                </div>
+            }
+            else if (_loading)
+            {
+                <div class="pt-settings-reserve" aria-hidden="true">
+                    <div class="pt-skeleton-line w-30"></div>
+                    <div class="pt-skeleton-line w-70 pt-mt-2"></div>
+                </div>
+            }
         </div>
 
         @* Neither of these is ours to set — the OS owns them. Reporting them explains
            why the app already looks different. The OS motion preference is a floor:
-           this setting can never force animation back up past it. *@
+           the Motion setting can never force animation back up past it. *@
         @if (_prefersContrast || _prefersReducedMotion)
         {
             <p class="pt-settings-meta pt-mt-3">Following your device: @DevicePreferences.</p>
         }
     </section>
+    </SectionErrorBoundary>
 
+    <SectionErrorBoundary Label="this device's settings">
     <section class="pt-settings-section">
         <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">This device</RadzenText>
         <div class="pt-settings-grid">
@@ -98,6 +100,10 @@
                     case "off":
                         <RadzenButton Text="Turn on notifications" Icon="notifications_active" Size="ButtonSize.Small"
                                       ButtonStyle="ButtonStyle.Primary" Click="EnablePushAsync" IsBusy="_pushBusy" />
+                        break;
+                    default:
+                        @* Not answered yet: hold the button's line so nothing shifts when it lands. *@
+                        <div class="pt-settings-button-reserve" aria-hidden="true"></div>
                         break;
                 }
             </div>
@@ -132,90 +138,147 @@
             </div>
         </div>
     </section>
+    </SectionErrorBoundary>
 
-    <section class="pt-settings-section">
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Profile &amp; usage</RadzenText>
-        @if (_loading)
-        {
-            <div class="pt-skeleton-stack">
-                <div class="pt-skeleton-line w-50"></div>
-                <div class="pt-skeleton-line lg w-70"></div>
-                <div class="pt-skeleton-line w-40"></div>
-            </div>
-        }
-        else
-        {
-            <div class="pt-settings-grid">
-                @if (_profile is not null)
-                {
+    @* ── Advanced ─────────────────────────────────────────────────────────
+       A native <details>: keyboard and screen-reader behaviour for free, and it
+       costs nothing until opened. Collapsed by default. *@
+    <details class="pt-settings-section pt-settings-advanced">
+        <summary class="pt-settings-advanced-summary">
+            <span class="pt-settings-advanced-text">
+                <span class="pt-settings-advanced-title">Advanced</span>
+                <span class="pt-settings-advanced-hint">Density, motion, locale, usage and extra panels</span>
+            </span>
+            <PtIcon Name="expand_more" Size="sm" Class="pt-settings-advanced-caret" />
+        </summary>
+
+        <div class="pt-settings-advanced-body">
+            <SectionErrorBoundary Label="the display settings">
+            <section class="pt-settings-subsection">
+                <h4 class="pt-settings-subheading">Display</h4>
+                <div class="pt-settings-grid">
                     <div>
-                        @* The sign-in address can't be changed here, so it is text, not a
-                           read-only box that looks editable. *@
-                        <span class="pt-settings-field-label">Signed in as</span>
-                        <p class="pt-settings-value">@_profile.Email</p>
+                        <span class="pt-settings-field-label">Density</span>
+                        <RadzenSelectBar TValue="string" Value="@_density" Change="@OnDensityChanged"
+                                         Size="ButtonSize.Small" aria-label="Density">
+                            <Items>
+                                <RadzenSelectBarItem Value="@("compact")" Text="Compact" Icon="density_small" />
+                                <RadzenSelectBarItem Value="@("normal")" Text="Normal" Icon="density_medium" />
+                                <RadzenSelectBarItem Value="@("comfortable")" Text="Comfortable" Icon="density_large" />
+                            </Items>
+                        </RadzenSelectBar>
+                    </div>
+                    <div>
+                        @* Full animates the map's traffic flow and the charts; Still keeps the
+                           colours but stops the movement. *@
+                        <span class="pt-settings-field-label">Motion</span>
+                        <RadzenSelectBar TValue="MotionLevel" Value="@Fx.Motion" Change="@OnMotionChanged"
+                                         Size="ButtonSize.Small" aria-label="Motion">
+                            <Items>
+                                <RadzenSelectBarItem Value="@MotionLevel.Full" Text="Full" Icon="auto_awesome" />
+                                <RadzenSelectBarItem Value="@MotionLevel.Reduced" Text="Still" Icon="motion_photos_off" />
+                                <RadzenSelectBarItem Value="@MotionLevel.Off" Text="Off" Icon="block" />
+                            </Items>
+                        </RadzenSelectBar>
+                    </div>
+                    <div>
+                        <span class="pt-settings-field-label">Sound</span>
+                        <RadzenSwitch Value="@Fx.SoundOn" Change="@(async (bool on) => await Fx.SetSoundAsync(on))" aria-label="Sound cues" />
+                    </div>
+                </div>
+            </section>
+            </SectionErrorBoundary>
 
-                        <span class="pt-settings-field-label">Locale</span>
-                        @* Saves on change, like theme and density above — this was the one
-                           setting on the page behind a Save/Cancel pair. The whitelist mirrors
-                           the server validator, so there is no freeform value to reject. *@
-                        <RadzenDropDown TValue="string" Value="@_locale" Data="@ValidLocales"
-                                        Change="@(v => SaveLocaleAsync(v as string))"
-                                        AllowFiltering="true" AllowClear="false" Disabled="_saving"
-                                        class="pt-settings-full" aria-label="Locale" />
-                        @if (_profileError is not null)
+            <SectionErrorBoundary Label="the account details">
+            <section class="pt-settings-subsection">
+                <h4 class="pt-settings-subheading">Locale &amp; usage</h4>
+                @if (_loading)
+                {
+                    <div class="pt-skeleton-stack pt-settings-reserve">
+                        <div class="pt-skeleton-line w-50"></div>
+                        <div class="pt-skeleton-line lg w-70"></div>
+                        <div class="pt-skeleton-line w-40"></div>
+                    </div>
+                }
+                else
+                {
+                    <div class="pt-settings-grid">
+                        @if (_profile is not null)
                         {
-                            <div class="pt-field-error" role="alert">@_profileError</div>
+                            <div>
+                                @* Saves on change — no Save/Cancel pair. The whitelist mirrors the
+                                   server validator, so there is no freeform value to reject; a failed
+                                   save is reported in the field's helper, like any validation message. *@
+                                <RadzenFormField Text="Locale" class="pt-settings-full">
+                                    <ChildContent>
+                                        <RadzenDropDown TValue="string" Value="@_locale" Data="@ValidLocales" Name="Locale"
+                                                        Change="@(v => SaveLocaleAsync(v as string))"
+                                                        AllowFiltering="true" AllowClear="false" Disabled="_saving"
+                                                        aria-label="Locale" />
+                                    </ChildContent>
+                                    <Helper>
+                                        @if (_profileError is not null)
+                                        {
+                                            <div class="rz-message rz-messages-error" role="alert">@_profileError</div>
+                                        }
+                                    </Helper>
+                                </RadzenFormField>
+                            </div>
+                        }
+                        @if (_quota is not null)
+                        {
+                            <div>
+                                <span class="pt-settings-field-label">Monitoring today</span>
+                                <p class="pt-settings-value">
+                                    @_quota.UsedToday of @_quota.DailyLimit sessions (@QuotaPercent.ToString("F0")%)
+                                </p>
+                                <RadzenProgressBar Value="@QuotaPercent" ShowValue="false"
+                                                   ProgressBarStyle="@QuotaStyle" aria-label="Daily quota used" />
+                                <p class="pt-settings-meta pt-mt-2">
+                                    Resets at @LocalTimeFormatter.Clock(_quota.ResetsAtUtc.ToLocalTime().DateTime).
+                                    @if (_quota.PollsToday > 0)
+                                    {
+                                        <text>
+                                            @_quota.PollsToday look-ups so far, about @_quota.EstimatedCostTodayUsd.ToString("C3") —
+                                            roughly @_quota.ProjectedMonthlyCostUsd.ToString("C2") a month at this rate.
+                                        </text>
+                                    }
+                                </p>
+                            </div>
                         }
                     </div>
                 }
-                @if (_quota is not null)
-                {
-                    <div>
-                        <span class="pt-settings-field-label">Monitoring today</span>
-                        <p class="pt-settings-value">
-                            @_quota.UsedToday of @_quota.DailyLimit sessions (@QuotaPercent.ToString("F0")%)
-                        </p>
-                        <RadzenProgressBar Value="@QuotaPercent" ShowValue="false"
-                                           ProgressBarStyle="@QuotaStyle" aria-label="Daily quota used" />
-                        <p class="pt-settings-meta pt-mt-2">
-                            Resets at @LocalTimeFormatter.Clock(_quota.ResetsAtUtc.ToLocalTime().DateTime).
-                            @if (_quota.PollsToday > 0)
-                            {
-                                <text>
-                                    @_quota.PollsToday look-ups so far, about @_quota.EstimatedCostTodayUsd.ToString("C3") —
-                                    roughly @_quota.ProjectedMonthlyCostUsd.ToString("C2") a month at this rate.
-                                </text>
-                            }
-                        </p>
-                    </div>
-                }
-            </div>
-        }
-    </section>
+            </section>
+            </SectionErrorBoundary>
 
-    @* Progressive disclosure. The app's default is the minimum that answers "when do I
-       leave": the commute list, live status, today's chart and the schedule. These are
-       the extras — real, working, and off until asked for. Per browser, like the theme. *@
-    <section class="pt-settings-section">
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Advanced panels</RadzenText>
-        <p class="pt-settings-meta pt-mb-3">
-            Extra detail for the curious. Off by default to keep things simple — switch on what you'd use.
-        </p>
-        <div class="pt-settings-grid">
-            @foreach ((AdvancedPanel panel, string label, string detail) in AdvancedPanels)
-            {
-                <div class="pt-settings-toggle">
-                    <RadzenSwitch Value="@Prefs.IsOn(panel)" Change="@(on => Prefs.SetAsync(panel, on))"
-                                  aria-label="@label" />
-                    <div class="pt-settings-toggle-text">
-                        <span class="pt-settings-field-label">@label</span>
-                        <span class="pt-settings-meta">@detail</span>
-                    </div>
+            @* Progressive disclosure. The app's default is the minimum that answers "when do I
+               leave": the commute list, live status, today's chart and the schedule. These are
+               the extras — real, working, and off until asked for. Per browser, like the theme. *@
+            <SectionErrorBoundary Label="the extra panels">
+            <section class="pt-settings-subsection">
+                <h4 class="pt-settings-subheading">Extra panels</h4>
+                <p class="pt-settings-meta pt-mb-3">
+                    Extra detail for the curious. Off by default to keep things simple — switch on what you'd use.
+                </p>
+                <div class="pt-settings-grid">
+                    @foreach ((AdvancedPanel panel, string label, string detail) in AdvancedPanels)
+                    {
+                        <div class="pt-settings-toggle">
+                            <RadzenSwitch Value="@Prefs.IsOn(panel)" Change="@(on => Prefs.SetAsync(panel, on))"
+                                          aria-label="@label" />
+                            <div class="pt-settings-toggle-text">
+                                <span class="pt-settings-field-label">@label</span>
+                                <span class="pt-settings-meta">@detail</span>
+                            </div>
+                        </div>
+                    }
                 </div>
-            }
+            </section>
+            </SectionErrorBoundary>
         </div>
-    </section>
+    </details>
 
+    <SectionErrorBoundary Label="your data controls">
     <section class="pt-settings-section pt-settings-danger">
         <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Your data</RadzenText>
         <p class="pt-settings-meta">
@@ -239,22 +302,33 @@
         </div>
         @if (_confirmDeleteArmed)
         {
-            <div class="pt-confirm-delete pt-mt-3">
-                <p class="pt-settings-meta">Type <strong>DELETE</strong> to confirm.</p>
-                <RadzenTextBox @bind-Value="_confirmDeletePhrase" class="pt-w-100 pt-mb-2"
-                               Placeholder="DELETE" autocomplete="off" />
-                <div>
-                    <RadzenButton Text="Confirm delete" ButtonStyle="ButtonStyle.Danger"
-                                  Disabled="@(_confirmDeletePhrase != "DELETE" || _deleting)"
-                                  IsBusy="@_deleting"
-                                  Click="@ConfirmDeleteAsync" />
-                    <RadzenButton Text="Keep my account" ButtonStyle="ButtonStyle.Light"
-                                  class="pt-ml-2"
-                                  Click="@DisarmDeleteConfirmation" />
-                </div>
+            <div class="pt-confirm-delete pt-mt-3 pt-enter">
+                @* A form so Enter confirms; the field and its message are a RadzenFormField like
+                   every other input in the app. The button stays disabled until the phrase
+                   matches, so the validator only explains why. *@
+                <RadzenTemplateForm TItem="DeleteConfirmForm" Data="@_deleteForm" Submit="@(_ => ConfirmDeleteAsync())">
+                    <RadzenFormField Text="Type DELETE to confirm" class="pt-w-100 pt-mb-2">
+                        <ChildContent>
+                            <RadzenTextBox Name="ConfirmPhrase" @bind-Value="_confirmDeletePhrase" Immediate="true"
+                                           Placeholder="DELETE" autocomplete="off" />
+                        </ChildContent>
+                        <Helper>
+                            <RadzenCustomValidator Component="ConfirmPhrase" Validator="@(() => _confirmDeletePhrase == "DELETE")"
+                                                   Text="Type DELETE in capitals, exactly." />
+                        </Helper>
+                    </RadzenFormField>
+                    <div class="pt-flex pt-wrap pt-gap-2">
+                        <RadzenButton ButtonType="ButtonType.Submit" Text="Confirm delete" ButtonStyle="ButtonStyle.Danger"
+                                      Disabled="@(_confirmDeletePhrase != "DELETE" || _deleting)"
+                                      IsBusy="@_deleting" />
+                        <RadzenButton Text="Keep my account" ButtonStyle="ButtonStyle.Light"
+                                      Click="@DisarmDeleteConfirmation" />
+                    </div>
+                </RadzenTemplateForm>
             </div>
         }
     </section>
+    </SectionErrorBoundary>
 </RadzenCard>
 
 @code {
@@ -284,6 +358,11 @@
     private string? _profileError;
     private bool _confirmDeleteArmed;
     private string _confirmDeletePhrase = string.Empty;
+
+    /// <summary>RadzenTemplateForm needs a model; the phrase is bound to component state.</summary>
+    private sealed class DeleteConfirmForm { }
+
+    private readonly DeleteConfirmForm _deleteForm = new();
 
     private string _theme = "system";
     private string _density = "normal";
@@ -405,6 +484,7 @@
             {
                 _profile = _profile! with { Locale = locale };
                 NotificationService.Notify(NotificationSeverity.Success, "Saved", $"Locale set to {locale}.");
+                await Fx.CueAsync(SoundCue.Save);
                 return;
             }
             _profileError = $"Couldn't save the locale ({(int)resp.StatusCode}). Try again.";

@@ -6,6 +6,8 @@
    when the API returns nothing, so free-text entry always works. *@
 <div class="pt-ac">
     <input class="pt-ac-input" type="text" value="@Value" placeholder="@Placeholder"
+           aria-label="@AriaLabel" aria-invalid="@(Invalid ? "true" : null)"
+           aria-autocomplete="list" aria-expanded="@(_open && _suggestions.Count > 0 ? "true" : "false")"
            @oninput="OnInput" @onblur="OnBlur" @onkeydown="OnKeyDown" autocomplete="off" />
     @if (_open && _suggestions.Count > 0)
     {
@@ -23,10 +25,17 @@
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
     [Parameter] public string Placeholder { get; set; } = string.Empty;
 
+    /// <summary>Accessible name; the visible label belongs to the RadzenFormField around it.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>Marks the input invalid (aria-invalid and the error border) while a message is shown.</summary>
+    [Parameter] public bool Invalid { get; set; }
+
     private List<PlaceSuggestionDto> _suggestions = [];
     private bool _open;
     private System.Timers.Timer? _debounce;
     private string _pending = string.Empty;
+    private bool _disposed;
 
     private async Task OnInput(ChangeEventArgs e)
     {
@@ -43,12 +52,22 @@
     private System.Timers.Timer CreateTimer()
     {
         var t = new System.Timers.Timer(250) { AutoReset = false };
-        t.Elapsed += async (_, _) => await InvokeAsync(QueryAsync);
+        // Elapsed runs on a timer thread and can fire after the component is gone (a
+        // keystroke, then navigating away inside 250ms); InvokeAsync on a disposed
+        // renderer throws, and that exception would land on the thread pool unobserved.
+        t.Elapsed += async (_, _) =>
+        {
+            if (_disposed) return;
+            try { await InvokeAsync(QueryAsync); }
+            catch (ObjectDisposedException) { /* torn down mid-tick */ }
+        };
         return t;
     }
 
     private async Task QueryAsync()
     {
+        if (_disposed)
+            return;
         string q = _pending;
         if (q.Trim().Length < 3)
         {
@@ -69,7 +88,8 @@
             _suggestions = [];
             _open = false;
         }
-        StateHasChanged();
+        if (!_disposed)
+            StateHasChanged();
     }
 
     private async Task Pick(PlaceSuggestionDto s)
@@ -91,6 +111,7 @@
 
     public void Dispose()
     {
+        _disposed = true;
         _debounce?.Stop();
         _debounce?.Dispose();
     }

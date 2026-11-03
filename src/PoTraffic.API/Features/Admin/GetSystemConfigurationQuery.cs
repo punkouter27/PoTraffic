@@ -1,6 +1,5 @@
+using PoTraffic.API.Features.Config;
 using PoTraffic.API.Infrastructure.Storage;
-
-
 using PoTraffic.Shared.DTOs.Admin;
 
 namespace PoTraffic.API.Features.Admin;
@@ -23,7 +22,8 @@ public sealed class GetSystemConfigurationHandler
             Key: c.Key,
             Value: c.IsSensitive ? Mask(c.Value) : c.Value,
             Description: c.Description,
-            IsSensitive: c.IsSensitive)).ToList();
+            IsSensitive: c.IsSensitive,
+            IsEditable: !c.IsSensitive && SystemSettings.ByKey.ContainsKey(c.Key))).ToList();
     }
 
     /// <summary>

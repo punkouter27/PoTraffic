@@ -15,34 +15,28 @@ namespace PoTraffic.API.Features.Config;
 /// </summary>
 public static class SpendingCap
 {
-    public const string MonthlyCapKey = "cost.monthly.cap.usd";
-
-    /// <summary>Seeded value. Zero or less (or an unparseable row) means no cap.</summary>
-    public const decimal MonthlyCapDefault = 100m;
-
     /// <summary>
-    /// Per-call rate keys and seeded defaults (Google's list prices per request). Check now
+    /// The rate key for each counted call kind (values in <see cref="SystemSettings"/>). Check now
     /// is the same Distance Matrix call as a poll, so it shares the per-poll rate.
     /// </summary>
-    public static readonly IReadOnlyDictionary<string, (string Key, decimal Default, string Description)> Rates =
-        new Dictionary<string, (string, decimal, string)>
-        {
-            [ProviderCallKind.Geocode] = ("cost.pergeocode.googlemaps", 0.005m, "Cost per geocode - Google Maps"),
-            [ProviderCallKind.Directions] = ("cost.perdirections.googlemaps", 0.005m, "Cost per directions request - Google Maps"),
-            [ProviderCallKind.Autocomplete] = ("cost.perautocomplete.googlemaps", 0.00283m, "Cost per address autocomplete request - Google Places"),
-        };
+    private static readonly IReadOnlyDictionary<string, string> RateKeys = new Dictionary<string, string>
+    {
+        [ProviderCallKind.Geocode] = SystemSettings.PerGeocodeKey,
+        [ProviderCallKind.Directions] = SystemSettings.PerDirectionsKey,
+        [ProviderCallKind.Autocomplete] = SystemSettings.PerAutocompleteKey,
+    };
 
     /// <summary>Serialises find-or-create on a month's counter row across concurrent requests.</summary>
     private static readonly object CounterGate = new();
 
     /// <summary>The configured cap in USD, or null when there is none.</summary>
     public static decimal? MonthlyCap(TableStorageContext db)
-        => ReadDecimal(db, MonthlyCapKey) is { } cap && cap > 0 ? cap : null;
+        => SystemSettings.ReadDecimal(db, SystemSettings.MonthlyCapKey) is { } cap && cap > 0 ? cap : null;
 
     /// <summary>The USD rate for one call of <paramref name="kind"/>.</summary>
     public static decimal RateFor(TableStorageContext db, string kind)
-        => Rates.TryGetValue(kind, out var rate)
-            ? ReadDecimal(db, rate.Key) ?? rate.Default
+        => RateKeys.TryGetValue(kind, out string? key)
+            ? SystemSettings.DecimalOrDefault(db, key)
             : PollCostRates.PerPoll(db);
 
     /// <summary>First instant of <paramref name="nowUtc"/>'s UTC month.</summary>
@@ -108,10 +102,4 @@ public static class SpendingCap
     /// <summary>True when a cap is set and this month's spend has reached it.</summary>
     public static bool IsReached(TableStorageContext db, DateTimeOffset nowUtc)
         => MonthlyCap(db) is { } cap && MonthToDateSpend(db, nowUtc) >= cap;
-
-    private static decimal? ReadDecimal(TableStorageContext db, string key)
-        => db.SystemConfigurations.FirstOrDefault(c => c.Key == key) is { } row
-           && decimal.TryParse(row.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal value)
-            ? value
-            : null;
 }

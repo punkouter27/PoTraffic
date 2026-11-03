@@ -63,3 +63,97 @@
     display: block;
     margin: 0;
 }
+
+/* ── Advanced: one disclosure for the niche settings ───────────────────────
+   The summary is a full-width row with the same heading weight as a section,
+   a one-line hint of what is inside, and a caret that turns. The body animates
+   its height where the browser can interpolate to `auto` (interpolate-size /
+   ::details-content); elsewhere it simply opens. Timing comes from the shared
+   panel tokens in app.css, which are zero under reduced motion. */
+.pt-settings-advanced {
+    interpolate-size: allow-keywords;
+}
+
+.pt-settings-advanced-summary {
+    align-items: center;
+    border-radius: var(--pt-radius-md);
+    cursor: pointer;
+    display: flex;
+    gap: var(--pt-space-3);
+    list-style: none;
+    margin: calc(-1 * var(--pt-space-2));
+    padding: var(--pt-space-2);
+    transition: background-color var(--pt-ix-dur) var(--pt-ix-ease);
+}
+
+.pt-settings-advanced-summary::-webkit-details-marker { display: none; }
+
+@media (hover: hover) {
+    .pt-settings-advanced-summary:hover { background: var(--pt-bg-tint); }
+}
+
+.pt-settings-advanced-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--pt-space-1);
+    min-width: 0;
+}
+
+.pt-settings-advanced-title {
+    color: var(--pt-fg-primary);
+    font-size: var(--pt-text-lg);
+    font-weight: var(--pt-weight-semibold);
+}
+
+.pt-settings-advanced-hint {
+    color: var(--pt-fg-tertiary);
+    font-size: var(--pt-text-sm);
+}
+
+.pt-settings-advanced-summary ::deep .pt-settings-advanced-caret {
+    color: var(--pt-fg-tertiary);
+    flex-shrink: 0;
+    transition: transform var(--pt-panel-dur) var(--pt-panel-ease);
+}
+
+.pt-settings-advanced[open] .pt-settings-advanced-summary ::deep .pt-settings-advanced-caret {
+    transform: rotate(180deg);
+}
+
+.pt-settings-advanced::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size var(--pt-panel-dur) var(--pt-panel-ease),
+                content-visibility var(--pt-panel-dur) allow-discrete;
+}
+
+.pt-settings-advanced[open]::details-content {
+    block-size: auto;
+}
+
+.pt-settings-advanced-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-space-5);
+    padding-top: var(--pt-space-5);
+}
+
+.pt-settings-subheading {
+    color: var(--pt-fg-secondary);
+    font-size: var(--pt-text-sm);
+    font-weight: var(--pt-weight-semibold);
+    letter-spacing: 0.04em;
+    margin-bottom: var(--pt-space-3);
+    text-transform: uppercase;
+}
+
+/* Space held for content still loading, so the page does not grow under the
+   reader when the profile and quota land. */
+.pt-settings-reserve {
+    min-height: 3.25rem;
+}
+
+.pt-settings-button-reserve {
+    min-height: 2rem;
+}

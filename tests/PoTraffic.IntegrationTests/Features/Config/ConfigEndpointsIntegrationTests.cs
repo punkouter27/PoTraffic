@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 
 namespace PoTraffic.IntegrationTests.Features.Config;
 
-public sealed class SystemEndpointsIntegrationTests : BaseIntegrationTest
+public sealed class ConfigEndpointsIntegrationTests : BaseIntegrationTest
 {
     [SkipUnlessAzuriteAvailable]
     public async Task GetFeatureFlags_InTesting_ReturnsMockProvidersEnabled()

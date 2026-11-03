@@ -207,7 +207,7 @@ public sealed class PollRouteJob
     /// <summary>
     /// The user's daily session limit: their administrator-set override when there is one,
     /// otherwise the admin-editable <c>quota.daily.default</c> row, falling back to
-    /// <see cref="QuotaConstants.DefaultDailyQuota"/> when that is missing or not a positive
+    /// its seeded default (<see cref="QuotaConstants.DefaultDailyQuota"/>) when that is missing or not a positive
     /// number. Enforcement and the account page both read it here, so the limit shown is the
     /// limit enforced.
     /// </summary>
@@ -216,11 +216,7 @@ public sealed class PollRouteJob
         if (db.Users.FirstOrDefault(u => u.Id == userId)?.DailySessionQuota is int own && own > 0)
             return own;
 
-        string? value = db.SystemConfigurations
-            .Where(c => c.Key == "quota.daily.default")
-            .Select(c => c.Value)
-            .FirstOrDefault();
-        return int.TryParse(value, out int limit) && limit > 0 ? limit : QuotaConstants.DefaultDailyQuota;
+        return SystemSettings.PositiveIntOrDefault(db, SystemSettings.DailyQuotaKey);
     }
 
     /// <summary>

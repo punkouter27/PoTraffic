@@ -11,14 +11,17 @@ namespace PoTraffic.E2ETests.Api;
 /// (any environment) is not reachable. Lets CI pass on machines without a
 /// running instance while still letting a local dev drive the suite.
 ///
-/// Probes the standard Testing (5150) and Development (5000) ports so the
+/// Probes <c>E2E_BASE_URL</c> when it is set — the same host <see cref="ApiSessionFactory"/>
+/// will talk to — and otherwise the standard Testing (5150) and Development (5000) ports, so the
 /// scenario file does not need to know which profile is running.
 /// </summary>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class ApiSkipUnlessReadyAttribute : FactAttribute
 {
-    private static readonly string[] CandidatePorts =
-        [ApiSessionFactory.DefaultBaseUrl, ApiSessionFactory.DevelopmentBaseUrl];
+    private static string[] CandidatePorts =>
+        Environment.GetEnvironmentVariable("E2E_BASE_URL") is { Length: > 0 } explicitUrl
+            ? [explicitUrl]
+            : [ApiSessionFactory.DefaultBaseUrl, ApiSessionFactory.DevelopmentBaseUrl];
 
     public override string? Skip => GetReachableBaseUrl() is null
         ? $"PoTraffic.API /health/json unreachable on {string.Join(", ", CandidatePorts)}"

@@ -9,6 +9,7 @@
 @inject NavigationManager Nav
 @inject UiPreferences Prefs
 @inject NotificationService Notifications
+@inject FxService Fx
 
 @* ──────────────────────────────────────────────────────────────────────
    Route detail — the answer, the evidence, and everything else folded away.
@@ -39,16 +40,26 @@
        title, tab strip, the answer and the chart card — so the real content settles
        into place instead of shoving everything down when it lands. *@
     <PtProgressLine AriaLabel="Loading commute" />
-    <div class="pt-skeleton-stack pt-route-skeleton" aria-busy="true" aria-label="Loading commute">
-        <div class="pt-skeleton-line lg w-50"></div>
-        <div class="pt-skeleton-line w-30"></div>
-        <div class="pt-skeleton-card">
-            <div class="pt-skeleton-line w-40"></div>
-            <div class="pt-skeleton-line lg w-70"></div>
-            <div class="pt-skeleton-line w-50"></div>
+    <div class="pt-route-skeleton" aria-busy="true" aria-label="Loading commute">
+        <div class="pt-route-skeleton-head">
+            <div class="pt-skeleton-line lg w-50"></div>
         </div>
-        <div class="pt-skeleton-card pt-route-skeleton-chart">
-            <div class="pt-skeleton-line w-30"></div>
+        <div class="pt-route-skeleton-tabs">
+            <div class="pt-skeleton-line"></div>
+            <div class="pt-skeleton-line"></div>
+            <div class="pt-skeleton-line"></div>
+        </div>
+        @* The same two-column grid the Overview tab lays out in, at the answer card's and
+           the chart card's real heights. *@
+        <div class="pt-route-two">
+            <div class="pt-skeleton-card pt-route-skeleton-answer">
+                <div class="pt-skeleton-line w-40"></div>
+                <div class="pt-skeleton-line lg w-70"></div>
+                <div class="pt-skeleton-line w-50"></div>
+            </div>
+            <div class="pt-skeleton-card pt-route-skeleton-chart">
+                <div class="pt-skeleton-line w-30"></div>
+            </div>
         </div>
     </div>
 }
@@ -69,12 +80,15 @@ else
             }
             @if (_route is not null)
             {
+                <SectionErrorBoundary Label="the check status">
                 <RouteProbeStatus RouteId="RouteId"
                                   LatestProbe="LatestPoll"
+                                  TypicalSeconds="@_path?.TypicalDurationSeconds"
                                   Session="_activeSession"
                                   ArmedWindow="_activeWindow"
                                   Paused="@(_route is { IsSample: false, MonitoringStatus: MonitoringStatus.Paused })"
                                   OnProbeCompleted="@OnWindowSaved" />
+                </SectionErrorBoundary>
             }
         </Actions>
     </PageHeader>
@@ -268,10 +282,12 @@ else
                        what gets sampled, in one card. *@
                     <RadzenCard class="pt-route-settings">
                         <SectionErrorBoundary Label="the schedule">
-                            <WindowConfigPanel RouteId="RouteId" Window="_activeWindow" Session="_activeSession" OnSaved="OnWindowSaved" />
+                            <WindowConfigPanel RouteId="RouteId" Window="_activeWindow" Session="_activeSession" OnSaved="OnEditSaved" />
                         </SectionErrorBoundary>
 
-                        <RouteAddressesRow RouteId="RouteId" Origin="@_route.OriginAddress" Destination="@_route.DestinationAddress" OnSaved="OnWindowSaved" />
+                        <SectionErrorBoundary Label="the addresses">
+                        <RouteAddressesRow RouteId="RouteId" Origin="@_route.OriginAddress" Destination="@_route.DestinationAddress" OnSaved="OnEditSaved" />
+                        </SectionErrorBoundary>
 
                         @* Both states go through the same call: the endpoint creates the reversed route and
                            links it, or hands back the one already linked. Navigating straight to a stored
@@ -322,6 +338,16 @@ else
                                     <WeatherImpact Impact="_weatherImpact" />
                                 </SectionErrorBoundary>
                             </RadzenCard>
+                        }
+                        else if (_weatherFetchedAt is null)
+                        {
+                            @* Switched on in Settings since this page loaded: the first fetch
+                               rides the next refresh. Hold the card's place meanwhile. *@
+                            <div class="pt-skeleton-card pt-route-skeleton-weather" aria-busy="true" aria-label="Loading weather impact">
+                                <div class="pt-skeleton-line w-50"></div>
+                                <div class="pt-skeleton-line w-70"></div>
+                                <div class="pt-skeleton-line w-40"></div>
+                            </div>
                         }
                     </div>
                 </RadzenTabsItem>
@@ -467,6 +493,13 @@ else
 
     // Observer pattern — PollingComponentBase handles the timer loop
     protected override TimeSpan PollingInterval => TimeSpan.FromSeconds(15);
+
+    // An edit the user saved gets the save cue; a finished probe already played its own.
+    private async Task OnEditSaved()
+    {
+        await Fx.CueAsync(SoundCue.Save);
+        await OnWindowSaved();
+    }
 
     private async Task OnWindowSaved()
     {

@@ -1,16 +1,17 @@
 namespace PoTraffic.API.Features.Config;
 
 /// <summary>
-/// Exposes read-only feature flags to the Blazor WASM client.
-/// No authentication required — flags are not sensitive.
+/// The public, read-only face of the Config slice: the feature flags the Blazor client needs
+/// before sign-in. No authentication required — flags are not sensitive. Changing them is an
+/// administrator operation (<c>PUT /api/admin/configuration/{key}</c>, Admin slice).
 /// </summary>
-public static class SystemEndpoints
+public static class ConfigEndpoints
 {
-    public static IEndpointRouteBuilder MapSystemEndpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapConfigEndpoints(this IEndpointRouteBuilder app)
     {
         // §10 — expose UseMockProviders so the client can display the "USING MOCK DATA" banner.
-        // Reads the same resolved FeatureFlags the provider registration acted on, so the
-        // banner can't disagree with which providers are actually wired up.
+        // Reads the same FeatureFlags provider resolution acts on, so the banner can't disagree
+        // with which providers are actually answering.
         app.MapGet("/api/system/features", (FeatureFlags flags) =>
             Results.Ok(new
             {

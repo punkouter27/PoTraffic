@@ -17,7 +17,9 @@ internal static class HealthCheckExtensions
     internal static IServiceCollection AddPoTrafficHealthChecks(
         this IServiceCollection services, IHostEnvironment env, IConfiguration config)
     {
-        bool usingMockProviders = FeatureFlags.Resolve(config, env).UseMockProviders;
+        // The host-level switch, not the runtime one: an admin flipping a live host to mock data
+        // does not take its vault or Google key away, so these keep checking the real dependencies.
+        bool usingMockProviders = FeatureFlags.IsMockForcedByHost(config, env);
 
         services.AddHealthChecks()
             .AddCheck("keyvault", () =>

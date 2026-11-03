@@ -27,14 +27,20 @@ internal static class PollHandlerTestHelper
         TableStorageContext db,
         ITrafficProvider provider,
         ILogger<ExecutePollCommandHandler>? logger = null,
-        IWeatherProvider? weather = null) =>
-        new(db,
+        IWeatherProvider? weather = null)
+    {
+        // The weather flag is a SystemConfiguration row, as in production.
+        if (!db.SystemConfigurations.Any(c => c.Key == SystemSettings.EnableWeatherKey))
+            db.Add(new SystemConfiguration { Key = SystemSettings.EnableWeatherKey, Value = weather is null ? "false" : "true" });
+
+        return new(db,
             provider,
             weather ?? new NoWeatherProvider(),
-            new FeatureFlags(UseMockProviders: true, EnableWeather: weather is not null),
+            new FeatureFlags(db, mockProvidersForcedByHost: true),
             AlertTestHelper.NoOp(db),
             NoHolidayCalendar.Instance,
             logger ?? NullLogger<ExecutePollCommandHandler>.Instance);
+    }
 
     /// <summary>Answers "no observation" — the same shape as a real provider outage.</summary>
     private sealed class NoWeatherProvider : IWeatherProvider

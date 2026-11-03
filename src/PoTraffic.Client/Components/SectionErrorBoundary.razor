@@ -12,6 +12,11 @@
    fresh data the page's own refresh has brought in by then.
 
    Knows nothing about routes: Label is the only thing it says about what failed.
+
+   MainLayout wraps every routed page in one of these too, so a page that throws
+   keeps the header and nav (and a Retry) instead of falling through to the
+   whole-screen AppErrorBoundary; it calls Recover() on navigation so the next
+   page is never born in the previous one's error state.
    ────────────────────────────────────────────────────────────────────── *@
 
 <ErrorBoundary @ref="_boundary">
@@ -35,5 +40,6 @@
 
     private ErrorBoundary? _boundary;
 
-    private void Recover() => _boundary?.Recover();
+    /// <summary>Re-renders the children from scratch. Safe to call when nothing has failed.</summary>
+    public void Recover() => _boundary?.Recover();
 }

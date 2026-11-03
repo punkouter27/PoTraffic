@@ -41,6 +41,8 @@ public sealed class PollRouteJobTests
     private static (PollRouteJob Job, RecordingScheduler Scheduler, ITrafficProvider Traffic, TableStorageContext Db) Build()
     {
         var db = new TableStorageContext();
+        // Weather off: these tests are about the poll chain, not the conditions feed.
+        db.Add(new SystemConfiguration { Key = SystemSettings.EnableWeatherKey, Value = "false" });
         var scheduler = new RecordingScheduler();
         // A real poll handler over a substituted provider: "was the route polled" is "was the
         // provider called", which is the quota-spending side effect these tests guard.
@@ -51,7 +53,7 @@ public sealed class PollRouteJobTests
                 db,
                 traffic,
                 Substitute.For<IWeatherProvider>(),
-                new FeatureFlags(UseMockProviders: true, EnableWeather: false),
+                new FeatureFlags(db, mockProvidersForcedByHost: true),
                 new AlertEvaluator(db, Substitute.For<IPushNotifier>(), Substitute.For<IIncidentProvider>(), NullLogger<AlertEvaluator>.Instance),
                 NoHolidayCalendar.Instance,
                 NullLogger<ExecutePollCommandHandler>.Instance))

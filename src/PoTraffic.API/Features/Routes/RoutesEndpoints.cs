@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
+using PoTraffic.API.Infrastructure.Http;
 using PoTraffic.API.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.Routes;
 using PoTraffic.Shared.Enums;
@@ -30,6 +31,8 @@ public static class RoutesEndpoints
         group.MapPost("", CreateRoute).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
         // Sample route with synthetic history, for an account that has nothing to show yet (#10)
         group.MapPost("sample", CreateSampleRoute);
+        // Single route (drives the return-trip link, #3)
+        group.MapGet("{routeId:guid}", GetRouteById);
         group.MapDelete("{routeId:guid}", DeleteRoute);
         group.MapPost("{routeId:guid}/check-now", CheckNow).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
         group.MapPost("{routeId:guid}/return-trip", CreateReturnTrip).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
@@ -148,6 +151,17 @@ public static class RoutesEndpoints
         return path is null ? Results.NotFound() : Results.Ok(path);
     }
 
+    // GET /api/routes/{routeId}
+    private static async Task<IResult> GetRouteById(
+        RouteId routeId,
+        HttpContext context,
+        GetRouteByIdQueryHandler handler)
+    {
+        UserId userId = context.User.GetUserId();
+        RouteDto? route = await handler.Handle(new GetRouteByIdQuery(routeId, userId), context.RequestAborted);
+        return route is null ? Results.NotFound() : ConditionalJson.Ok(context, route);
+    }
+
     // DELETE /api/routes/{routeId}
     private static async Task<IResult> DeleteRoute(
         RouteId routeId,
@@ -208,6 +222,3 @@ public static class RoutesEndpoints
     }
 
 }
-
-// UpdateRouteRequest was removed (#1 cleanup): no client caller; the editing surface (origin/destination/provider)
-// is reached via DELETE + re-create, which is the documented user flow.

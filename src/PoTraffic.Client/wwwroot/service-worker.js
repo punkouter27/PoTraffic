@@ -38,6 +38,7 @@ const SHELL = [
     "/css/pt-tokens.css",
     "/css/pt-motion.css",
     "/css/vendor.css",
+    "/css/pt-glass.css",
     "/lib/leaflet/leaflet.css",
     "/lib/leaflet/leaflet.js",
     // The effects runtime. Small and loaded on every page — it decides whether the

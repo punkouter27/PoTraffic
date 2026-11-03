@@ -6,13 +6,23 @@
 // is how a smooth app becomes a janky one. Everything here is centralised so the
 // answer to "are we animating, and how hard" is decided exactly once per frame.
 //
-// Three things live here:
+// Four things live here:
 //   1. ONE ticker. Effects register a step(dt, now) function and get called from a
-//      single rAF loop that stops itself the moment nothing is registered.
+//      single rAF loop that stops itself the moment nothing is registered. One-off
+//      redraws (a drag, a re-measure) go through `nextFrame` on the same loop.
 //   2. THE MOTION LEVEL. "full" | "reduced" | "off", from the user's own setting,
 //      with the OS prefers-reduced-motion preference as the floor.
-//   3. THE TRAFFIC MOOD. One number, 0 (clear) to 1 (jammed), that the map flow
-//      reads when a route carries no verdict of its own.
+//   3. THE TRAFFIC MOOD. One number, 0 (clear) to 1 (jammed), that the map flow and
+//      the dashboard's ambient wash read when nothing more specific is known.
+//   4. THE GESTURE GATE. Where and when the user last pressed something, which is
+//      what the audio cues (pt-audio.js) and the particle burst (pt-burst.js) need:
+//      sound may only start after a real gesture, and a burst should come out of the
+//      button that asked for it. Both modules are loaded on first use, not here —
+//      this file is precached and parsed on every page, they are not.
+//
+// Everything decorative is reached through this module, so .NET (FxService) talks to
+// exactly one JS surface and every effect inherits the same visibility and
+// reduced-motion rules.
 
 const STORAGE_MOTION = "pt-motion-level";
 
@@ -92,6 +102,11 @@ export function setMood(level) {
     mood = MOOD_BY_LEVEL[level] ?? null;
 }
 
+/** Sets the mood from a number, 0–1. The dashboard derives one from every route at once. */
+export function setMoodValue(value) {
+    mood = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : null;
+}
+
 /** Current mood, or `fallback` while the app has no reading. */
 export function getMood(fallback = 0.25) {
     return mood === null ? fallback : mood;
@@ -157,6 +172,17 @@ export function isDegraded() {
     return degraded;
 }
 
+/**
+ * Runs `fn` once on the next shared frame. For redraws that are not animations — a
+ * drag on the terrain, a map re-measure — so they still coalesce with whatever else
+ * is drawing this frame instead of queueing a second rAF of their own. Calling it
+ * again with the same key before the frame lands keeps only the latest `fn`.
+ */
+export function nextFrame(key, fn) {
+    const stop = register(`once:${key}`, () => { stop(); fn(); });
+    return stop;
+}
+
 // A hidden tab must not burn a frame budget. rAF already throttles hard in most
 // browsers, but a backgrounded PWA on a phone can keep ticking — this stops it dead.
 document.addEventListener("visibilitychange", () => {
@@ -168,6 +194,92 @@ document.addEventListener("visibilitychange", () => {
         schedule();
     }
 });
+
+// ── The gesture gate ─────────────────────────────────────────────────────────
+
+/** Last press, in viewport px, and when it happened. A burst starts from here. */
+let lastPress = null;
+
+/**
+ * Listeners that must run INSIDE a user gesture. An AudioContext created or resumed
+ * anywhere else starts suspended under every browser's autoplay policy, so the audio
+ * module hands its unlock function in here rather than listening on its own.
+ */
+const gestureHooks = new Set();
+
+function onGesture(e) {
+    if (e.type === "pointerdown") lastPress = { x: e.clientX, y: e.clientY, at: performance.now() };
+    else if (e.type === "keydown" && (e.key === "Enter" || e.key === " ") && document.activeElement instanceof Element) {
+        // Enter on a focused button is as much a press as a click; burst from its middle.
+        const r = document.activeElement.getBoundingClientRect();
+        lastPress = { x: r.left + r.width / 2, y: r.top + r.height / 2, at: performance.now() };
+    }
+    for (const hook of gestureHooks) {
+        try { hook(); } catch { /* one hook must not starve the rest */ }
+    }
+}
+
+// Capture phase so a component that stops propagation still counts as a gesture.
+window.addEventListener("pointerdown", onGesture, { capture: true, passive: true });
+window.addEventListener("keydown", onGesture, { capture: true, passive: true });
+
+/** True once the user has interacted with the page — the sticky activation bit. */
+export function hasGesture() {
+    return navigator.userActivation?.hasBeenActive ?? lastPress !== null;
+}
+
+/** Subscribes to every future gesture. Returns an unsubscribe function. */
+export function onUserGesture(hook) {
+    gestureHooks.add(hook);
+    return () => gestureHooks.delete(hook);
+}
+
+/** Where the last press landed, or the middle of the viewport if it was long ago. */
+export function lastPressPoint(maxAgeMs = 30000) {
+    if (lastPress && performance.now() - lastPress.at <= maxAgeMs) return [lastPress.x, lastPress.y];
+    return [window.innerWidth / 2, window.innerHeight / 2];
+}
+
+// ── Lazily loaded effects (the .NET-facing surface) ──────────────────────────
+
+let audioModule = null;
+let burstModule = null;
+const audio = () => (audioModule ??= import("./pt-audio.js"));
+const burstFx = () => (burstModule ??= import("./pt-burst.js"));
+
+/** Plays a synthesised cue: "check" | "alert" | "save" | "undo". See pt-audio.js. */
+export async function cue(name, delayRatio = null) {
+    // Muted is checked before the import so a muted user never downloads the synth.
+    if (!soundOn()) return;
+    try { (await audio()).cue(name, delayRatio); } catch { /* decoration only */ }
+}
+
+const STORAGE_SOUND = "pt-sound";
+
+/** This page's own copy of the choice, so muting holds even where storage is blocked. */
+let soundChoice = null;
+
+/** Sound is on unless the user switched it off. Stored as "off"; absent means on. */
+export function soundOn() {
+    return soundChoice ?? read(STORAGE_SOUND, "on") !== "off";
+}
+
+export function setSound(on) {
+    soundChoice = !!on;
+    try {
+        if (on) localStorage.removeItem(STORAGE_SOUND);
+        else localStorage.setItem(STORAGE_SOUND, "off");
+    } catch { /* private mode: holds until reload via soundChoice */ }
+}
+
+/** A celebratory particle burst at the last press. No-op unless motion is "full". */
+export async function burst(kind = "faster") {
+    if (!animates()) return;
+    try {
+        const [x, y] = lastPressPoint();
+        (await burstFx()).burst(x, y, kind);
+    } catch { /* decoration only */ }
+}
 
 // ── Shared helpers effects keep needing ──────────────────────────────────────
 

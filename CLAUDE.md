@@ -147,9 +147,10 @@ self-perpetuating chain, not a fixed timer.
 
 ### Traffic providers
 
-Google Maps is the one traffic provider: handlers inject `ITrafficProvider` directly. When
-`Features:UseMockProviders` is true (or the environment is `Testing`) it resolves to
-`MockTrafficProvider`. TomTom is used only for incident text on alerts (`IIncidentProvider`). Live
+Google Maps is the one traffic provider: handlers inject `ITrafficProvider` directly. The
+`feature.mockproviders.enabled` system setting picks live or `MockTrafficProvider` per request
+(admin-editable, no restart); `Features:UseMockProviders=true` or the `Testing` environment
+forces mocks at host level and registers only the mocks. TomTom is used only for incident text on alerts (`IIncidentProvider`). Live
 clients are wired to the named resilience pipeline in `ResiliencePipelineExtensions`.
 
 ### Program.cs ordering constraints

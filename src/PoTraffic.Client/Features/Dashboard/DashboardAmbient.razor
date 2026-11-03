@@ -1,0 +1,113 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@*  The dashboard's ambient wash (js/pt-ambient.js): one colour and one motion for how
+    every commute is running right now, behind the cards. Purely decorative — the
+    cards carry the numbers — so it is aria-hidden and every failure is swallowed.
+
+    Severity is computed here rather than by the page, so mounting it is one line:
+    each route's latest sample against the median of its own last 24 hours. A route
+    only counts while its latest sample is recent; a commute last checked yesterday
+    says nothing about right now.                                                    *@
+
+@* Only a placeholder: pt-ambient.js draws the wash in an element of its own at <body>
+   level, where no transformed ancestor can capture `position: fixed`. *@
+<span class="pt-ambient-anchor" @ref="_host" hidden></span>
+
+@code {
+    /// <summary>The dashboard's recent samples per route — the same map the cards' sparklines read.</summary>
+    [Parameter] public IReadOnlyDictionary<RouteId, List<PollRecordDto>>? RecentPolls { get; set; }
+
+    /// <summary>How old a route's latest sample may be and still describe "now".</summary>
+    private static readonly TimeSpan Current = TimeSpan.FromHours(2);
+
+    /// <summary>
+    /// Ratio (latest ÷ typical) that reads as fully jammed. Matches the heatmap's darkest
+    /// band starting at 1.7×, so "red" means the same thing on both screens.
+    /// </summary>
+    private const double RatioAtFull = 1.7;
+
+    /// <summary>Fewest samples a route needs before its median is a baseline rather than noise.</summary>
+    private const int MinSamples = 3;
+
+    private ElementReference _host;
+    private IJSObjectReference? _module;
+    private double? _severity;
+    private double? _sent = double.NaN;   // NaN: nothing sent yet, distinct from "sent null"
+    private bool _mounted;
+
+    protected override void OnParametersSet() => _severity = Aggregate(RecentPolls, DateTimeOffset.UtcNow);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_mounted && Nullable.Equals(_sent, _severity))
+            return;
+
+        try
+        {
+            if (!_mounted)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/pt-ambient.js");
+                await _module.InvokeVoidAsync("mount", _host, _severity);
+                _mounted = true;
+            }
+            else if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("update", _host, _severity);
+            }
+            _sent = _severity;
+        }
+        catch (JSDisconnectedException) { /* page tearing down */ }
+        catch (ObjectDisposedException) { /* page tearing down */ }
+        catch (JSException) { /* decoration only: the static gradient stays */ }
+    }
+
+    /// <summary>
+    /// Mean severity, 0–1, over routes with a current reading; null when none has one.
+    /// A mean rather than the worst route: one bad commute among five is a warm wash,
+    /// not a red one — the card for that route is where the alarm belongs.
+    /// </summary>
+    private static double? Aggregate(IReadOnlyDictionary<RouteId, List<PollRecordDto>>? polls, DateTimeOffset now)
+    {
+        if (polls is null || polls.Count == 0)
+            return null;
+
+        double sum = 0;
+        int count = 0;
+        foreach (List<PollRecordDto> samples in polls.Values)
+        {
+            if (samples.Count < MinSamples)
+                continue;
+
+            PollRecordDto latest = samples.MaxBy(p => p.PolledAt)!;
+            if (now - latest.PolledAt > Current)
+                continue;
+
+            double[] sorted = [.. samples.Select(p => (double)p.TravelDurationSeconds).Order()];
+            double median = sorted[sorted.Length / 2];
+            if (median <= 0)
+                continue;
+
+            double ratio = latest.TravelDurationSeconds / median;
+            sum += Math.Clamp((ratio - 1) / (RatioAtFull - 1), 0, 1);
+            count++;
+        }
+
+        return count == 0 ? null : sum / count;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is null)
+            return;
+
+        try
+        {
+            await _module.InvokeVoidAsync("unmount", _host);
+            await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { /* page already gone */ }
+        catch (ObjectDisposedException) { /* page already gone */ }
+        catch (JSException) { /* nothing to release */ }
+    }
+}

@@ -83,6 +83,18 @@ public static class ApiSessionFactory
         return (client, body.Email);
     }
 
+    /// <summary>
+    /// Signs in through the Testing-only <c>/e2e/dev-login</c> as <paramref name="email"/> with
+    /// <paramref name="role"/> — the way to get an Administrator session without Microsoft OAuth.
+    /// </summary>
+    public static async Task<HttpClient> CreateDevLoginSessionAsync(string email, string role)
+    {
+        var client = new HttpClient(new HttpClientHandler { UseCookies = true }) { BaseAddress = new Uri(BaseUrl) };
+        HttpResponseMessage response = await client.PostAsJsonAsync("/e2e/dev-login", new { email, role });
+        response.EnsureSuccessStatusCode();
+        return client;
+    }
+
     public sealed record GuestLoginResponse(
         [property: JsonPropertyName("email")] string Email);
 }

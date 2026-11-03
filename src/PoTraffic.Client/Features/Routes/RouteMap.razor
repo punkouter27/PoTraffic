@@ -67,7 +67,8 @@ else
         if (Path is null)
             return;
 
-        string signature = $"{Path.EncodedPolyline?.Length}|{Path.TrafficLevel}|{Path.IsApproximate}|{Path.Incident?.SeenAt}";
+        // The latest and typical times are in it because the pins' pulse rate follows them.
+        string signature = $"{Path.EncodedPolyline?.Length}|{Path.TrafficLevel}|{Path.IsApproximate}|{Path.Incident?.SeenAt}|{Path.LatestDurationSeconds}|{Path.TypicalDurationSeconds}";
         if (signature == _drawn)
             return;
 
@@ -88,12 +89,19 @@ else
                 incident = Path.Incident is { } i
                     ? new { lat = i.Lat, lng = i.Lng, description = i.Description }
                     : null,
+                delayRatio = DelayRatio,
             });
             _drawn = signature;
         }
         catch (JSDisconnectedException) { /* page tearing down */ }
         catch (ObjectDisposedException) { /* page tearing down */ }
     }
+
+    /// <summary>Latest ÷ typical, which sets how fast the pins pulse. Null without both figures.</summary>
+    private double? DelayRatio =>
+        Path is { LatestDurationSeconds: { } latest, TypicalDurationSeconds: > 0 and var typical }
+            ? latest / (double)typical
+            : null;
 
     private string SwatchClass => $"pt-map-swatch-{Path?.TrafficLevel ?? "unknown"}";
 
@@ -141,5 +149,6 @@ else
         }
         catch (JSDisconnectedException) { /* page already gone */ }
         catch (ObjectDisposedException) { /* page already gone */ }
+        catch (JSException) { /* nothing to release */ }
     }
 }

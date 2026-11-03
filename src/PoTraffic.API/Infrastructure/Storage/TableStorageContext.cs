@@ -527,32 +527,27 @@ public sealed class TableStorageContext
     private List<T> GetList<T>() where T : class => (List<T>)GetListUntyped(typeof(T));
 
     /// <summary>
-    /// Seeds the default <c>SystemConfiguration</c> rows (cost rates, daily quota)
-    /// if they are not already present. Mirrors the EF Core <c>HasData</c> seed
-    /// in the old <c>OnModelCreating</c>.
+    /// Seeds every <see cref="SystemSettings.All"/> row (cost rates, limits, feature flags) that
+    /// is not already present. An existing row is never overwritten, so an administrator's
+    /// change survives restarts.
     /// </summary>
     public void SeedDefaultConfigurationsIfMissing()
     {
         lock (_gate)
         {
-            void Ensure(string key, string value, string description, bool sensitive)
+            foreach (SystemSetting setting in SystemSettings.All)
             {
-                if (!_configs.Any(c => c.Key == key))
+                if (!_configs.Any(c => c.Key == setting.Key))
                 {
                     _configs.Add(new SystemConfiguration
                     {
-                        Key = key,
-                        Value = value,
-                        Description = description,
-                        IsSensitive = sensitive
+                        Key = setting.Key,
+                        Value = setting.DefaultValue,
+                        Description = setting.Description,
+                        IsSensitive = false
                     });
                 }
             }
-            Ensure(PollCostRates.GoogleMapsKey, PollCostRates.GoogleMapsDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), "Cost per poll - Google Maps", false);
-            Ensure("quota.daily.default", "10", "Default daily session quota per user", false);
-            foreach ((string rateKey, decimal rateDefault, string rateDescription) in SpendingCap.Rates.Values)
-                Ensure(rateKey, rateDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), rateDescription, false);
-            Ensure(SpendingCap.MonthlyCapKey, SpendingCap.MonthlyCapDefault.ToString(System.Globalization.CultureInfo.InvariantCulture), "Monthly provider spending cap (USD); polling pauses when reached, 0 = no cap", false);
         }
     }
 }

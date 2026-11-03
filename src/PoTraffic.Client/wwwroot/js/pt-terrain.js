@@ -6,6 +6,13 @@
 // plain is a commute that holds steady. Slots whose spread makes them unpredictable
 // shimmer, which is the grid's corner dot turned into something you notice.
 //
+// LIGHT: a directional "sun" keyed to the viewer's local time of day. It travels the
+// same left-to-right axis as the quarter-hours, so at 08:00 the morning peaks are lit
+// from the side they face and at 17:30 the evening ones are; after dark a dim, cool
+// moonlight takes over. Shading is soft on purpose — wrapped diffuse, a sky/ground
+// hemisphere for the ambient term and a broad sheen on the summits — because a hard
+// terminator turns rounded hills into faceted rock and reads as noise, not shape.
+//
 // It is an alternative view, never the only one: the grid stays in the DOM for screen
 // readers and for exact figures, and every failure here returns false so the caller
 // falls back to it.
@@ -44,6 +51,11 @@ uniform vec3  u_high;      // --pt-color-danger
 uniform vec3  u_empty;     // no samples
 uniform float u_peak;      // height of the tallest possible slot
 uniform float u_time;
+uniform vec3  u_sun;       // direction TOWARD the light, world space
+uniform vec3  u_sunColour; // already scaled by how strongly it lights the scene
+uniform vec3  u_sky;       // ambient from above
+uniform vec3  u_ground;    // ambient bounced from below
+uniform vec3  u_eye;
 
 in vec3  v_normal;
 in float v_height;
@@ -59,7 +71,25 @@ void main() {
     vec3 base = mix(u_empty, ramp, v_data);
 
     vec3 n = normalize(v_normal);
-    float light = 0.5 + 0.5 * max(dot(n, normalize(vec3(0.35, 1.0, 0.45))), 0.0);
+    vec3 l = normalize(u_sun);
+
+    // Wrapped diffuse, smoothstepped: the shadow side of a hill rolls off gradually
+    // instead of cutting to black at the terminator.
+    float wrapped = clamp((dot(n, l) + 0.45) / 1.45, 0.0, 1.0);
+    float diffuse = wrapped * wrapped * (3.0 - 2.0 * wrapped);
+
+    // Hemisphere ambient: faces turned to the sky catch more of it than steep flanks.
+    vec3 ambient = mix(u_ground, u_sky, 0.5 + 0.5 * n.y);
+
+    // Cheap occlusion: the feet of slopes sit a touch darker than open plain or summit.
+    float occlusion = mix(0.84, 1.0, clamp(n.y * 0.6 + h * 0.6, 0.0, 1.0));
+
+    // Broad sheen on the peaks only, so the slots to avoid catch the light first.
+    vec3 world = vec3(v_ground.x, v_height, v_ground.y);
+    vec3 hv = normalize(l + normalize(u_eye - world));
+    float sheen = pow(max(dot(n, hv), 0.0), 18.0) * smoothstep(0.3, 0.95, h) * v_data;
+
+    vec3 light = (ambient + u_sunColour * diffuse) * occlusion;
 
     // Contour lines, as on a topographic map: they make the slope readable where
     // shading alone flattens out. fwidth keeps them one pixel wide at any zoom.
@@ -71,7 +101,7 @@ void main() {
     // over the surface, not as the surface blinking.
     float shimmer = v_vol * (0.5 + 0.5 * sin(u_time * 3.0 + v_ground.x * 9.0 + v_ground.y * 6.0));
 
-    vec3 colour = base * light + shimmer * 0.28 + line * 0.12 * v_data;
+    vec3 colour = base * light + u_sunColour * sheen * 0.3 + shimmer * 0.28 + line * 0.12 * v_data;
     fragColor = vec4(colour, 1.0);
 }`;
 
@@ -87,6 +117,44 @@ const VOLATILE_CV = 0.08;
 
 /** @type {WeakMap<HTMLCanvasElement, object>} */
 const states = new WeakMap();
+
+// ── Sun ──────────────────────────────────────────────────────────────────────
+
+const mix3 = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+
+const DAYLIGHT = [1.0, 0.96, 0.9];
+const GOLDEN = [1.0, 0.74, 0.5];
+const MOONLIGHT = [0.5, 0.58, 0.82];
+
+/**
+ * The light for a local wall-clock time. 06:00 rises at the left (early columns),
+ * noon is overhead, 18:00 sets at the right; at night a fixed, dimmer moon stands in
+ * so the landscape stays readable — this is a chart first and a scene second.
+ */
+export function sunAt(date = new Date()) {
+    const hours = date.getHours() + date.getMinutes() / 60;
+    const phase = (hours - 6) / 12;                  // 0 sunrise … 1 sunset
+    const elevation = Math.sin(Math.PI * phase);     // < 0 at night
+
+    if (elevation <= 0) {
+        return {
+            dir: [0.3, 0.9, 0.5],
+            colour: MOONLIGHT.map((c) => c * 0.45),
+            sky: [0.3, 0.33, 0.44],
+            ground: [0.16, 0.16, 0.2],
+        };
+    }
+
+    // Low sun is warm and raking; high sun is white and flat.
+    const golden = 1 - Math.min(1, elevation / 0.45);
+    const colour = mix3(DAYLIGHT, GOLDEN, golden).map((c) => c * (0.5 + 0.12 * (1 - golden)));
+    return {
+        dir: [-Math.cos(Math.PI * phase), 0.25 + elevation, 0.4],
+        colour,
+        sky: mix3([0.46, 0.49, 0.54], [0.44, 0.4, 0.4], golden),
+        ground: [0.24, 0.22, 0.2],
+    };
+}
 
 // ── Tiny matrix kit (column-major, as WebGL wants) ──────────────────────────
 
@@ -248,7 +316,10 @@ export function render(canvas, labels, data) {
 
     const host = canvas.parentElement;
     const u = (name) => gl.getUniformLocation(program, name);
-    const uniforms = { mvp: u("u_mvp"), time: u("u_time") };
+    const uniforms = {
+        mvp: u("u_mvp"), time: u("u_time"), eye: u("u_eye"),
+        sun: u("u_sun"), sunColour: u("u_sunColour"), sky: u("u_sky"), ground: u("u_ground"),
+    };
     gl.uniform3fv(u("u_low"), fx.resolveRgb(host, "var(--pt-color-success)", [0.09, 0.64, 0.29]));
     gl.uniform3fv(u("u_mid"), fx.resolveRgb(host, "var(--pt-color-warning)", [0.85, 0.47, 0.02]));
     gl.uniform3fv(u("u_high"), fx.resolveRgb(host, "var(--pt-color-danger)", [0.86, 0.15, 0.15]));
@@ -276,6 +347,7 @@ export function render(canvas, labels, data) {
     const state = {
         gl, program, vao, vbo, ibo, mesh, uniforms, marks,
         yaw: -0.55, pitch: 0.72, sway: 0, drag: null, time: 0, unregister: null, observer: null,
+        sunMinute: -1, cancelFrame: null,
         cleanup: [],
     };
     states.set(canvas, state);
@@ -304,6 +376,18 @@ export function render(canvas, labels, data) {
         gl.bindVertexArray(vao);
         gl.uniformMatrix4fv(uniforms.mvp, false, mvp);
         gl.uniform1f(uniforms.time, state.time);
+        gl.uniform3fv(uniforms.eye, eye);
+
+        // Re-read at most once a minute: the sun does not move faster than that.
+        const minute = Math.floor(Date.now() / 60000);
+        if (minute !== state.sunMinute) {
+            state.sunMinute = minute;
+            const sun = sunAt();
+            gl.uniform3fv(uniforms.sun, sun.dir);
+            gl.uniform3fv(uniforms.sunColour, sun.colour);
+            gl.uniform3fv(uniforms.sky, sun.sky);
+            gl.uniform3fv(uniforms.ground, sun.ground);
+        }
         gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_INT, 0);
 
         for (const m of state.marks) {
@@ -322,7 +406,8 @@ export function render(canvas, labels, data) {
         if (!state.drag) return;
         state.yaw = state.drag.yaw - (e.clientX - state.drag.x) * 0.008;
         state.pitch = Math.max(0.2, Math.min(1.35, state.drag.pitch + (e.clientY - state.drag.y) * 0.006));
-        if (!state.unregister) requestAnimationFrame(draw);
+        // Still mode: one redraw per frame on the shared ticker, however fast the pointer moves.
+        if (!state.unregister) state.cancelFrame = fx.nextFrame("terrain-drag", draw);
     };
     const onUp = () => { state.drag = null; };
     canvas.addEventListener("pointerdown", onDown);
@@ -364,6 +449,7 @@ function teardown(canvas, loseContext) {
     const state = canvas && states.get(canvas);
     if (!state) return;
     state.unregister?.();
+    state.cancelFrame?.();
     state.observer?.disconnect();
     state.cleanup.forEach((fn) => fn());
     const { gl } = state;
@@ -373,4 +459,42 @@ function teardown(canvas, loseContext) {
     gl.deleteProgram(state.program);
     if (loseContext) gl.getExtension("WEBGL_lose_context")?.loseContext();
     states.delete(canvas);
+}
+
+// ── Typed entry points ([JSImport], see Infrastructure/FxInterop.cs) ────────
+
+/** Canvases drawn by id, so destroyById still finds one Blazor has already detached. */
+const byId = new Map();
+
+/**
+ * Same as `render`, with the grid's numbers as memory views over WASM memory rather
+ * than JSON. Element references cannot cross [JSImport], so the canvas is found by its
+ * data-pt-terrain id and the label layer as its sibling.
+ *
+ * @param {string} id
+ * @param {string[]} cols
+ * @param {string[]} rows
+ * @param {{slice: () => Float64Array}} ratio  row-major, -1 where a slot has no samples
+ * @param {{slice: () => Float64Array}} cv     row-major coefficient of variation
+ * @returns {boolean} false when the 3D view cannot draw and the grid should stay
+ */
+export function renderTyped(id, cols, rows, ratio, cv) {
+    const canvas = document.querySelector(`canvas[data-pt-terrain="${CSS.escape(id)}"]`);
+    const labels = canvas?.parentElement?.querySelector(".pt-terrain-labels");
+    if (!canvas || !labels) return false;
+
+    // A different canvas under the same id means the 3D view was re-opened.
+    const previous = byId.get(id);
+    if (previous && previous !== canvas) destroy(previous);
+    byId.set(id, canvas);
+
+    // slice() copies out of WASM memory; the views die when this call returns.
+    return render(canvas, labels, { cols, rows, ratio: ratio.slice(), cv: cv.slice() });
+}
+
+/** Releases whatever canvas was last drawn under `id`. Safe for an unknown id. */
+export function destroyById(id) {
+    const canvas = byId.get(id);
+    byId.delete(id);
+    if (canvas) destroy(canvas);
 }

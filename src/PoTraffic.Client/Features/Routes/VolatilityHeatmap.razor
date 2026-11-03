@@ -1,6 +1,6 @@
 @using PoTraffic.Shared.DTOs.History
-@implements IAsyncDisposable
-@inject IJSRuntime JS
+@implements IDisposable
+@inject NavigationManager Nav
 @inject PoTraffic.Client.Infrastructure.FxService Fx
 
 @* ──────────────────────────────────────────────────────────────────────
@@ -56,8 +56,8 @@ else
     {
         <div class="pt-terrain" role="img"
              aria-label="@($"Weekly pattern as a landscape: taller means slower than typical. {_summary}")">
-            <canvas class="pt-terrain-canvas" @ref="_canvas"></canvas>
-            <div class="pt-terrain-labels" @ref="_labels" aria-hidden="true"></div>
+            <canvas class="pt-terrain-canvas" data-pt-terrain="@_terrainId"></canvas>
+            <div class="pt-terrain-labels" aria-hidden="true"></div>
         </div>
         <div class="pt-heatmap-legend">
             <span class="pt-heatmap-legend-label">Height and colour = how much slower than typical · shimmer = unpredictable · drag to turn</span>
@@ -151,9 +151,9 @@ else
 
     private bool _terrain;
     private bool _terrainFailed;
-    private ElementReference _canvas;
-    private ElementReference _labels;
-    private IJSObjectReference? _module;
+    /// <summary>Finds this component's canvas from JS; [JSImport] cannot carry an ElementReference.</summary>
+    private readonly string _terrainId = Guid.NewGuid().ToString("N");
+    private bool _terrainLoaded;
 
     /// <summary>The heatmap last drawn in 3D; the page re-renders this on every refresh.</summary>
     private VolatilityHeatmapDto? _drawn;
@@ -190,16 +190,12 @@ else
         _summary = BuildSummary(Heatmap);
     }
 
-    private async Task OnViewChanged(bool terrain)
+    private void OnViewChanged(bool terrain)
     {
-        // Leaving 3D removes the canvas. Release its GL context and 30fps ticker while it
-        // still exists — DisposeAsync only ever sees the last canvas, so the detached one
-        // kept redrawing for the rest of the session.
-        if (!terrain && _module is not null)
-        {
-            try { await _module.InvokeVoidAsync("destroy", _canvas); }
-            catch (JSException) { /* nothing to release */ }
-        }
+        // Leaving 3D removes the canvas. Release its GL context and 30fps ticker now —
+        // left to Dispose, the detached canvas kept redrawing for the rest of the session.
+        if (!terrain)
+            DestroyTerrain();
         _terrain = terrain;
         _drawn = null;   // the canvas is a new element each time 3D is chosen
     }
@@ -214,45 +210,43 @@ else
         var cells = Week.SelectMany(day => _slots.Select(slot => _byKey.GetValueOrDefault((day, slot.Hour, slot.Quarter))))
             .ToList();
 
-        try
+        // The grid's numbers cross as typed memory views (FxInterop), not JSON.
+        double[] ratio = [.. cells.Select(c => c is null || median <= 0 ? -1 : c.MeanDurationSeconds / median)];
+        double[] cv = [.. cells.Select(c => c is { SampleCount: > 1, MeanDurationSeconds: > 0 }
+            ? c.StdDevDurationSeconds / c.MeanDurationSeconds : 0)];
+
+        bool drawn = false;
+        if (OperatingSystem.IsBrowser())
         {
-            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/pt-terrain.js");
-            bool drawn = await _module.InvokeAsync<bool>("render", _canvas, _labels, new
+            try
             {
-                cols = _slots.Select(SlotLabel).ToArray(),
-                rows = Week,
-                ratio = cells.Select(c => c is null || median <= 0 ? -1 : c.MeanDurationSeconds / median).ToArray(),
-                cv = cells.Select(c => c is { SampleCount: > 1, MeanDurationSeconds: > 0 }
-                    ? c.StdDevDurationSeconds / c.MeanDurationSeconds : 0).ToArray(),
-            });
-            if (!drawn)
-            {
-                (_terrain, _terrainFailed) = (false, true);
-                StateHasChanged();
+                await FxInterop.EnsureTerrainAsync(Nav.BaseUri);
+                _terrainLoaded = true;
+                drawn = FxInterop.RenderTerrain(_terrainId, [.. _slots.Select(SlotLabel)], Week, ratio, cv);
             }
+            catch (System.Runtime.InteropServices.JavaScript.JSException) { /* module blocked or WebGL2 threw: stay on the grid */ }
         }
-        catch (JSDisconnectedException) { /* page tearing down */ }
-        catch (ObjectDisposedException) { /* page tearing down */ }
-        catch (JSException)
+
+        if (!drawn)
         {
             (_terrain, _terrainFailed) = (false, true);
             StateHasChanged();
         }
     }
 
-    public async ValueTask DisposeAsync()
+    /// <summary>
+    /// Releases the GL context and the 30fps ticker. pt-terrain.js keeps the canvas by id,
+    /// so this works even after Blazor has detached the element.
+    /// </summary>
+    private void DestroyTerrain()
     {
-        if (_module is null)
+        if (!_terrainLoaded || !OperatingSystem.IsBrowser())
             return;
-
-        try
-        {
-            await _module.InvokeVoidAsync("destroy", _canvas);
-            await _module.DisposeAsync();
-        }
-        catch (JSDisconnectedException) { /* page already gone */ }
-        catch (ObjectDisposedException) { /* page already gone */ }
+        try { FxInterop.DestroyTerrain(_terrainId); }
+        catch (System.Runtime.InteropServices.JavaScript.JSException) { /* nothing to release */ }
     }
+
+    public void Dispose() => DestroyTerrain();
 
     /// <summary>"Tuesdays at 17:30 run 62% over your typical 23 min." Null until a cell
     /// is materially worse than the route's median — flagging a 4% bump as a hotspot is noise.</summary>

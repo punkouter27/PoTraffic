@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Administrator")]
 @inject HttpClient Http
 @inject NotificationService Notifications
+@inject FxService Fx
 
 <PageTitle>Admin — PoTraffic</PageTitle>
 
@@ -13,10 +14,14 @@
     </Actions>
 </PageHeader>
 
-<RadzenCard class="pt-p-6">
+@* The wrapper carries the scope for the phone rules in AdminUsagePage.razor.css: a
+   class on RadzenCard or RadzenTabs lands on markup without this page's scope id. *@
+<div class="pt-admin">
+<RadzenCard class="pt-admin-card-root">
     <RadzenTabs>
         <Tabs>
-            <RadzenTabsItem Text="Usage Insights" Icon="people">
+            <RadzenTabsItem Text="Usage" Icon="people">
+                <SectionErrorBoundary Label="usage insights">
                 @* The month's provider budget, first: when it is spent, polling for every user
                    is paused, which matters more than any one row below. *@
                 @if (_spending is { } sp)
@@ -50,7 +55,7 @@
                             resets @sp.ResetsAtUtc.UtcDateTime.ToString("MMM d") (UTC)
                             @if (sp.IsCapReached)
                             {
-                                <strong> · Polling and Check now are paused for everyone. Raise the cap under System Config to resume.</strong>
+                                <strong> · Polling and Check now are paused for everyone. Raise the cap under Config to resume.</strong>
                             }
                         </div>
                     </div>
@@ -135,9 +140,11 @@
                         }
                     </ul>
                 </LoadingErrorCard>
+                </SectionErrorBoundary>
             </RadzenTabsItem>
 
-            <RadzenTabsItem Text="Global Volatility" Icon="analytics">
+            <RadzenTabsItem Text="Volatility" Icon="analytics">
+                <SectionErrorBoundary Label="the volatility chart">
                 <RadzenText TextStyle="TextStyle.Caption" class="pt-mt-3 pt-mb-4">Mean travel time across all active routes — past 24 hours</RadzenText>
                 <LoadingErrorCard IsLoading="_volLoading" Error="@_volError">
                     @if (_points.Count == 0 && !_volLoading)
@@ -172,9 +179,11 @@
                         </RadzenChart>
                     }
                 </LoadingErrorCard>
+                </SectionErrorBoundary>
             </RadzenTabsItem>
 
-            <RadzenTabsItem Text="System Config" Icon="settings">
+            <RadzenTabsItem Text="Config" Icon="settings">
+                <SectionErrorBoundary Label="the system configuration">
                 <RadzenText TextStyle="TextStyle.Subtitle2" class="pt-mt-3 pt-mb-4 pt-diag-subtitle">
                     Sensitive values are masked. Values can be updated by administrators.
                 </RadzenText>
@@ -195,7 +204,12 @@
                                     {
                                         <span class="pt-diag-sensitive">@c.Value</span>
                                     }
-                                    else if (EditableKeys.Contains(c.Key))
+                                    else if (c.IsEditable && IsFlag(c))
+                                    {
+                                        <RadzenSwitch Value="@(c.Value == "true")" Change="@(on => SaveConfigAsync(c, on ? "true" : "false"))"
+                                                      aria-label="@($"Value for {c.Key}")" />
+                                    }
+                                    else if (c.IsEditable)
                                     {
                                         <RadzenTextBox Value="@c.Value" Change="@(v => SaveConfigAsync(c, v))"
                                                        aria-label="@($"Value for {c.Key}")" class="pt-admin-config-input" />
@@ -240,7 +254,12 @@
                                         <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Sensitive" />
                                     }
                                 </div>
-                                @if (!c.IsSensitive && EditableKeys.Contains(c.Key))
+                                @if (!c.IsSensitive && c.IsEditable && IsFlag(c))
+                                {
+                                    <RadzenSwitch Value="@(c.Value == "true")" Change="@(on => SaveConfigAsync(c, on ? "true" : "false"))"
+                                                  aria-label="@($"Value for {c.Key}")" />
+                                }
+                                else if (!c.IsSensitive && c.IsEditable)
                                 {
                                     <RadzenTextBox Value="@c.Value" Change="@(v => SaveConfigAsync(c, v))"
                                                    aria-label="@($"Value for {c.Key}")" class="pt-admin-config-input" />
@@ -257,10 +276,12 @@
                         }
                     </ul>
                 </LoadingErrorCard>
+                </SectionErrorBoundary>
             </RadzenTabsItem>
         </Tabs>
     </RadzenTabs>
 </RadzenCard>
+</div>
 
 @code {
     // ── Usage tab ──────────────────────────────────────────────────────────────
@@ -291,12 +312,11 @@
     private SpendingDto? _spending;
 
     /// <summary>
-    /// Mirrors the server's UpdateSystemConfigurationValidator.EditableKeys; the server is
-    /// the authority and rejects anything else with 422.
+    /// An on/off setting (feature.*) renders as a switch; the server decides which keys are
+    /// editable (<see cref="SystemConfigDto.IsEditable"/>) and rejects anything else with 422.
     /// </summary>
-    private static readonly HashSet<string> EditableKeys =
-        ["quota.daily.default", "cost.monthly.cap.usd", "cost.perpoll.googlemaps",
-         "cost.pergeocode.googlemaps", "cost.perdirections.googlemaps", "cost.perautocomplete.googlemaps"];
+    private static bool IsFlag(SystemConfigDto c) =>
+        c.Key.StartsWith("feature.", StringComparison.Ordinal) && c.Value is "true" or "false";
 
     /// <summary>Placeholder for users with no override: the global limit they fall back to.</summary>
     private string DefaultQuotaText =>
@@ -353,7 +373,10 @@
         _ => kind
     };
 
-    private void Saved(bool ok, string detail) =>
+    private void Saved(bool ok, string detail)
+    {
+        if (ok)
+            _ = Fx.CueAsync(SoundCue.Save);
         Notifications.Notify(new NotificationMessage
         {
             Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,
@@ -361,6 +384,7 @@
             Detail = ok ? detail : "The server rejected that value.",
             Duration = 4000
         });
+    }
 
     private async Task LoadUsageAsync()
     {

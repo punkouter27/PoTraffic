@@ -1,5 +1,6 @@
 @implements IDisposable
 @inject PendingDeletionService Pending
+@inject FxService Fx
 
 @* ──────────────────────────────────────────────────────────────────────
    #3 — the undo affordance the old "Undo within 5 seconds…" toast only
@@ -15,7 +16,7 @@
         <span class="pt-undo-text">
             Deleted <strong>@deletion.Label</strong>
         </span>
-        <button type="button" class="pt-undo-action" @onclick="() => Pending.Undo(deletion.RouteId)">
+        <button type="button" class="pt-undo-action" @onclick="() => UndoAsync(deletion.RouteId)">
             <span class="pt-undo-ring" style="--pt-undo-pct:@RemainingPercent(deletion)" aria-hidden="true"></span>
             Undo
             <span class="pt-undo-secs">@RemainingSeconds(deletion)s</span>
@@ -41,6 +42,13 @@
     }
 
     private void OnChanged() => Render();
+
+    /// <summary>Restores the route, with the undo cue as the audible "taken back".</summary>
+    private async Task UndoAsync(RouteId routeId)
+    {
+        Pending.Undo(routeId);
+        await Fx.CueAsync(SoundCue.Undo);
+    }
 
     /// <summary>
     /// A tick or a service event can land after the renderer has torn down, where

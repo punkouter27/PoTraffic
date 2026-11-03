@@ -1,0 +1,210 @@
+@using PoTraffic.Shared.DTOs.Routes
+@using PoTraffic.Shared.Enums
+@inject HttpClient Http
+@inject NotificationService Notifications
+
+@* ──────────────────────────────────────────────────────────────────────
+   Bulk actions — pause, resume or delete several commutes at once.
+
+   A slide-out drawer (PtDialog) opened from the dashboard toolbar's "Select". It
+   lists the commutes the toolbar is currently showing, so search and filter are
+   how you narrow what "all" means. Only actions the API already has: PUT
+   /api/routes/{id}/paused and DELETE /api/routes/{id}, one call per route.
+
+   Results are reported inside the drawer, not as toasts: an open modal dialog
+   sits in the top layer, above Radzen's notifications, so a toast would be
+   hidden until the drawer closed. Delete is the exception — it closes the drawer
+   and then reports, since the rows it listed are gone.
+
+   The sample commute is never probed, so pause and resume skip it; it can still
+   be deleted.
+   ────────────────────────────────────────────────────────────────────── *@
+
+<PtDialog Open="Open" OpenChanged="OnOpenChanged" Drawer="true" Title="Select commutes" Class="pt-bulk">
+    <ChildContent>
+        <div class="pt-bulk-all">
+            <RadzenCheckBox TValue="bool?" Value="@AllState" Change="@ToggleAll" Name="pt-bulk-all"
+                            TriState="false" aria-label="Select all shown commutes" />
+            <RadzenLabel Text="@($"All shown ({Routes.Count})")" Component="pt-bulk-all" />
+            <span class="pt-bulk-count" aria-live="polite">@_selected.Count selected</span>
+        </div>
+
+        <ul class="pt-bulk-list" aria-label="Commutes">
+            @foreach (RouteDto route in Routes)
+            {
+                string name = $"pt-bulk-{route.Id}";
+                bool paused = route.MonitoringStatus != MonitoringStatus.Active && !route.IsSample;
+                <li class="pt-bulk-item @(_selected.Contains(route.Id) ? "is-selected" : "")" @key="route.Id">
+                    <RadzenCheckBox TValue="bool" Value="@_selected.Contains(route.Id)" Name="@name"
+                                    Change="@(on => Toggle(route.Id, on))" />
+                    <RadzenLabel Component="@name" Text="@Label(route)" class="pt-bulk-label" />
+                    <span class="pt-bulk-state">@(route.IsSample ? "Sample" : paused ? "Paused" : "Monitoring")</span>
+                </li>
+            }
+        </ul>
+
+        @if (_message is not null)
+        {
+            <div class="pt-bulk-message @(_messageIsError ? "is-error" : "")" role="status">@_message</div>
+        }
+    </ChildContent>
+    <Footer>
+        @if (_confirmingDelete)
+        {
+            <p class="pt-bulk-confirm" role="alert">
+                Delete @_selected.Count commute@(_selected.Count == 1 ? "" : "s") and all their history? This can't be undone.
+            </p>
+            <RadzenButton Text="@($"Delete {_selected.Count}")" Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                          Size="ButtonSize.Small" IsBusy="_busy" Click="DeleteAsync" />
+            <RadzenButton Text="Keep them" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Disabled="_busy" Click="@(() => _confirmingDelete = false)" />
+        }
+        else
+        {
+            <RadzenButton Text="Pause" Icon="pause" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Disabled="@(_busy || PausableCount(pause: true) == 0)" Click="@(() => SetPausedAsync(true))" />
+            <RadzenButton Text="Resume" Icon="play_arrow" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                          Disabled="@(_busy || PausableCount(pause: false) == 0)" Click="@(() => SetPausedAsync(false))" />
+            <RadzenButton Text="Delete" Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined"
+                          Size="ButtonSize.Small" class="pt-bulk-delete"
+                          Disabled="@(_busy || _selected.Count == 0)" Click="@(() => _confirmingDelete = true)" />
+        }
+    </Footer>
+</PtDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The commutes the dashboard is showing right now, in its order.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<RouteDto> Routes { get; set; } = [];
+
+    /// <summary>Raised after any action changed a route, so the page can reload its list.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private readonly HashSet<RouteId> _selected = [];
+    private bool _busy;
+    private bool _confirmingDelete;
+    private string? _message;
+    private bool _messageIsError;
+
+    protected override void OnParametersSet()
+    {
+        // A route that left the list (deleted, filtered out) cannot stay selected.
+        _selected.IntersectWith(Routes.Select(r => r.Id));
+    }
+
+    private async Task OnOpenChanged(bool open)
+    {
+        if (!open)
+        {
+            _confirmingDelete = false;
+            _message = null;
+        }
+        await OpenChanged.InvokeAsync(open);
+    }
+
+    private bool? AllState => _selected.Count == 0 ? false
+        : _selected.Count == Routes.Count ? true
+        : null;
+
+    /// <summary>Anything short of everything selects everything; everything clears.</summary>
+    private void ToggleAll(bool? _)
+    {
+        bool selectAll = AllState != true;
+        _selected.Clear();
+        if (selectAll)
+            _selected.UnionWith(Routes.Select(r => r.Id));
+        _confirmingDelete = false;
+    }
+
+    private void Toggle(RouteId id, bool on)
+    {
+        if (on) _selected.Add(id); else _selected.Remove(id);
+        _confirmingDelete = false;
+    }
+
+    private static string Label(RouteDto route) =>
+        route.Name ?? $"{TextFormatting.ToTitleCase(route.OriginAddress.Split(',')[0])} → {TextFormatting.ToTitleCase(route.DestinationAddress.Split(',')[0])}";
+
+    private IEnumerable<RouteDto> SelectedRoutes => Routes.Where(r => _selected.Contains(r.Id));
+
+    /// <summary>Selected routes the action would actually change; the sample never counts.</summary>
+    private int PausableCount(bool pause) => SelectedRoutes.Count(r =>
+        !r.IsSample && (r.MonitoringStatus == MonitoringStatus.Paused) != pause);
+
+    private async Task SetPausedAsync(bool paused)
+    {
+        List<RouteDto> targets = [.. SelectedRoutes.Where(r =>
+            !r.IsSample && (r.MonitoringStatus == MonitoringStatus.Paused) != paused)];
+        if (targets.Count == 0)
+            return;
+
+        _busy = true;
+        _message = null;
+        try
+        {
+            bool[] results = await Task.WhenAll(targets.Select(async r =>
+            {
+                try
+                {
+                    HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{r.Id}/paused",
+                        new SetRoutePausedRequest(paused), AppJsonContext.Default.SetRoutePausedRequest);
+                    return resp.IsSuccessStatusCode;
+                }
+                catch (HttpRequestException) { return false; }
+                catch (TaskCanceledException) { return false; }
+            }));
+
+            int ok = results.Count(x => x);
+            string verb = paused ? "Paused" : "Resumed";
+            _messageIsError = ok < targets.Count;
+            _message = _messageIsError
+                ? $"{verb} {ok} of {targets.Count}. The rest didn't go through — try again."
+                : $"{verb} {ok} commute{(ok == 1 ? "" : "s")}.";
+
+            if (ok > 0)
+                await OnChanged.InvokeAsync();
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task DeleteAsync()
+    {
+        List<RouteDto> targets = [.. SelectedRoutes];
+        if (targets.Count == 0)
+            return;
+
+        _busy = true;
+        try
+        {
+            bool[] results = await Task.WhenAll(targets.Select(async r =>
+            {
+                try { return (await Http.DeleteAsync($"/api/routes/{r.Id}")).IsSuccessStatusCode; }
+                catch (HttpRequestException) { return false; }
+                catch (TaskCanceledException) { return false; }
+            }));
+
+            int ok = results.Count(x => x);
+            _confirmingDelete = false;
+            _selected.Clear();
+
+            if (ok == targets.Count)
+            {
+                // Close first: the toast renders below an open modal.
+                await OnOpenChanged(false);
+                Notifications.Notify(NotificationSeverity.Success, "Deleted",
+                    $"{ok} commute{(ok == 1 ? "" : "s")} removed.");
+            }
+            else
+            {
+                _messageIsError = true;
+                _message = $"Deleted {ok} of {targets.Count}. The rest didn't go through — try again.";
+            }
+
+            if (ok > 0)
+                await OnChanged.InvokeAsync();
+        }
+        finally { _busy = false; }
+    }
+}

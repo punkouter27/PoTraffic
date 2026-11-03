@@ -75,6 +75,10 @@ dotnet test tests/PoTraffic.IntegrationTests
 dotnet test tests/PoTraffic.E2ETests
 ```
 
+Test caps: at most 100 unit, 50 integration, 25 API (`E2ETests/Api`) and 25 UI tests —
+counted as test cases, so each `[Theory]` row counts. Merge overlapping tests before adding
+new ones. `[ApiSkipUnlessReady]` probes `E2E_BASE_URL` when it is set.
+
 ## Key Concepts
 
 Routes have monitoring windows. When a window is active, the scheduler records
@@ -90,8 +94,9 @@ sample commute's history is generated, so it never counts toward spend, admin us
 the fleet volatility chart. With mock providers on, address suggestions are canned and
 free.
 
-Cost controls, all editable by administrators on the Admin page (System Config tab, or
-`PUT /api/admin/configuration/{key}`):
+Cost controls and feature flags, all editable at runtime by administrators on the Admin
+page (Config tab, or `PUT /api/admin/configuration/{key}`). Every key, default and
+validator lives in one catalogue, `Features/Config/SystemSettings.cs`:
 
 | Config key | Default | Effect |
 |---|---|---|
@@ -101,10 +106,30 @@ Cost controls, all editable by administrators on the Admin page (System Config t
 | `cost.perdirections.googlemaps` | `0.005` | USD per Directions call (a route map's road shape, fetched once per route). |
 | `cost.perautocomplete.googlemaps` | `0.00283` | USD per Places Autocomplete request (address suggestions while typing). |
 | `cost.monthly.cap.usd` | `100` | Monthly provider budget. Spend is this UTC month's polls plus the Check now, geocode, directions and autocomplete calls (counted in the `ProviderUsage` table), each at its rate. Once it reaches the cap, scheduled polls and Check now pause until the next month or until the cap is raised; route creation and suggestions keep working. `0` disables the cap. Breakdown: `GET /api/admin/spending`. |
+| `feature.mockproviders.enabled` | `false` | Use the mock traffic/places providers instead of Google. Takes effect on the next request. The `Testing` environment or `Features:UseMockProviders=true` forces mocks regardless. |
+| `feature.weather.enabled` | `true` | Fetch Open-Meteo weather for the route Weather tab. |
 
 Development and Production require Microsoft OAuth. Testing exposes isolated
 auth bypass endpoints for integration and E2E tests; these are not available
 when running the app normally.
+
+## Client experience
+
+- **Dashboard:** one toolbar for search, status filter and sort; **Select** opens a drawer to
+  pause, resume or delete several commutes at once. A WebGL background
+  (`DashboardAmbient`, `pt-ambient.js`) tints with overall traffic right now. First load shows
+  skeletons the same size as the final cards, so nothing jumps.
+- **Sound:** short Web Audio cues (`pt-audio.js`) for Check now, new alerts, saves and undo.
+  Check now's pitch rises with delay against the usual time; a faster-than-usual result also
+  gets a particle burst. Mute it under Settings → Sound.
+- **Graphics:** route cards and panels use frosted glass (`pt-glass.css`) with a solid
+  fallback; the heatmap terrain is lit by a time-of-day sun; route flow renders with WebGPU,
+  then WebGL2, then Canvas2D; map pins pulse faster as delay grows; the trend chart morphs
+  between ranges. Chart and terrain data cross to JS as typed arrays via `[JSImport]`
+  (`FxInterop.cs`). Everything respects the Motion setting and `prefers-reduced-motion`.
+- **Keyboard:** `/` search, `n` new commute, `c` Check now, `?` shortcut help, `Esc` closes.
+- **Settings:** common options on top; density, motion, locale, quota and extra panels sit
+  in a collapsible Advanced section.
 
 ## Development Guidelines
 

@@ -1,22 +1,33 @@
 /* Muted enough to ignore, legible enough to read out on a support call. --pt-fg-faint
-   is defined for both themes (and for high contrast), so it holds in light and dark. */
+   is defined for both themes (and for high contrast), so it holds in light and dark.
+
+   Its box is pinned — line-height 1, a fixed height — because its neighbours are
+   placed by arithmetic, not by layout: UndoBar sits 5rem above the bottom edge and
+   PwaUpdateBar 9rem, both over the bottom nav on a phone. With the UA's ~1.5 line
+   height the stamp's top edge rode about 0.2rem into the undo bar's bottom corner;
+   at 0.75rem tall it now clears both bars and the nav on every width. */
 .pt-build-version {
-    bottom: var(--pt-space-1);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pt-space-1));
     color: var(--pt-fg-faint);
     font-size: 0.625rem;
     font-variant-numeric: tabular-nums;
+    height: 0.75rem;
     letter-spacing: 0.04em;
+    line-height: 0.75rem;
     pointer-events: none;
     position: fixed;
-    right: var(--pt-space-2);
+    right: calc(env(safe-area-inset-right, 0px) + var(--pt-space-2));
     user-select: none;
+    white-space: nowrap;
     z-index: var(--pt-z-nav);
 }
 
 /* On a phone the bottom nav owns the bottom edge; the stamp rides just above it
-   rather than over the nav's last button. 640px is the breakpoint BottomNav uses. */
+   rather than over the nav's last button. 640px is the breakpoint BottomNav uses.
+   --pt-bottom-nav-safe already includes the safe-area inset. Top edge: nav + 2px +
+   0.75rem, which stays under the undo bar's 5rem + inset. */
 @media (max-width: 640px) {
     .pt-build-version {
-        bottom: calc(var(--pt-bottom-nav-safe) + var(--pt-space-1));
+        bottom: calc(var(--pt-bottom-nav-safe) + 2px);
     }
 }

@@ -35,11 +35,13 @@ secrets in Azure Key Vault (`KeyVault:Uri`) when one exists.
    fix warnings rather than suppress them.
 2. **Restart the app and confirm it came back.** After any code change, restart the dev
    host (`./SCRIPTS/start-dev.ps1`) and check it is serving (`/health/json` returns 200).
-3. **Test only what you touched.** Do not run the whole suite after a change. Run the tests
-   covering the changed code, or none at all when the change is simple. The full run
+3. **Test only what you touched.** Never run the whole suite. Run the tests covering the
+   changed code, or none at all when the change is minor. The full run
    (`pwsh ./SCRIPTS/run-tests.ps1`) is for the user to invoke deliberately.
 4. **UI changes get a before/after comparison**: an annotated HTML page pointing out what
-   changed, saved to `SCREENSHOTS/{YYMMDD}-{feature}.html`. Give the user its absolute path.
+   changed, saved to `SCREENSHOTS/{YYMMDD}-{feature}.html`, plus a single annotated PNG
+   showing before and after side by side with notes (`SCREENSHOTS/{YYMMDD}-{feature}.png`).
+   Give the user both absolute paths.
 
 Keep test files themselves correct and up to date when a change invalidates them.
 
@@ -62,8 +64,8 @@ E2E filters need a Testing host on `E2E_BASE_URL` (default `http://localhost:515
 with `dotnet run --project src/PoTraffic.API --launch-profile Testing` and leave it up across
 iterations rather than letting the script restart it every time.
 
-When fixing a batch of failures, never re-run the whole suite after each fix — run the tests
-you are working on, and the full suite once at the end.
+When fixing a batch of failures, run only the tests you are working on — never the whole
+suite, not even once at the end. The full run is the user's call.
 
 ## Committing and pushing
 

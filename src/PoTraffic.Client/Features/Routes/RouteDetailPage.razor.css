@@ -240,12 +240,91 @@
     min-width: 0;
 }
 
+/* ── Tabs on a phone ────────────────────────────────────────────────────────
+   Overview · Schedule · Heatmap · Weather with an icon each is wider than a 390px
+   screen, and Radzen's strip does not wrap — it pushed the page sideways. Below
+   the phone breakpoint the icons go (the labels carry the meaning), the tabs
+   share the row, and as a last resort the strip scrolls inside itself rather
+   than widening the page. The panels never exceed the column either. */
+.pt-route-tabs {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.pt-route-tabs ::deep .rz-tabview,
+.pt-route-tabs ::deep .rz-tabview-panels,
+.pt-route-tabs ::deep .rz-tabview-panel {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 640px) {
+    .pt-route-tabs ::deep .rz-tabview-nav {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+
+    .pt-route-tabs ::deep .rz-tabview-nav::-webkit-scrollbar { display: none; }
+
+    .pt-route-tabs ::deep .rz-tabview-nav li {
+        flex: 1 0 auto;
+    }
+
+    .pt-route-tabs ::deep .rz-tabview-nav li a,
+    .pt-route-tabs ::deep .rz-tabview-nav .rz-tabview-nav-link {
+        justify-content: center;
+        padding-inline: var(--pt-space-3);
+    }
+
+    .pt-route-tabs ::deep .rz-tabview-nav .rzi,
+    .pt-route-tabs ::deep .rz-tabview-nav .rz-tabview-icon {
+        display: none;
+    }
+}
+
 /* ── First-load skeleton ────────────────────────────────────────────────────
-   Roughly the loaded page's footprint: title, answer card, chart card. */
+   The loaded page's footprint: header, tab strip, then the Overview grid with
+   the answer card and the chart card at their real heights (the chart canvas is
+   240px under a heading, plus its hint row). */
 .pt-route-skeleton {
-    margin-top: var(--pt-space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-space-3);
+    margin-top: var(--pt-space-3);
+}
+
+/* One row, like the loaded header: back link, title and the probe chip share it. */
+.pt-route-skeleton-head {
+    align-items: center;
+    display: flex;
+    min-height: 2.5rem;
+}
+
+.pt-route-skeleton-head .pt-skeleton-line { width: min(24rem, 60%); }
+
+.pt-route-skeleton-tabs {
+    align-items: center;
+    border-bottom: 1px solid var(--pt-border-subtle);
+    display: flex;
+    gap: var(--pt-space-4);
+    min-height: 2.75rem;
+}
+
+.pt-route-skeleton-tabs .pt-skeleton-line {
+    width: 5.5rem;
+}
+
+.pt-route-skeleton-answer {
+    min-height: 7.5rem;
 }
 
 .pt-route-skeleton-chart {
-    min-height: 14rem;
+    min-height: 19.5rem;
+}
+
+.pt-route-skeleton-weather {
+    min-height: 12rem;
 }

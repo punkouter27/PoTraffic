@@ -46,10 +46,15 @@
     width: min(22rem, 90vw);
     max-height: 26rem;
     overflow-y: auto;
-    background: var(--pt-bg-surface);
-    border: 1px solid var(--pt-border-subtle);
+    /* Glass panel (pt-tokens.css --pt-glass-panel-*): frosted over whatever it drops
+       onto, solid under prefers-reduced-transparency, prefers-contrast: more, or
+       without backdrop-filter — the tokens collapse, so no fallback rule is needed. */
+    background: var(--pt-glass-panel-bg);
+    -webkit-backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    backdrop-filter: blur(var(--pt-glass-card-blur)) saturate(var(--pt-glass-saturate));
+    border: 1px solid var(--pt-glass-card-border);
     border-radius: var(--pt-radius-md, 12px);
-    box-shadow: var(--pt-elev-3, 0 8px 24px rgba(0, 0, 0, 0.18));
+    box-shadow: var(--pt-elev-3, 0 8px 24px rgba(0, 0, 0, 0.18)), inset 0 1px 0 var(--pt-glass-highlight);
     z-index: 1000;
     padding: 0.5rem;
 }

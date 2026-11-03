@@ -17,34 +17,52 @@
 <PageTitle>Commutes — PoTraffic</PageTitle>
 
 @* The page leads with a heading like every other route. *@
+<DashboardAmbient RecentPolls="_recentPolls" />
+
 <PageHeader Title="Your commutes"
             Subtitle="@_subtitle" />
 
-@* One compact toolbar: find, narrow, add. Search and the status filter used to not
-   exist at all and the Add action sat alone in the header; once there are more
-   commutes than fit a screen, the three belong on one row, in that order.
-   Search and filter appear only when there is something to search — on an empty
-   account they would be controls for nothing. Add stays hidden on a phone, where
-   the bottom nav's FAB is the same action under the thumb. *@
+@* ONE toolbar for the list: find, narrow, order, act — in that order, on one surface.
+   Search, the status filter and the sort read as a single control strip rather than
+   three loose widgets; "Select" opens the bulk-actions drawer, and Add stays hidden on
+   a phone, where the bottom nav's FAB is the same action under the thumb.
+
+   Rendered during the first load as well (disabled), so the cards land under a
+   toolbar that is already there instead of pushing it in above them. On an account
+   with no commutes the list tools are left out — they would be controls for nothing. *@
+<SectionErrorBoundary Label="the commute tools">
 <div class="pt-dash-toolbar" role="toolbar" aria-label="Commute list tools">
-    @if (_routes.Count > 0)
+    @if (_routes.Count > 0 || ShowSkeletons)
     {
-        <RadzenTextBox @bind-Value="_search" @bind-Value:after="RecomputeVisible" Immediate="true"
-                       Placeholder="Search commutes" aria-label="Search commutes"
-                       class="pt-dash-search" autocomplete="off" />
+        <div class="pt-dash-toolbar-find">
+            <PtIcon Name="search" Size="sm" Class="pt-dash-search-icon" />
+            @* data-shortcut="/": the "/" key focuses this (Layout/KeyboardShortcuts). *@
+            <RadzenTextBox @bind-Value="_search" @bind-Value:after="RecomputeVisible" Immediate="true"
+                           Placeholder="Search commutes" aria-label="Search commutes"
+                           aria-keyshortcuts="/" data-shortcut="/"
+                           class="pt-dash-search" autocomplete="off" Disabled="ShowSkeletons" />
+        </div>
         <RadzenSelectBar TValue="StatusFilter" @bind-Value="_filter" @bind-Value:after="RecomputeVisible"
-                         Size="ButtonSize.Small" aria-label="Show">
+                         Size="ButtonSize.Small" aria-label="Show" Disabled="ShowSkeletons"
+                         class="pt-dash-filter">
             <Items>
                 <RadzenSelectBarItem Value="@StatusFilter.All" Text="All" />
                 <RadzenSelectBarItem Value="@StatusFilter.Monitoring" Text="Monitoring" />
                 <RadzenSelectBarItem Value="@StatusFilter.Paused" Text="Paused" />
             </Items>
         </RadzenSelectBar>
+        <RadzenDropDown TValue="SortOrder" @bind-Value="_sort" @bind-Value:after="RecomputeVisible"
+                        Data="@SortOptions" TextProperty="Label" ValueProperty="Value"
+                        aria-label="Sort commutes" class="pt-dash-sort" Disabled="ShowSkeletons" />
+        <RadzenButton Text="Select" Icon="checklist" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      class="pt-dash-select" Disabled="@(ShowSkeletons || ShownRoutes.Count == 0)"
+                      aria-haspopup="dialog" Click="OpenBulk" />
     }
     <RadzenButton Text="Add commute" Icon="add" ButtonStyle="ButtonStyle.Primary"
-                  class="pt-hide-phone pt-dash-add"
+                  class="pt-hide-phone pt-dash-add" title="New commute (n)"
                   Click="@(() => Nav.NavigateTo("/routes/create"))" />
 </div>
+</SectionErrorBoundary>
 
 @* Connectivity is the one status fact that changes how far to trust the cards, and it
    shows only when the news is bad; quota and spend live in Settings. *@
@@ -59,16 +77,19 @@
 
 @if (ShowSkeletons)
 {
-    @* TASK #9: Skeleton placeholders avoid layout flash while routes load.
-       Shown only when there is genuinely nothing to draw — a cached snapshot
-       or a background refresh must never blank a populated dashboard. *@
-    <div class="pt-skeleton-stack" aria-busy="true" aria-label="Loading commutes">
-        @for (int i = 0; i < 3; i++)
+    @* Shimmer cards in the SAME grid the real cards use, at the real card's height, so
+       the first paint is the page's final shape: two columns on a desktop, one on a
+       phone, nothing moving when the data lands. Shown only when there is genuinely
+       nothing to draw — a cached snapshot or a background refresh never blanks a
+       populated dashboard. *@
+    <div class="pt-route-cards pt-dash-skeleton" aria-busy="true" aria-label="Loading commutes">
+        @for (int i = 0; i < 4; i++)
         {
-            <div class="pt-skeleton-card">
-                <div class="pt-skeleton-line lg w-50"></div>
-                <div class="pt-skeleton-line w-70"></div>
-                <div class="pt-skeleton-line w-30"></div>
+            <div>
+                <div class="pt-skeleton-card pt-skeleton-route-card">
+                    <div class="pt-skeleton-line w-50"></div>
+                    <div class="pt-skeleton-line lg w-70"></div>
+                </div>
             </div>
         }
     </div>
@@ -150,6 +171,7 @@ else
 
     @* Each card is its own error boundary: one route whose payload a card cannot
        render shows a one-line notice in its slot, and the other cards carry on. *@
+    <SectionErrorBoundary Label="your commutes">
     <div class="pt-route-cards pt-stagger" role="list">
         @foreach (RouteDto route in ShownRoutes)
         {
@@ -165,7 +187,12 @@ else
             </div>
         }
     </div>
+    </SectionErrorBoundary>
 }
+
+<SectionErrorBoundary Label="the bulk actions">
+    <BulkActionsDrawer @bind-Open="_bulkOpen" Routes="ShownRoutes" OnChanged="RefreshAsync" />
+</SectionErrorBoundary>
 
 @code {
     /// <summary>How stale a cached snapshot may be and still be worth painting on mount.</summary>
@@ -239,15 +266,50 @@ else
     /// <summary>
     /// The header's supporting line. Carries the connectivity state that the permanent
     /// green "Live" chip used to occupy a whole bar to report — a healthy app says so
-    /// once, quietly, next to the title.
+    /// once, quietly, next to the title. Holds a line while the first load is in flight,
+    /// so the header is its final height from the first paint instead of growing a row
+    /// when the count arrives.
     /// </summary>
-    private string? _subtitle;
+    private string? _subtitle = "Loading your commutes…";
 
     /// <summary>The toolbar's status filter.</summary>
     private enum StatusFilter { All, Monitoring, Paused }
 
     private string _search = string.Empty;
     private StatusFilter _filter = StatusFilter.All;
+
+    /// <summary>The toolbar's ordering. Default keeps the server's order (oldest first).</summary>
+    private enum SortOrder { Default, Name, Quickest, Newest }
+
+    private sealed record SortOption(SortOrder Value, string Label);
+
+    private static readonly SortOption[] SortOptions =
+    [
+        new(SortOrder.Default, "Sort: added"),
+        new(SortOrder.Newest, "Sort: newest"),
+        new(SortOrder.Name, "Sort: name"),
+        new(SortOrder.Quickest, "Sort: quickest"),
+    ];
+
+    private SortOrder _sort = SortOrder.Default;
+
+    private bool _bulkOpen;
+
+    private void OpenBulk() => _bulkOpen = true;
+
+    /// <summary>What the card leads with: its name, else "origin → destination".</summary>
+    private static string SortName(RouteDto route) => route.Name ?? $"{route.OriginAddress} {route.DestinationAddress}";
+
+    private IEnumerable<RouteDto> Sorted(IEnumerable<RouteDto> routes) => _sort switch
+    {
+        SortOrder.Name => routes.OrderBy(SortName, StringComparer.CurrentCultureIgnoreCase),
+        SortOrder.Newest => routes.OrderByDescending(r => r.CreatedAt),
+        // Routes with no estimate yet sort last rather than first: "quickest" means a
+        // known quick trip, not an unknown one.
+        SortOrder.Quickest => routes.OrderBy(r => _optimalDepartures.TryGetValue(r.Id, out OptimalDepartureDto? o)
+            ? o.PredictedDurationSeconds : double.MaxValue),
+        _ => routes,
+    };
 
     /// <summary>
     /// <see cref="VisibleRoutes"/> narrowed by the toolbar. Kept separate because the empty
@@ -287,7 +349,7 @@ else
     private void RecomputeVisible()
     {
         VisibleRoutes = [.. _routes.Where(r => !Pending.IsPending(r.Id))];
-        ShownRoutes = [.. VisibleRoutes.Where(MatchesToolbar)];
+        ShownRoutes = [.. Sorted(VisibleRoutes.Where(MatchesToolbar))];
 
         // Null, not empty — PageHeader renders the subtitle element only when there
         // is one, and an empty <p> still occupies a line.
