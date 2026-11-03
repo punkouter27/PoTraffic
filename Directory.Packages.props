@@ -59,7 +59,7 @@
   </ItemGroup>
 
   <ItemGroup Label="Other">
-    <PackageVersion Include="Radzen.Blazor" Version="11.1.4" />
+    <PackageVersion Include="Radzen.Blazor" Version="12.1.8" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.16.11" />
     <!-- Web Push (VAPID + RFC 8291). On net6.0+ it has no BouncyCastle dependency, unlike
          the WebPush package whose Portable.BouncyCastle 1.9.0 carries unpatched CVEs. -->
