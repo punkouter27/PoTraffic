@@ -1013,30 +1013,6 @@ code {
 }
 
 /* ═══════════════════════════════════════════════
-   FX layer — the canvas the map's flow draws into
-   ═══════════════════════════════════════════════
-
-   Inert decoration: no pointer events, and removed entirely when the motion
-   level is "off". Positioned rather than laid out, so it cannot move a single
-   pixel of real content. */
-
-/* The flow particles on the map. Leaflet positions this inside its overlay pane;
-   only the stacking and the pointer behaviour are ours. */
-.pt-flow-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    pointer-events: none;
-    z-index: 350;   /* above tiles (200) and the route line, below markers (600) */
-}
-
-/* Motion off: nothing decorative renders at all. Belt and braces — the JS already
-   declines to create it — so a stale canvas from a previous setting cannot linger. */
-[data-motion="off"] .pt-flow-canvas {
-    display: none;
-}
-
-/* ═══════════════════════════════════════════════
    Glass pass
    ═══════════════════════════════════════════════
 
@@ -1159,131 +1135,6 @@ code {
 }
 
 /* ═══════════════════════════════════════════════
-   Weather impact
-   ═══════════════════════════════════════════════ */
-
-.pt-weather {
-    margin-top: var(--pt-space-4);
-}
-
-.pt-weather-lede {
-    color: var(--pt-fg-body);
-    font-size: var(--pt-text-sm);
-    line-height: var(--pt-leading-normal);
-    margin: 0 0 var(--pt-space-3);
-    max-width: var(--pt-measure);
-}
-
-.pt-weather-rows {
-    display: flex;
-    flex-direction: column;
-    gap: var(--pt-space-2);
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-/* Four columns on a comfortable viewport: label, bar, delta, sample count. The bar
-   column is the flexible one so the numbers stay in their own aligned tracks. */
-.pt-weather-row {
-    align-items: center;
-    display: grid;
-    gap: var(--pt-space-2);
-    grid-template-columns: 7rem 1fr auto;
-    grid-template-areas: "name track delta" "count count count";
-}
-
-@container pt-main (min-width: 34rem) {
-    .pt-weather-row {
-        grid-template-columns: 7rem 1fr 4.5rem 9rem;
-        grid-template-areas: "name track delta count";
-    }
-}
-
-.pt-weather-name {
-    align-items: center;
-    color: var(--pt-fg-body);
-    display: inline-flex;
-    font-size: var(--pt-text-sm);
-    font-weight: var(--pt-weight-medium);
-    gap: 0.35rem;
-    grid-area: name;
-}
-
-/* The track is the baseline: its centre line is "the usual time for this slot", and a
-   bar grows out from there in the direction of the effect. */
-.pt-weather-track {
-    background: var(--pt-bg-sunken);
-    border-radius: var(--pt-radius-full);
-    display: block;
-    grid-area: track;
-    height: 0.5rem;
-    position: relative;
-}
-
-.pt-weather-track::before {
-    background: var(--pt-border-strong);
-    content: "";
-    inset-block: -0.15rem;
-    inset-inline-start: 50%;
-    position: absolute;
-    width: 1px;
-}
-
-.pt-weather-bar {
-    border-radius: var(--pt-radius-full);
-    height: 100%;
-    position: absolute;
-    top: 0;
-    transition: width var(--pt-dur-base) var(--pt-ease);
-}
-
-.pt-weather-bar.is-slower {
-    background: var(--pt-traffic-slow);
-    inset-inline-start: 50%;
-}
-
-.pt-weather-bar.is-faster {
-    background: var(--pt-traffic-clear);
-    /* Grows leftwards from the centre — right edge pinned, width extends back. */
-    inset-inline-end: 50%;
-}
-
-.pt-weather-delta {
-    color: var(--pt-fg-strong);
-    font-size: var(--pt-text-sm);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--pt-weight-semibold);
-    grid-area: delta;
-    text-align: end;
-}
-
-/* A number built on too few samples is shown, but never with the visual authority of
-   one that has earned it. */
-.pt-weather-delta.is-provisional {
-    color: var(--pt-fg-muted);
-    font-weight: var(--pt-weight-regular);
-}
-
-.pt-weather-count {
-    color: var(--pt-fg-muted);
-    font-size: var(--pt-text-xs);
-    grid-area: count;
-    text-align: start;
-}
-
-@container pt-main (min-width: 34rem) {
-    .pt-weather-count { text-align: end; }
-}
-
-.pt-weather-note {
-    color: var(--pt-fg-muted);
-    font-size: var(--pt-text-xs);
-    margin: var(--pt-space-3) 0 0;
-    max-width: var(--pt-measure);
-}
-
-/* ═══════════════════════════════════════════════
    Wide layouts (route detail)
    ═══════════════════════════════════════════════
 
@@ -1402,60 +1253,6 @@ code {
 }
 
 /* ═══════════════════════════════════════════════
-   Route card actions
-   ═══════════════════════════════════════════════ */
-
-/* The last item on the card's own row, not a row of its own. Hidden until the card is
-   hovered or something inside it takes focus — but always in the tab order, because a
-   control that only appears on hover is a control a keyboard user does not have. */
-.pt-route-card-actions {
-    display: flex;
-    gap: var(--pt-space-1);
-    flex: 0 0 auto;
-    align-self: center;
-    transition: opacity var(--pt-dur-fast) var(--pt-ease);
-}
-
-/* Icon-only, so the box is the whole target: 2rem clears the 24px minimum. */
-.pt-route-card-actions .rz-button {
-    min-width: 2rem;
-    min-height: 2rem;
-}
-
-@container pt-cards (width < 26rem) {
-    .pt-route-card-actions { align-self: flex-end; }
-}
-
-/* Touch keeps them visible: there is no hover to reveal them, and swipe is not
-   discoverable enough to be the only way. */
-@media (hover: hover) {
-    .pt-route-card-actions { opacity: 0; }
-
-    .pt-route-card:hover .pt-route-card-actions,
-    .pt-route-card-actions:focus-within {
-        opacity: 1;
-    }
-
-    /* In the stacked (narrow) card the buttons took a row of their own — an empty
-       band at the bottom of every card while they were invisible. Overlay the
-       corner instead; the sparkline caption under them is left-aligned. */
-    @container pt-cards (width < 26rem) {
-        .pt-route-card-actions {
-            position: absolute;
-            right: var(--pt-space-3);
-            bottom: var(--pt-space-2);
-        }
-    }
-}
-
-/* A named route leads with its name; the street pair drops to a caption under it. */
-.pt-route-card-name + .pt-route-card-route {
-    font-size: var(--pt-text-sm);
-    font-weight: var(--pt-weight-regular);
-    color: var(--pt-fg-secondary);
-}
-
-/* ═══════════════════════════════════════════════
    Settings rows — the route page's one settings card
    ═══════════════════════════════════════════════ */
 
@@ -1495,14 +1292,6 @@ code {
     font-variant-numeric: tabular-nums;
 }
 
-.pt-setting-input {
-    font: inherit;
-    color: var(--pt-fg-primary);
-    background: var(--pt-bg-surface);
-    border: 1px solid var(--pt-border-subtle);
-    border-radius: var(--pt-radius-sm);
-    padding: var(--pt-space-1) var(--pt-space-2);
-}
 
 /* Field-level validation message. Global: the dashboard, New Route and the schedule
    editor all use it, and a scoped copy only ever reached one of them. Its look is

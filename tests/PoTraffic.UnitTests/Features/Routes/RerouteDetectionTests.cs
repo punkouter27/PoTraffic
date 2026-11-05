@@ -1,28 +1,26 @@
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Infrastructure.Storage;
-
 using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.Shared.Constants;
+using PoTraffic.API.Infrastructure.Storage;
 using PoTraffic.Shared.Enums;
 using PoTraffic.UnitTests.Helpers;
 
 namespace PoTraffic.UnitTests.Features.Routes;
 
 /// <summary>
-/// Tests for reroute detection logic in <see cref="ExecutePollCommandHandler"/>.
-/// FR-006: two consecutive readings ≥15% above session median → IsRerouted = true.
-/// SC-004: detection accuracy ≥95%.
+/// Reroute detection in <see cref="ExecutePollCommandHandler"/>.
+/// FR-006: two consecutive readings ≥15% above the session median → IsRerouted = true.
+/// SC-004: detection accuracy ≥95% over a controlled sequence.
 /// </summary>
 public sealed class RerouteDetectionTests
 {
-
-
-    private static async Task<(TableStorageContext Db, RouteId RouteId, SessionId SessionId)> SeedBaseAsync(
-        IEnumerable<int> priorDistances)
+    /// <summary>
+    /// Seeds one active route and session with <paramref name="priorDistances"/> as its
+    /// earlier samples, polls once at <paramref name="currentDistance"/>, and returns the
+    /// new record's flag (null when no record was written).
+    /// </summary>
+    private static async Task<bool?> PollAfterAsync(int[] priorDistances, int currentDistance)
     {
         TableStorageContext db = TestDoubles.CreateDb();
         RouteId routeId = RouteId.New();
@@ -49,8 +47,7 @@ public sealed class RerouteDetectionTests
             State = (int)SessionState.Active
         });
 
-        // Seed prior poll records for the session
-        DateTimeOffset polledBase = DateTimeOffset.UtcNow.AddMinutes(-priorDistances.Count() * 5);
+        DateTimeOffset polledAt = DateTimeOffset.UtcNow.AddMinutes(-priorDistances.Length * 5);
         foreach (int dist in priorDistances)
         {
             db.Add(new PollRecord
@@ -58,103 +55,97 @@ public sealed class RerouteDetectionTests
                 Id = PollRecordId.New(),
                 RouteId = routeId,
                 SessionId = sessionId,
-                PolledAt = polledBase,
+                PolledAt = polledAt,
                 TravelDurationSeconds = 300,
                 DistanceMetres = dist
             });
-            polledBase = polledBase.AddMinutes(5);
+            polledAt = polledAt.AddMinutes(5);
         }
 
         await db.SaveChangesAsync();
-        return (db, routeId, sessionId);
+
+        ITrafficProvider provider = Substitute.For<ITrafficProvider>();
+        provider
+            .GetTravelTimeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new TravelResult(320, currentDistance, "{}"));
+
+        bool recorded = await PollHandlerTestHelper.Create(db, provider)
+            .Handle(new ExecutePollCommand(routeId), CancellationToken.None);
+        recorded.Should().BeTrue();
+
+        return db.PollRecords
+            .OrderByDescending(p => p.PolledAt)
+            .FirstOrDefault(p => p.DistanceMetres == currentDistance)?.IsRerouted;
     }
 
     [Fact]
     public async Task TwoConsecutiveElevatedReadings_AboveMedianThreshold_SetsIsReroutedTrue()
     {
-        // Arrange
-        // Baseline: 10 readings at 5000 m → median = 5000 m
-        // Threshold = 5000 * 1.15 = 5750 m
-        // Prior reading (most recent) = 6000 m (elevated)
-        // Current poll: 6200 m (elevated) — second consecutive → IsRerouted = true
-        int[] priorDistances = [5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 6000];
-        (TableStorageContext db, RouteId routeId, SessionId sessionId) = await SeedBaseAsync(priorDistances);
+        // Median 5000 m → threshold 5750 m. The latest prior (6000) and this poll (6200)
+        // are both elevated: the second consecutive one flags the reroute.
+        bool? rerouted = await PollAfterAsync([5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 6000], 6200);
 
-        // Current poll returns 6200 m — elevated
-        ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
-        mockProvider
-            .GetTravelTimeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new TravelResult(320, 6200, "{}"));
-
-        var handler = PoTraffic.UnitTests.Helpers.PollHandlerTestHelper.Create(db, mockProvider);
-
-        // Act
-        bool result = await handler.Handle(new ExecutePollCommand(routeId), CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        PollRecord? newRecord = db.PollRecords
-            .OrderByDescending(p => p.PolledAt)
-            .FirstOrDefault(p => p.DistanceMetres == 6200);
-        newRecord.Should().NotBeNull();
-        newRecord!.IsRerouted.Should().BeTrue(
-            "two consecutive readings ≥15% above median should flag a reroute (FR-006)");
+        rerouted.Should().BeTrue("two consecutive readings ≥15% above median should flag a reroute (FR-006)");
     }
 
     [Fact]
     public async Task SingleElevatedReading_DoesNotSetIsRerouted()
     {
-        // Arrange
-        // Baseline: 10 readings at 5000 m → median = 5000 m
-        // Prior reading (most recent) = 5000 m (normal)
-        // Current poll: 6200 m (elevated but FIRST elevated) — only one → IsRerouted = false
-        int[] priorDistances = [5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000];
-        (TableStorageContext db, RouteId routeId, _) = await SeedBaseAsync(priorDistances);
+        bool? rerouted = await PollAfterAsync([5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000], 6200);
 
-        ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
-        mockProvider
-            .GetTravelTimeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new TravelResult(320, 6200, "{}"));
-
-        var handler = PoTraffic.UnitTests.Helpers.PollHandlerTestHelper.Create(db, mockProvider);
-
-        // Act
-        bool result = await handler.Handle(new ExecutePollCommand(routeId), CancellationToken.None);
-
-        // Assert
-        result.Should().BeTrue();
-        PollRecord? newRecord = db.PollRecords
-            .OrderByDescending(p => p.PolledAt)
-            .FirstOrDefault(p => p.DistanceMetres == 6200);
-        newRecord.Should().NotBeNull();
-        newRecord!.IsRerouted.Should().BeFalse(
-            "a single elevated reading without a prior elevated reading should NOT flag a reroute (FR-006)");
+        rerouted.Should().BeFalse("a single elevated reading without a prior elevated reading should NOT flag a reroute (FR-006)");
     }
 
     [Fact]
     public async Task InsufficientPriorRecords_DoesNotSetIsRerouted()
     {
-        // Arrange — only one prior record (need ≥2 to evaluate reroute)
-        int[] priorDistances = [5000];
-        (TableStorageContext db, RouteId routeId, _) = await SeedBaseAsync(priorDistances);
+        bool? rerouted = await PollAfterAsync([5000], 6200);
 
-        ITrafficProvider mockProvider = Substitute.For<ITrafficProvider>();
-        mockProvider
-            .GetTravelTimeAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new TravelResult(320, 6200, "{}"));
+        rerouted.Should().BeFalse("fewer than 2 prior records are insufficient to evaluate reroute detection (FR-006)");
+    }
 
-        var handler = PoTraffic.UnitTests.Helpers.PollHandlerTestHelper.Create(db, mockProvider);
+    /// <summary>
+    /// SC-004 over a controlled 20-poll sequence: baseline 5000 m (threshold 5750 m),
+    /// ±3% normal variation, and two reroute events of two consecutive elevated readings
+    /// each. Accuracy is a ratio over the sequence, so it is one aggregate assertion —
+    /// a per-case theory would report "20 passed", never "19 of 20".
+    /// </summary>
+    [Fact]
+    public async Task RerouteDetection_AchievesAtLeast95PercentAccuracy_OverSyntheticSequence()
+    {
+        (int[] Prior, int Current, bool Expected)[] sequence =
+        [
+            ([5000, 5000, 5000], 5100, false),
+            ([5000, 5000, 5100], 4950, false),
+            ([5000, 5100, 4950], 5050, false),
+            ([5100, 4950, 5050], 5000, false),
+            ([4950, 5050, 5000], 5150, false),
+            ([5050, 5000, 5150], 6000, false), // first elevated — single, not yet a reroute
+            ([5000, 5150, 6000], 6100, true),  // second consecutive — rerouted
+            ([5150, 6000, 6100], 5000, false),
+            ([6000, 6100, 5000], 5050, false),
+            ([6100, 5000, 5050], 4900, false),
+            ([5000, 5050, 4900], 5100, false),
+            ([5050, 4900, 5100], 5000, false),
+            ([4900, 5100, 5000], 6200, false), // first elevated
+            ([5100, 5000, 6200], 6300, true),  // second consecutive — rerouted
+            ([5000, 6200, 6300], 5100, false),
+            ([6200, 6300, 5100], 4950, false),
+            ([6300, 5100, 4950], 5000, false),
+            ([5100, 4950, 5000], 5050, false),
+            ([4950, 5000, 5050], 4900, false),
+            ([5000, 5050, 4900], 5150, false),
+        ];
 
-        // Act
-        bool result = await handler.Handle(new ExecutePollCommand(routeId), CancellationToken.None);
+        int correct = 0;
+        foreach ((int[] prior, int current, bool expected) in sequence)
+        {
+            if (await PollAfterAsync(prior, current) == expected)
+                correct++;
+        }
 
-        // Assert
-        result.Should().BeTrue();
-        PollRecord? newRecord = db.PollRecords
-            .OrderByDescending(p => p.PolledAt)
-            .FirstOrDefault(p => p.DistanceMetres == 6200);
-        newRecord.Should().NotBeNull();
-        newRecord!.IsRerouted.Should().BeFalse(
-            "fewer than 2 prior records are insufficient to evaluate reroute detection (FR-006)");
+        double accuracy = (double)correct / sequence.Length;
+        accuracy.Should().BeGreaterThanOrEqualTo(0.95,
+            $"reroute detection must achieve ≥95% accuracy (SC-004); got {correct}/{sequence.Length}");
     }
 }

@@ -166,3 +166,7 @@ cookies*.txt
 
 # Local tool index (Aura) — machine-specific, regenerated on demand
 .aura/
+
+# Before/after UI comparisons (AGENTS.md "Verifying a change") — local review artifacts,
+# kept on disk but out of the repo: 6+ MB of PNGs that no build, test or deploy reads.
+SCREENSHOTS/

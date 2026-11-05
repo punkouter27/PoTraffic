@@ -13,11 +13,7 @@ public static class ConfigEndpoints
         // Reads the same FeatureFlags provider resolution acts on, so the banner can't disagree
         // with which providers are actually answering.
         app.MapGet("/api/system/features", (FeatureFlags flags) =>
-            Results.Ok(new
-            {
-                useMockProviders = flags.UseMockProviders,
-                enableWeather = flags.EnableWeather
-            }))
+            Results.Ok(new FeatureFlagsResponse(flags.UseMockProviders, flags.EnableWeather)))
             .AllowAnonymous()
             .WithName("GetFeatureFlags")
             .WithTags("System");
@@ -25,3 +21,6 @@ public static class ConfigEndpoints
         return app;
     }
 }
+
+/// <summary>Body of <c>GET /api/system/features</c>; typed so it appears in the OpenAPI document.</summary>
+public sealed record FeatureFlagsResponse(bool UseMockProviders, bool EnableWeather);

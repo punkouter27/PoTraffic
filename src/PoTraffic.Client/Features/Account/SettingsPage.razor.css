@@ -1,19 +1,21 @@
-/* SettingsPage — scoped styles. */
-.pt-settings-full { width: 100%; }
+/* SettingsPage — scoped styles. Rooted at the page's .pt-settings wrapper and reaching
+   into the section components (DeviceSettingsSection, AdvancedSettingsSection,
+   AccountDataSection) with ::deep, so one stylesheet serves the whole page. */
+.pt-settings ::deep .pt-settings-full { width: 100%; }
 
-.pt-settings-meta {
+.pt-settings ::deep .pt-settings-meta {
     font-size: var(--pt-text-sm);
     color: var(--pt-fg-tertiary);
     margin: 0 0 var(--pt-space-2);
 }
 
-.pt-settings-value {
+.pt-settings ::deep .pt-settings-value {
     color: var(--pt-fg-primary);
     margin: 0 0 var(--pt-space-3);
     overflow-wrap: anywhere;
 }
 
-.pt-settings-field-label {
+.pt-settings ::deep .pt-settings-field-label {
     display: block;
     margin-bottom: var(--pt-space-1);
     font-size: var(--pt-text-sm);
@@ -22,13 +24,13 @@
 }
 
 /* Controls about the same thing sit side by side where there is room. */
-.pt-settings-grid {
+.pt-settings ::deep .pt-settings-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
     gap: var(--pt-space-5);
 }
 
-.pt-settings-section + .pt-settings-section {
+.pt-settings ::deep .pt-settings-section + .pt-settings-section {
     margin-top: var(--pt-space-5);
     padding-top: var(--pt-space-5);
     border-top: 1px solid var(--pt-border-subtle);
@@ -37,29 +39,29 @@
 /* The one section whose actions are irreversible reads as such before it is
    reached, rather than relying on the button colour alone. ::deep because the
    heading is a RadzenText, which carries no scope id. */
-.pt-settings-danger ::deep .pt-section-heading {
+.pt-settings ::deep .pt-settings-danger .pt-section-heading {
     color: var(--pt-color-danger-on-surface);
 }
 
 /* Three items shouldn't stretch across a desktop card; the select bar's root is
    rendered by Radzen, hence ::deep. */
-.pt-settings-section ::deep .rz-selectbar {
+.pt-settings ::deep .pt-settings-section .rz-selectbar {
     max-width: 32rem;
 }
 
 /* Advanced panels: the switch, then what it turns on. The switch carries its
    own aria-label, so the text beside it is description, not a <label>. */
-.pt-settings-toggle {
+.pt-settings ::deep .pt-settings-toggle {
     align-items: flex-start;
     display: flex;
     gap: var(--pt-space-3);
 }
 
-.pt-settings-toggle-text {
+.pt-settings ::deep .pt-settings-toggle-text {
     min-width: 0;
 }
 
-.pt-settings-toggle-text .pt-settings-meta {
+.pt-settings ::deep .pt-settings-toggle-text .pt-settings-meta {
     display: block;
     margin: 0;
 }
@@ -70,11 +72,11 @@
    its height where the browser can interpolate to `auto` (interpolate-size /
    ::details-content); elsewhere it simply opens. Timing comes from the shared
    panel tokens in app.css, which are zero under reduced motion. */
-.pt-settings-advanced {
+.pt-settings ::deep .pt-settings-advanced {
     interpolate-size: allow-keywords;
 }
 
-.pt-settings-advanced-summary {
+.pt-settings ::deep .pt-settings-advanced-summary {
     align-items: center;
     border-radius: var(--pt-radius-md);
     cursor: pointer;
@@ -86,13 +88,13 @@
     transition: background-color var(--pt-ix-dur) var(--pt-ix-ease);
 }
 
-.pt-settings-advanced-summary::-webkit-details-marker { display: none; }
+.pt-settings ::deep .pt-settings-advanced-summary::-webkit-details-marker { display: none; }
 
 @media (hover: hover) {
-    .pt-settings-advanced-summary:hover { background: var(--pt-bg-tint); }
+    .pt-settings ::deep .pt-settings-advanced-summary:hover { background: var(--pt-bg-tint); }
 }
 
-.pt-settings-advanced-text {
+.pt-settings ::deep .pt-settings-advanced-text {
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -100,46 +102,46 @@
     min-width: 0;
 }
 
-.pt-settings-advanced-title {
+.pt-settings ::deep .pt-settings-advanced-title {
     color: var(--pt-fg-primary);
     font-size: var(--pt-text-lg);
     font-weight: var(--pt-weight-semibold);
 }
 
-.pt-settings-advanced-hint {
+.pt-settings ::deep .pt-settings-advanced-hint {
     color: var(--pt-fg-tertiary);
     font-size: var(--pt-text-sm);
 }
 
-.pt-settings-advanced-summary ::deep .pt-settings-advanced-caret {
+.pt-settings ::deep .pt-settings-advanced-summary .pt-settings-advanced-caret {
     color: var(--pt-fg-tertiary);
     flex-shrink: 0;
     transition: transform var(--pt-panel-dur) var(--pt-panel-ease);
 }
 
-.pt-settings-advanced[open] .pt-settings-advanced-summary ::deep .pt-settings-advanced-caret {
+.pt-settings ::deep .pt-settings-advanced[open] .pt-settings-advanced-summary .pt-settings-advanced-caret {
     transform: rotate(180deg);
 }
 
-.pt-settings-advanced::details-content {
+.pt-settings ::deep .pt-settings-advanced::details-content {
     block-size: 0;
     overflow: clip;
     transition: block-size var(--pt-panel-dur) var(--pt-panel-ease),
                 content-visibility var(--pt-panel-dur) allow-discrete;
 }
 
-.pt-settings-advanced[open]::details-content {
+.pt-settings ::deep .pt-settings-advanced[open]::details-content {
     block-size: auto;
 }
 
-.pt-settings-advanced-body {
+.pt-settings ::deep .pt-settings-advanced-body {
     display: flex;
     flex-direction: column;
     gap: var(--pt-space-5);
     padding-top: var(--pt-space-5);
 }
 
-.pt-settings-subheading {
+.pt-settings ::deep .pt-settings-subheading {
     color: var(--pt-fg-secondary);
     font-size: var(--pt-text-sm);
     font-weight: var(--pt-weight-semibold);
@@ -150,10 +152,10 @@
 
 /* Space held for content still loading, so the page does not grow under the
    reader when the profile and quota land. */
-.pt-settings-reserve {
+.pt-settings ::deep .pt-settings-reserve {
     min-height: 3.25rem;
 }
 
-.pt-settings-button-reserve {
+.pt-settings ::deep .pt-settings-button-reserve {
     min-height: 2rem;
 }

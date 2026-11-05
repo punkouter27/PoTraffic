@@ -45,28 +45,16 @@ public static class HistoryEndpoints
             return ConditionalJson.Ok(ctx, result);
         });
 
-        // GET /api/routes/{routeId}/optimal-departure?dayOfWeek=Monday
-        group.MapGet("/optimal-departure", async (
+        // GET /api/routes/{routeId}/departure?dayOfWeek=Monday — quickest slot + leave-by plan
+        group.MapGet("/departure", async (
             RouteId routeId,
-            GetOptimalDepartureQueryHandler handler,
+            GetDepartureQueryHandler handler,
             HttpContext ctx,
             [FromQuery] string dayOfWeek = "Monday") =>
         {
             UserId userId = ctx.User.GetUserId();
-            var result = await handler.Handle(new GetOptimalDepartureQuery(routeId, userId, dayOfWeek), ctx.RequestAborted);
+            DepartureDto? result = await handler.Handle(new GetDepartureQuery(routeId, userId, dayOfWeek), ctx.RequestAborted);
             return result is null ? Results.NoContent() : ConditionalJson.Ok(ctx, result);
-        });
-
-        // GET /api/routes/{routeId}/departure-plan?dayOfWeek=Monday — leave-by for the arrive-by target
-        group.MapGet("/departure-plan", async (
-            RouteId routeId,
-            GetDeparturePlanQueryHandler handler,
-            HttpContext ctx,
-            [FromQuery] string dayOfWeek = "Monday") =>
-        {
-            UserId userId = ctx.User.GetUserId();
-            DeparturePlanDto? plan = await handler.Handle(new GetDeparturePlanQuery(routeId, userId, dayOfWeek), ctx.RequestAborted);
-            return plan is null ? Results.NoContent() : ConditionalJson.Ok(ctx, plan);
         });
 
         // The weekday-comparison endpoint was removed with the bar chart it fed. It and

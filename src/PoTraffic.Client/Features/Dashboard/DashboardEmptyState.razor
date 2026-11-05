@@ -1,0 +1,82 @@
+@using PoTraffic.Shared.DTOs.Routes
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+@* The dashboard of an account with no commutes: the way to add one, and the sample
+   commute that shows what the app does before any history exists. *@
+<div class="pt-empty-state">
+    <PtIcon Name="route" Size="xl" Class="pt-empty-state-icon" />
+    <div class="pt-empty-state-title">No commutes yet</div>
+    <div class="pt-empty-state-text">
+        @* The previous copy said "Tap the + button below" — fine on a phone,
+           where the bottom-nav's FAB is in view, but on desktop the bottom
+           nav doesn't render and the sentence was pointing at nothing. The
+           primary action now lives here at every width; the phone still has
+           the FAB as a shortcut, and this CTA is the universal fallback. *@
+        Add a commute you drive often — home → work or work → home, say —
+        and once we've sampled it a few days the page will start telling you
+        when to leave.
+    </div>
+    <div class="pt-empty-state-actions">
+        <RadzenButton Text="Add your first commute" ButtonStyle="ButtonStyle.Primary"
+                      Icon="add" Click="@(() => Nav.NavigateTo("/routes/create"))" />
+        @* "Once we've sampled it a few days" is an honest promise and a terrible first
+           run: every chart here needs accumulated history, so a brand-new account has
+           nothing to judge the app by. The sample route is that history, pre-built. *@
+        <RadzenButton Text="Explore a sample commute" ButtonStyle="ButtonStyle.Light"
+                      Icon="science" Click="CreateSampleRouteAsync" IsBusy="_creatingSample" />
+    </div>
+    @if (_sampleError is not null)
+    {
+        <div class="pt-field-error" role="alert">@_sampleError</div>
+    }
+</div>
+
+@code {
+    private bool _creatingSample;
+    private string? _sampleError;
+
+    /// <summary>
+    /// Seeds the demo route and opens it. The browser's UTC offset goes with the request:
+    /// the server generates the history around the user's morning, and it has no other way
+    /// to know what that is.
+    /// </summary>
+    private async Task CreateSampleRouteAsync()
+    {
+        _creatingSample = true;
+        _sampleError = null;
+        try
+        {
+            int offsetMinutes = (int)DateTimeOffset.Now.Offset.TotalMinutes;
+            HttpResponseMessage response = await Http.PostAsJsonAsync(
+                "/api/routes/sample",
+                new CreateSampleRouteRequest(offsetMinutes),
+                AppJsonContext.Default.CreateSampleRouteRequest);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _sampleError = "Couldn't build the sample commute. Please try again.";
+                return;
+            }
+
+            RouteDto? route = await response.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);
+            if (route is null)
+            {
+                _sampleError = "Couldn't build the sample commute. Please try again.";
+                return;
+            }
+
+            // Straight to the route page: the sample exists to be looked at, and the
+            // dashboard card is a worse first impression than the charts it links to.
+            Nav.NavigateTo($"/routes/{route.Id}");
+        }
+        catch
+        {
+            _sampleError = "Unable to connect. Please try again.";
+        }
+        finally
+        {
+            _creatingSample = false;
+        }
+    }
+}

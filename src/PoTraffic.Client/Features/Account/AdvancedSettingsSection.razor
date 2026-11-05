@@ -1,0 +1,232 @@
+@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject FxService Fx
+@inject UiPreferences Prefs
+
+@* ── Advanced ─────────────────────────────────────────────────────────
+   A native <details>: keyboard and screen-reader behaviour for free, and it
+   costs nothing until opened. Collapsed by default. *@
+<details class="pt-settings-section pt-settings-advanced">
+    <summary class="pt-settings-advanced-summary">
+        <span class="pt-settings-advanced-text">
+            <span class="pt-settings-advanced-title">Advanced</span>
+            <span class="pt-settings-advanced-hint">Density, motion, locale, usage and extra panels</span>
+        </span>
+        <PtIcon Name="expand_more" Size="sm" Class="pt-settings-advanced-caret" />
+    </summary>
+
+    <div class="pt-settings-advanced-body">
+        <SectionErrorBoundary Label="the display settings">
+        <section class="pt-settings-subsection">
+            <h4 class="pt-settings-subheading">Display</h4>
+            <div class="pt-settings-grid">
+                <div>
+                    <span class="pt-settings-field-label">Density</span>
+                    <RadzenSelectBar TValue="string" Value="@Density" Change="@OnDensityChanged"
+                                     Size="ButtonSize.Small" aria-label="Density">
+                        <Items>
+                            <RadzenSelectBarItem Value="@("compact")" Text="Compact" Icon="density_small" />
+                            <RadzenSelectBarItem Value="@("normal")" Text="Normal" Icon="density_medium" />
+                            <RadzenSelectBarItem Value="@("comfortable")" Text="Comfortable" Icon="density_large" />
+                        </Items>
+                    </RadzenSelectBar>
+                </div>
+                <div>
+                    @* Full animates the charts and map pins; Still keeps the colours but
+                       stops the movement. *@
+                    <span class="pt-settings-field-label">Motion</span>
+                    <RadzenSelectBar TValue="MotionLevel" Value="@Fx.Motion" Change="@OnMotionChanged"
+                                     Size="ButtonSize.Small" aria-label="Motion">
+                        <Items>
+                            <RadzenSelectBarItem Value="@MotionLevel.Full" Text="Full" Icon="auto_awesome" />
+                            <RadzenSelectBarItem Value="@MotionLevel.Reduced" Text="Still" Icon="motion_photos_off" />
+                            <RadzenSelectBarItem Value="@MotionLevel.Off" Text="Off" Icon="block" />
+                        </Items>
+                    </RadzenSelectBar>
+                </div>
+            </div>
+        </section>
+        </SectionErrorBoundary>
+
+        <SectionErrorBoundary Label="the account details">
+        <section class="pt-settings-subsection">
+            <h4 class="pt-settings-subheading">Locale &amp; usage</h4>
+            @if (Loading)
+            {
+                <div class="pt-skeleton-stack pt-settings-reserve">
+                    <div class="pt-skeleton-line w-50"></div>
+                    <div class="pt-skeleton-line lg w-70"></div>
+                    <div class="pt-skeleton-line w-40"></div>
+                </div>
+            }
+            else
+            {
+                <div class="pt-settings-grid">
+                    @if (Profile is not null)
+                    {
+                        <div>
+                            @* Saves on change — no Save/Cancel pair. The whitelist mirrors the
+                               server validator, so there is no freeform value to reject; a failed
+                               save is reported in the field's helper, like any validation message. *@
+                            <RadzenFormField Text="Locale" class="pt-settings-full">
+                                <ChildContent>
+                                    <RadzenDropDown TValue="string" Value="@_locale" Data="@ValidLocales" Name="Locale"
+                                                    Change="@(v => SaveLocaleAsync(v as string))"
+                                                    AllowFiltering="true" AllowClear="false" Disabled="_saving"
+                                                    aria-label="Locale" />
+                                </ChildContent>
+                                <Helper>
+                                    @if (_profileError is not null)
+                                    {
+                                        <div class="rz-message rz-messages-error" role="alert">@_profileError</div>
+                                    }
+                                </Helper>
+                            </RadzenFormField>
+                        </div>
+                    }
+                    @if (Quota is not null)
+                    {
+                        <div>
+                            <span class="pt-settings-field-label">Monitoring today</span>
+                            <p class="pt-settings-value">
+                                @Quota.UsedToday of @Quota.DailyLimit sessions (@QuotaPercent.ToString("F0")%)
+                            </p>
+                            <RadzenProgressBar Value="@QuotaPercent" ShowValue="false"
+                                               ProgressBarStyle="@QuotaStyle" aria-label="Daily quota used" />
+                            <p class="pt-settings-meta pt-mt-2">
+                                Resets at @LocalTimeFormatter.Clock(Quota.ResetsAtUtc.ToLocalTime().DateTime).
+                                @if (Quota.PollsToday > 0)
+                                {
+                                    <text>
+                                        @Quota.PollsToday look-ups so far, about @Quota.EstimatedCostTodayUsd.ToString("C3") —
+                                        roughly @Quota.ProjectedMonthlyCostUsd.ToString("C2") a month at this rate.
+                                    </text>
+                                }
+                            </p>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+        </SectionErrorBoundary>
+
+        @* Progressive disclosure. The app's default is the minimum that answers "when do I
+           leave": the commute list, live status, today's chart and the schedule. These are
+           the extras — real, working, and off until asked for. Per browser, like the theme. *@
+        <SectionErrorBoundary Label="the extra panels">
+        <section class="pt-settings-subsection">
+            <h4 class="pt-settings-subheading">Extra panels</h4>
+            <p class="pt-settings-meta pt-mb-3">
+                Extra detail for the curious. Off by default to keep things simple — switch on what you'd use.
+            </p>
+            <div class="pt-settings-grid">
+                @foreach ((AdvancedPanel panel, string label, string detail) in AdvancedPanels)
+                {
+                    <div class="pt-settings-toggle">
+                        <RadzenSwitch Value="@Prefs.IsOn(panel)" Change="@(on => Prefs.SetAsync(panel, on))"
+                                      aria-label="@label" />
+                        <div class="pt-settings-toggle-text">
+                            <span class="pt-settings-field-label">@label</span>
+                            <span class="pt-settings-meta">@detail</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+        </SectionErrorBoundary>
+    </div>
+</details>
+
+@code {
+    /// <summary>The signed-in profile, or null while it loads or if it failed.</summary>
+    [Parameter] public ProfileDto? Profile { get; set; }
+
+    [Parameter] public QuotaDto? Quota { get; set; }
+
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>The density the page read from pt-appearance.js.</summary>
+    [Parameter] public string Density { get; set; } = "normal";
+
+    [Parameter] public EventCallback<string> DensityChanged { get; set; }
+
+    /// <summary>Raised after a locale save succeeds, so the page's copy of the profile follows.</summary>
+    [Parameter] public EventCallback<ProfileDto> ProfileChanged { get; set; }
+
+    /// <summary>The Advanced panels section, in the order it lists them.</summary>
+    private static readonly (AdvancedPanel Panel, string Label, string Detail)[] AdvancedPanels =
+    [
+        (AdvancedPanel.Sparklines, "Card sparklines", "A 24-hour trend line on each commute card."),
+        (AdvancedPanel.Map, "Route map", "The drive drawn on real roads, tinted by today's traffic."),
+        (AdvancedPanel.Weather, "Weather impact", "What rain, snow and fog cost this commute — on its own Weather tab."),
+    ];
+
+    // Whitelist matches the server-side validator.
+    private static readonly List<string> ValidLocales = ["en-IE", "en-GB", "en-US", "de-DE", "fr-FR"];
+
+    private string _locale = string.Empty;
+    private bool _saving;
+    private string? _profileError;
+
+    protected override void OnParametersSet()
+    {
+        if (!_saving)
+            _locale = Profile?.Locale ?? string.Empty;
+    }
+
+    private double QuotaPercent =>
+        Quota is { DailyLimit: > 0 } q ? Math.Min(100, (double)q.UsedToday / q.DailyLimit * 100) : 0;
+
+    private ProgressBarStyle QuotaStyle => QuotaPercent switch
+    {
+        >= 90 => ProgressBarStyle.Danger,
+        >= 70 => ProgressBarStyle.Warning,
+        _ => ProgressBarStyle.Primary
+    };
+
+    /// <summary>
+    /// RadzenSelectBar's Change hands back the item's Value boxed as object; a null can only
+    /// mean a deselect, which this bar does not offer.
+    /// </summary>
+    private async Task OnDensityChanged(object? value)
+    {
+        if (value?.ToString() is { Length: > 0 } density)
+            await DensityChanged.InvokeAsync(density);
+    }
+
+    private async Task OnMotionChanged(MotionLevel level) => await Fx.SetMotionAsync(level);
+
+    /// <summary>Saves the locale the moment it is picked; a failure puts the old one back.</summary>
+    private async Task SaveLocaleAsync(string? locale)
+    {
+        if (string.IsNullOrEmpty(locale) || locale == Profile?.Locale)
+            return;
+
+        string previous = _locale;
+        _locale = locale;
+        _saving = true;
+        _profileError = null;
+        try
+        {
+            HttpResponseMessage resp = await Http.PutAsJsonAsync(
+                "/api/account/profile",
+                new UpdateProfileRequest(locale),
+                AppJsonContext.Default.UpdateProfileRequest);
+
+            if (resp.IsSuccessStatusCode)
+            {
+                await ProfileChanged.InvokeAsync(Profile! with { Locale = locale });
+                NotificationService.Notify(NotificationSeverity.Success, "Saved", $"Locale set to {locale}.");
+                return;
+            }
+            _profileError = $"Couldn't save the locale ({(int)resp.StatusCode}). Try again.";
+        }
+        catch
+        {
+            _profileError = "Couldn't reach the server. The locale wasn't saved.";
+        }
+        finally { _saving = false; }
+
+        _locale = previous;
+    }
+}

@@ -13,17 +13,10 @@ namespace PoTraffic.Client.Infrastructure;
 public static class CheckNow
 {
     /// <summary>Runs a live check and reports the result as a toast. The result on success, else null.</summary>
-    /// <param name="fx">
-    /// When given, the result is also heard and seen: the check cue, pitched by the result
-    /// against <paramref name="baselineSeconds"/>, and a burst when it came back faster.
-    /// </param>
-    /// <param name="baselineSeconds">The route's usual time for this slot, if the caller knows it.</param>
     public static async Task<CheckNowResponse?> RunAsync(
         HttpClient http,
         NotificationService notifications,
-        Guid routeId,
-        FxService? fx = null,
-        double? baselineSeconds = null)
+        Guid routeId)
     {
         try
         {
@@ -40,8 +33,6 @@ public static class CheckNow
                         : "Live travel time retrieved",
                     Duration = 6000
                 });
-                if (fx is not null && data is not null)
-                    await fx.CheckResultAsync(data.DurationSeconds, baselineSeconds);
                 return data;
             }
 
@@ -60,19 +51,6 @@ public static class CheckNow
             Fail(notifications, "Unable to connect. Please try again.");
         }
         return null;
-    }
-
-    /// <summary>
-    /// A baseline for <see cref="RunAsync"/> where the caller has no slot-specific typical
-    /// time: the median of the route's recent samples (the dashboard's 24-hour window).
-    /// Null below three samples — too few to call anything "usual".
-    /// </summary>
-    public static double? MedianBaseline(IReadOnlyList<PoTraffic.Shared.DTOs.History.PollRecordDto> polls)
-    {
-        if (polls.Count < 3)
-            return null;
-        int[] sorted = [.. polls.Select(p => p.TravelDurationSeconds).Order()];
-        return sorted[sorted.Length / 2];
     }
 
     private static void Fail(NotificationService notifications, string detail) =>

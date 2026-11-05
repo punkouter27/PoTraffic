@@ -14,7 +14,7 @@
 // network is not there. It is filled as a side effect of normal browsing, so an
 // install always has real content behind it.
 
-const VERSION = "v4";
+const VERSION = "v5";
 const SHELL_CACHE = `potraffic-shell-${VERSION}`;
 const ASSET_CACHE = `potraffic-assets-${VERSION}`;
 const TILE_CACHE = `potraffic-tiles-${VERSION}`;
@@ -41,8 +41,8 @@ const SHELL = [
     "/css/pt-glass.css",
     "/lib/leaflet/leaflet.css",
     "/lib/leaflet/leaflet.js",
-    // The effects runtime. Small and loaded on every page — it decides whether the
-    // map flow and chart draw-in may animate, so precaching it keeps a cold offline
+    // The motion runtime. Small and loaded on every page — it decides whether the
+    // chart draw-in and map pins may animate, so precaching it keeps a cold offline
     // start from opening on a flat page that then lights up a second later.
     "/js/pt-fx.js",
     "/js/pt-viewtransition.js",

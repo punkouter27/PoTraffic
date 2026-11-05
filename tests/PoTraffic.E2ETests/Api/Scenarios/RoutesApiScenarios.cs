@@ -128,7 +128,7 @@ public sealed class RoutesApiScenarios
             Assert.Equal(0, weather!.SampleCount);
 
             // Not enough history to recommend anything yet: 204 rather than a made-up answer.
-            Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync($"{baseUrl}/optimal-departure?dayOfWeek=Monday")).StatusCode);
+            Assert.Equal(HttpStatusCode.NoContent, (await client.GetAsync($"{baseUrl}/departure?dayOfWeek=Monday")).StatusCode);
         }
     }
 

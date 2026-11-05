@@ -1,0 +1,68 @@
+@using PoTraffic.Shared.DTOs.History
+
+@* The route page's "Today" card: the trend chart of today's samples, and the raw record
+   of whichever point the user picked. *@
+<RadzenCard>
+    @* Not pt-mb-0: the canvas draws its "min" axis caption at its own top edge,
+       which collided with this heading's descenders. *@
+    <RadzenText TextStyle="TextStyle.H3" class="pt-mb-2 pt-section-heading">Today</RadzenText>
+
+    <SectionErrorBoundary Label="today's chart">
+    <TrendChart Points="@_trendPoints"
+                Labels="@_trendLabels"
+                Weather="@_trendWeather"
+                Precipitation="@_trendPrecipitation"
+                OnPointSelected="OnTrendPointSelected" />
+
+    @if (_selectedPoll is { } selected)
+    {
+        <div class="pt-trend-selection">
+            <span class="pt-trend-selection-time">@LocalTimeFormatter.Clock(selected.PolledAtDateTime)</span>
+            <span class="pt-trend-selection-value">@TextFormatting.Minutes(selected.TravelDurationSeconds) min</span>
+            <span class="pt-trend-selection-meta">
+                @TextFormatting.Distance(selected.DistanceMetres)
+                @if (selected.IsRerouted)
+                {
+                    <span class="pt-trend-selection-flag">rerouted</span>
+                }
+            </span>
+            <button type="button" class="pt-trend-selection-clear"
+                    aria-label="Clear selection" @onclick="() => _selectedPoll = null">
+                <PtIcon Name="close" Size="sm" />
+            </button>
+        </div>
+    }
+    </SectionErrorBoundary>
+</RadzenCard>
+
+@code {
+    /// <summary>Today's samples, oldest first. Every series is built by position from this list.</summary>
+    [Parameter] public IReadOnlyList<PollRecordDto> TodayPolls { get; set; } = [];
+
+    private IReadOnlyList<PollRecordDto>? _built;
+    private double[] _trendPoints = [];
+    private string[] _trendLabels = [];
+    private string?[] _trendWeather = [];
+    private double?[] _trendPrecipitation = [];
+    private PollRecordDto? _selectedPoll;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(TodayPolls, _built))
+            return;
+        _built = TodayPolls;
+
+        _trendPoints = [.. TodayPolls.Select(p => p.TravelDurationSeconds / 60.0)];
+        _trendLabels = [.. TodayPolls.Select(p => p.PolledAtDateTime.ToString("HH:mm"))];
+        _trendWeather = [.. TodayPolls.Select(p => p.WeatherCondition)];
+        _trendPrecipitation = [.. TodayPolls.Select(p => p.PrecipitationMm)];
+
+        // A selection from the previous payload may no longer exist.
+        if (_selectedPoll is not null && !TodayPolls.Contains(_selectedPoll))
+            _selectedPoll = null;
+    }
+
+    /// <summary>Clicking a sample on the chart surfaces its raw record beneath.</summary>
+    private void OnTrendPointSelected(int index) =>
+        _selectedPoll = index >= 0 && index < TodayPolls.Count ? TodayPolls[index] : null;
+}

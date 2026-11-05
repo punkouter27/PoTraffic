@@ -6,7 +6,6 @@
 @using PoTraffic.Client.Features.MonitoringWindows
 @inject HttpClient Http
 @inject NavigationManager Nav
-@inject FxService Fx
 
 <PageTitle>New commute — PoTraffic</PageTitle>
 
@@ -203,8 +202,6 @@
             }
 
             RouteDto? createdRoute = await createResp.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);
-            await Fx.CueAsync(SoundCue.Save);
-
             // Best effort: a failure here leaves a working route without a target, which the
             // route page lets the user set — not worth failing the create over.
             if (createdRoute is not null && ArriveByHHmm is not null)

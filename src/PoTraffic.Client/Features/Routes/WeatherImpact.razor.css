@@ -1,0 +1,122 @@
+/* WeatherImpact — scoped styles (moved from app.css). */
+
+.pt-weather {
+    margin-top: var(--pt-space-4);
+}
+
+.pt-weather-lede {
+    color: var(--pt-fg-body);
+    font-size: var(--pt-text-sm);
+    line-height: var(--pt-leading-normal);
+    margin: 0 0 var(--pt-space-3);
+    max-width: var(--pt-measure);
+}
+
+.pt-weather-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pt-space-2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Four columns on a comfortable viewport: label, bar, delta, sample count. The bar
+   column is the flexible one so the numbers stay in their own aligned tracks. */
+.pt-weather-row {
+    align-items: center;
+    display: grid;
+    gap: var(--pt-space-2);
+    grid-template-columns: 7rem 1fr auto;
+    grid-template-areas: "name track delta" "count count count";
+}
+
+@container pt-main (min-width: 34rem) {
+    .pt-weather-row {
+        grid-template-columns: 7rem 1fr 4.5rem 9rem;
+        grid-template-areas: "name track delta count";
+    }
+}
+
+.pt-weather-name {
+    align-items: center;
+    color: var(--pt-fg-body);
+    display: inline-flex;
+    font-size: var(--pt-text-sm);
+    font-weight: var(--pt-weight-medium);
+    gap: 0.35rem;
+    grid-area: name;
+}
+
+/* The track is the baseline: its centre line is "the usual time for this slot", and a
+   bar grows out from there in the direction of the effect. */
+.pt-weather-track {
+    background: var(--pt-bg-sunken);
+    border-radius: var(--pt-radius-full);
+    display: block;
+    grid-area: track;
+    height: 0.5rem;
+    position: relative;
+}
+
+.pt-weather-track::before {
+    background: var(--pt-border-strong);
+    content: "";
+    inset-block: -0.15rem;
+    inset-inline-start: 50%;
+    position: absolute;
+    width: 1px;
+}
+
+.pt-weather-bar {
+    border-radius: var(--pt-radius-full);
+    height: 100%;
+    position: absolute;
+    top: 0;
+    transition: width var(--pt-dur-base) var(--pt-ease);
+}
+
+.pt-weather-bar.is-slower {
+    background: var(--pt-traffic-slow);
+    inset-inline-start: 50%;
+}
+
+.pt-weather-bar.is-faster {
+    background: var(--pt-traffic-clear);
+    /* Grows leftwards from the centre — right edge pinned, width extends back. */
+    inset-inline-end: 50%;
+}
+
+.pt-weather-delta {
+    color: var(--pt-fg-strong);
+    font-size: var(--pt-text-sm);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--pt-weight-semibold);
+    grid-area: delta;
+    text-align: end;
+}
+
+/* A number built on too few samples is shown, but never with the visual authority of
+   one that has earned it. */
+.pt-weather-delta.is-provisional {
+    color: var(--pt-fg-muted);
+    font-weight: var(--pt-weight-regular);
+}
+
+.pt-weather-count {
+    color: var(--pt-fg-muted);
+    font-size: var(--pt-text-xs);
+    grid-area: count;
+    text-align: start;
+}
+
+@container pt-main (min-width: 34rem) {
+    .pt-weather-count { text-align: end; }
+}
+
+.pt-weather-note {
+    color: var(--pt-fg-muted);
+    font-size: var(--pt-text-xs);
+    margin: var(--pt-space-3) 0 0;
+    max-width: var(--pt-measure);
+}

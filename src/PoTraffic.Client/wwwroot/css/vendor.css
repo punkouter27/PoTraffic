@@ -22,8 +22,7 @@
    pt-tokens.css owns the design system; Radzen owns the components. */
 @import url("../_content/Radzen.Blazor/css/default.css") layer(vendor);
 
-/* Leaflet belongs in the layer for the same reason. It was a plain <link>, which
-   left it unlayered and competing on specificity: `.leaflet-pane > canvas` (0,1,1)
-   beat our `.pt-flow-canvas` (0,1,0) and silently overrode the flow overlay's
-   z-index. Inside the layer it loses to every app rule regardless. */
+/* Leaflet belongs in the layer for the same reason: unlayered, its selectors such as
+   `.leaflet-pane > canvas` (0,1,1) out-rank app rules on specificity. Inside the
+   layer it loses to every app rule regardless. */
 @import url("../lib/leaflet/leaflet.css") layer(vendor);

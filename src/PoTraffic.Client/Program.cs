@@ -47,7 +47,7 @@ builder.Services.AddScoped<PendingDeletionService>();
 // this is what holds it until Settings asks.
 builder.Services.AddScoped<PwaService>();
 
-// The motion setting that governs the map's traffic flow, the chart draw-in and the 3D heatmap.
+// The motion setting that governs the chart draw-in and the map pins' pulse.
 builder.Services.AddScoped<FxService>();
 
 // One once-a-second heartbeat shared by every live countdown, instead of a timer each.

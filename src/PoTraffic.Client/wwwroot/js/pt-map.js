@@ -16,16 +16,12 @@
 // settings still it). One glance at a pin is the verdict and its urgency.
 
 import * as fx from "./pt-fx.js";
-import { createFlow } from "./pt-flow.js";
 
 /** @type {WeakMap<HTMLElement, object>} */
 const maps = new WeakMap();
 
 /** Per-map id for its slot on the shared ticker. */
 let mapCounter = 0;
-
-/** Leaflet layer class for the animated flow. Built once, after Leaflet has loaded. */
-let FlowLayer = null;
 
 /** Leaflet is a classic script, not a module. Loaded once, shared by every map. */
 let leafletLoad = null;
@@ -145,7 +141,7 @@ export async function render(container, data) {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(map);
 
-        state = { map, line: null, markers: [], flow: null, id: ++mapCounter, cancelMeasure: null };
+        state = { map, line: null, markers: [], id: ++mapCounter, cancelMeasure: null };
         maps.set(container, state);
     }
 
@@ -206,33 +202,12 @@ export async function render(container, data) {
     const incident = data.incident ? [data.incident.lat, data.incident.lng] : null;
     if (incident) pin(incident, data.incident.description, "pt-map-pin-incident");
 
-    // The route's verdict becomes the app's mood, so the background wash and the
-    // ambient audio agree with the line the user is looking at.
-    fx.setMood(data.trafficLevel);
-
-    // Particles travelling the path. Purely decorative — if anything here fails the
-    // map is still a map, so it is wrapped and never allowed to break the render.
-    try {
-        FlowLayer ??= createFlow(L);
-        if (fx.animates()) {
-            if (state.flow) {
-                state.flow.setPath(path, data.trafficLevel, expr, incident);
-            } else {
-                state.flow = new FlowLayer({ latlngs: path, level: data.trafficLevel, colour: expr, incident });
-                state.flow.addTo(map);
-            }
-        } else if (state.flow) {
-            map.removeLayer(state.flow);
-            state.flow = null;
-        }
-    } catch { /* decoration only */ }
-
     map.fitBounds(state.line.getBounds(), { padding: [28, 28] });
 
     // Leaflet measures the container on creation. Inside a card that was still laying
     // out (or a <details> that just opened) that measurement is stale and the tiles
     // render into a strip. Re-measuring after layout settles is the documented fix.
-    // On the shared frame (pt-fx), so it coalesces with the flow's own first draw.
+    // On the shared frame (pt-fx), so it coalesces with any other pending draw.
     state.cancelMeasure = fx.nextFrame(`map-measure-${state.id}`, () => {
         state.cancelMeasure = null;
         if (!container.isConnected || !state.line) return;
@@ -245,8 +220,6 @@ export async function render(container, data) {
 export function destroy(container) {
     const state = maps.get(container);
     if (!state) return;
-    // The flow layer holds a GL context and a ticker registration; removing the map
-    // fires its onRemove, which releases both.
     state.cancelMeasure?.();
     try { state.map.remove(); } catch { /* already gone */ }
     maps.delete(container);

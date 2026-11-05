@@ -2,7 +2,6 @@
 @attribute [Authorize(Roles = "Administrator")]
 @inject HttpClient Http
 @inject NotificationService Notifications
-@inject FxService Fx
 
 <PageTitle>Admin — PoTraffic</PageTitle>
 
@@ -375,8 +374,6 @@
 
     private void Saved(bool ok, string detail)
     {
-        if (ok)
-            _ = Fx.CueAsync(SoundCue.Save);
         Notifications.Notify(new NotificationMessage
         {
             Severity = ok ? NotificationSeverity.Success : NotificationSeverity.Error,

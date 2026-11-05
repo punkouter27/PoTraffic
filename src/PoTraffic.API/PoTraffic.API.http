@@ -175,11 +175,7 @@ GET {{host}}/api/routes/{{routeId}}/sessions
 X-Fake-User: {{user}}
 
 ###
-GET {{host}}/api/routes/{{routeId}}/optimal-departure?dayOfWeek=Monday
-X-Fake-User: {{user}}
-
-###
-GET {{host}}/api/routes/{{routeId}}/departure-plan?dayOfWeek=Monday
+GET {{host}}/api/routes/{{routeId}}/departure?dayOfWeek=Monday
 X-Fake-User: {{user}}
 
 ###

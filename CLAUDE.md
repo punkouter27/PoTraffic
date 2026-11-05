@@ -49,6 +49,8 @@ Azure resources are defined in `infra/main.bicep`; production is
 
 Four tiers. `run-tests.ps1` owns Azurite (Testcontainers), starts/stops the `Testing` host
 on `http://localhost:5150` for the E2E tiers, and writes `TestResults/test-report.html`.
+It also enforces test-case caps per tier (100 unit / 50 integration / 25 E2E API / 25 E2E UI)
+before running anything.
 
 ```powershell
 pwsh ./SCRIPTS/run-tests.ps1                       # all tiers

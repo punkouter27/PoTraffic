@@ -1,0 +1,149 @@
+@implements IDisposable
+@inject HttpClient Http
+@inject NotificationService NotificationService
+@inject PwaService Pwa
+
+@* Settings → This device: push notifications and install. Both are per-browser state
+   owned by PwaService, so this section loads and saves on its own. *@
+<SectionErrorBoundary Label="this device's settings">
+<section class="pt-settings-section">
+    <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">This device</RadzenText>
+    <div class="pt-settings-grid">
+        <div>
+            <span class="pt-settings-field-label">Notifications</span>
+            <p class="pt-settings-meta">
+                Heavier-than-usual traffic, reroutes and time-to-leave — even with the app closed.
+            </p>
+            @switch (_pushState)
+            {
+                case "unsupported":
+                    <p class="pt-settings-meta">
+                        This browser can't receive notifications. On iPhone, install PoTraffic to
+                        your home screen first, then turn them on from the installed app.
+                    </p>
+                    break;
+                case "denied":
+                    <p class="pt-settings-meta">
+                        Blocked for this site. Allow them in your browser's site settings, then come back here.
+                    </p>
+                    break;
+                case "subscribed":
+                    <RadzenButton Text="Turn off notifications" Icon="notifications_off" Size="ButtonSize.Small"
+                                  ButtonStyle="ButtonStyle.Light" Click="DisablePushAsync" IsBusy="_pushBusy" />
+                    break;
+                case "off":
+                    <RadzenButton Text="Turn on notifications" Icon="notifications_active" Size="ButtonSize.Small"
+                                  ButtonStyle="ButtonStyle.Primary" Click="EnablePushAsync" IsBusy="_pushBusy" />
+                    break;
+                default:
+                    @* Not answered yet: hold the button's line so nothing shifts when it lands. *@
+                    <div class="pt-settings-button-reserve" aria-hidden="true"></div>
+                    break;
+            }
+        </div>
+        <div>
+            <span class="pt-settings-field-label">Install</span>
+            <p class="pt-settings-meta">
+                Adds PoTraffic to your home screen and keeps its last data available offline.
+            </p>
+            @if (!Pwa.Supported)
+            {
+                @* Private windows and insecure origins have no service worker at all. *@
+                <p class="pt-settings-meta">This browser can't install web apps. Everything else works normally.</p>
+            }
+            else if (Pwa.Installed)
+            {
+                <p class="pt-settings-meta">Installed — you're running the app version right now.</p>
+            }
+            else if (Pwa.CanInstall)
+            {
+                <RadzenButton Text="Install PoTraffic" Icon="install_mobile" Size="ButtonSize.Small"
+                              ButtonStyle="ButtonStyle.Primary" Click="InstallAsync" />
+            }
+            else
+            {
+                @* Chrome and Edge only offer beforeinstallprompt once their own heuristics are
+                   satisfied, and iOS Safari never fires it — so the manual route is spelled out. *@
+                <p class="pt-settings-meta">
+                    Use your browser's menu to add PoTraffic to your home screen.
+                    On iPhone: Share, then "Add to Home Screen".
+                </p>
+            }
+        </div>
+    </div>
+</section>
+</SectionErrorBoundary>
+
+@code {
+    private string? _pushState;
+    private bool _pushBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Pwa.StateChanged += OnPwaStateChanged;
+        _pushState = await Pwa.GetPushStateAsync();
+    }
+
+    /// <summary>
+    /// The install section reflects browser state that can change after the page has
+    /// rendered — the prompt event may not have fired yet when Settings first paints.
+    /// </summary>
+    private void OnPwaStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task EnablePushAsync()
+    {
+        _pushBusy = true;
+        try
+        {
+            PushKeyResponse? key = await Http.GetFromJsonAsync("/api/push/key", AppJsonContext.Default.PushKeyResponse);
+            string[]? sub = key is null ? null : await Pwa.SubscribePushAsync(key.PublicKey);
+            if (sub is [string endpoint, string p256dh, string auth])
+            {
+                HttpResponseMessage resp = await Http.PostAsJsonAsync("/api/push/subscriptions",
+                    new PushSubscriptionRequest(endpoint, p256dh, auth), AppJsonContext.Default.PushSubscriptionRequest);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    await Pwa.UnsubscribePushAsync();
+                    NotificationService.Notify(NotificationSeverity.Error, "Notifications",
+                        "This browser's push service isn't supported.");
+                }
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JSException)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Notifications", "Couldn't turn notifications on.");
+        }
+        finally
+        {
+            _pushState = await Pwa.GetPushStateAsync();
+            _pushBusy = false;
+        }
+    }
+
+    private async Task DisablePushAsync()
+    {
+        _pushBusy = true;
+        try
+        {
+            if (await Pwa.UnsubscribePushAsync() is { } endpoint)
+                await Http.PostAsJsonAsync("/api/push/unsubscribe",
+                    new PushUnsubscribeRequest(endpoint), AppJsonContext.Default.PushUnsubscribeRequest);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or JSException) { /* server prunes it on next send */ }
+        finally
+        {
+            _pushState = await Pwa.GetPushStateAsync();
+            _pushBusy = false;
+        }
+    }
+
+    /// <summary>Shows the browser's own install dialog.</summary>
+    private async Task InstallAsync()
+    {
+        if (await Pwa.InstallAsync())
+            NotificationService.Notify(NotificationSeverity.Success, "Installed",
+                "PoTraffic has been added to this device.");
+    }
+
+    public void Dispose() => Pwa.StateChanged -= OnPwaStateChanged;
+}

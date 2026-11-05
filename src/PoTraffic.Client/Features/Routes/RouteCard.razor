@@ -8,7 +8,6 @@
 @inject UiPreferences Prefs
 @inject PendingDeletionService Pending
 @inject IJSRuntime JS
-@inject FxService Fx
 @implements IAsyncDisposable
 
 @* ──────────────────────────────────────────────────────────────────────
@@ -264,7 +263,7 @@
         _checking = true;
         try
         {
-            if (await CheckNow.RunAsync(Http, NotificationService, Route.Id.Value, Fx, CheckNow.MedianBaseline(RecentPolls)) is not null)
+            if (await CheckNow.RunAsync(Http, NotificationService, Route.Id.Value) is not null)
                 await OnRefresh.InvokeAsync();
         }
         finally { _checking = false; }

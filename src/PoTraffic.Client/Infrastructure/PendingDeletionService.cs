@@ -75,6 +75,7 @@ public sealed class PendingDeletionService : IDisposable
             return;
 
         Cancel(cts);
+        cts.Dispose();
         _hidden.Remove(routeId);
         ClearCurrent(routeId);
         Changed?.Invoke();
@@ -98,7 +99,8 @@ public sealed class PendingDeletionService : IDisposable
         }
 
         // The window has closed: retire the undo bar, but keep the route hidden.
-        _awaitingCommit.Remove(routeId);
+        if (_awaitingCommit.Remove(routeId, out CancellationTokenSource? done))
+            done.Dispose();
         ClearCurrent(routeId);
         Changed?.Invoke();
 
@@ -139,7 +141,10 @@ public sealed class PendingDeletionService : IDisposable
     public void Dispose()
     {
         foreach (CancellationTokenSource cts in _awaitingCommit.Values)
+        {
             Cancel(cts);
+            cts.Dispose();
+        }
         _awaitingCommit.Clear();
         _hidden.Clear();
         Current = null;

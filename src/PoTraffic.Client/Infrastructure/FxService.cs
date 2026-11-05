@@ -5,7 +5,7 @@ namespace PoTraffic.Client.Infrastructure;
 /// <summary>How much decorative motion the app is allowed to draw.</summary>
 public enum MotionLevel
 {
-    /// <summary>Everything: the map's traffic flow animates and charts draw themselves in.</summary>
+    /// <summary>Everything: charts draw themselves in and map pins pulse.</summary>
     Full,
 
     /// <summary>Effects still render, but nothing moves. Colour keeps its meaning; motion stops.</summary>
@@ -15,32 +15,9 @@ public enum MotionLevel
     Off,
 }
 
-/// <summary>A synthesised sound cue (<c>js/pt-audio.js</c>).</summary>
-public enum SoundCue
-{
-    /// <summary>A Check now came back. Pitch follows the result against its baseline.</summary>
-    Check,
-
-    /// <summary>A new alert arrived in the notification bell.</summary>
-    Alert,
-
-    /// <summary>A change was saved.</summary>
-    Save,
-
-    /// <summary>A pending action was taken back.</summary>
-    Undo,
-}
-
 /// <summary>
-/// The app's motion and sound settings, and the one bridge to <c>js/pt-fx.js</c>, which
-/// owns every decorative effect at runtime.
-///
-/// <para>
-/// One JS surface on purpose. The cues (<c>pt-audio.js</c>) and the burst
-/// (<c>pt-burst.js</c>) are loaded by <c>pt-fx.js</c> on first use, so a muted user never
-/// downloads the synth and a reduced-motion user never downloads the burst — and neither
-/// costs anything on a page load.
-/// </para>
+/// The app's motion setting, and the one bridge to <c>js/pt-fx.js</c>, which owns the
+/// chart and map animation at runtime.
 ///
 /// <para>
 /// The preference lives in <c>localStorage</c> on the JS side rather than in this class,
@@ -64,15 +41,6 @@ public sealed class FxService : IAsyncDisposable
     public FxService(IJSRuntime js) => _js = js;
 
     public MotionLevel Motion { get; private set; } = MotionLevel.Full;
-
-    /// <summary>Whether the sound cues play. On by default; a per-browser choice, like motion.</summary>
-    public bool SoundOn { get; private set; } = true;
-
-    /// <summary>
-    /// A result counts as "faster than usual" — and earns the burst — only when it beats
-    /// the baseline by more than noise. Two percent of a 30-minute commute is 36 seconds.
-    /// </summary>
-    private const double FasterRatio = 0.98;
 
     /// <summary>
     /// Loads the effects module and reads the stored preference. Called once from the root
@@ -107,45 +75,12 @@ public sealed class FxService : IAsyncDisposable
         await Safe(() => _fx!.InvokeVoidAsync("setMotionLevel", Serialize(level)).AsTask());
     }
 
-    public async Task SetSoundAsync(bool on)
-    {
-        SoundOn = on;
-        await Safe(() => _fx!.InvokeVoidAsync("setSound", on).AsTask());
-        // Switching sound on is itself a gesture, so it doubles as the confirmation.
-        if (on)
-            await CueAsync(SoundCue.Save);
-    }
-
-    /// <summary>Plays a cue. Silent when muted, before the first user gesture, or with the tab hidden.</summary>
-    public Task CueAsync(SoundCue cue) => Cue(cue, null);
-
-    /// <summary>
-    /// The feedback for a Check now result: the check cue pitched by how the result sits
-    /// against <paramref name="baselineSeconds"/>, and a particle burst when it beat it.
-    /// With no baseline the cue plays at its neutral pitch and nothing bursts.
-    /// </summary>
-    public async Task CheckResultAsync(int durationSeconds, double? baselineSeconds)
-    {
-        double? ratio = baselineSeconds is > 0 ? durationSeconds / baselineSeconds.Value : null;
-        await Cue(SoundCue.Check, ratio);
-        if (ratio is < FasterRatio)
-            await Safe(() => _fx!.InvokeVoidAsync("burst", "faster").AsTask());
-    }
-
-    private async Task Cue(SoundCue cue, double? ratio)
-    {
-        if (!SoundOn)
-            return;
-        await Safe(() => _fx!.InvokeVoidAsync("cue", cue.ToString().ToLowerInvariant(), ratio).AsTask());
-    }
-
     private async Task ReadAsync()
     {
         if (_fx is null)
             return;
 
         Motion = Parse(await _fx.InvokeAsync<string>("motionLevel"));
-        SoundOn = await _fx.InvokeAsync<bool>("soundOn");
     }
 
     /// <summary>

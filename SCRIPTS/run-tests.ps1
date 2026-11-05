@@ -277,6 +277,40 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
 }
 
+# ── Test-count caps ─────────────────────────────────────────────────────────
+# The suite is kept deliberately small: 100 unit, 50 integration, 25 E2E API and 25 E2E UI
+# test cases at most. Counted from `dotnet test --list-tests`, which lists every case a
+# [Theory] expands to, so a theory with 30 rows counts as 30. Over a cap fails the run
+# before any tier starts — trim or merge tests rather than raising the number.
+$testCaps = @(
+    @{ Name = 'Unit';        Project = 'tests/PoTraffic.UnitTests';        Match = $null;                       Cap = 100 },
+    @{ Name = 'Integration'; Project = 'tests/PoTraffic.IntegrationTests'; Match = $null;                       Cap = 50 },
+    @{ Name = 'E2E API';     Project = 'tests/PoTraffic.E2ETests';         Match = 'PoTraffic.E2ETests.Api.';   Cap = 25 },
+    @{ Name = 'E2E UI';      Project = 'tests/PoTraffic.E2ETests';         Match = 'PoTraffic.E2ETests.Ui.';    Cap = 25 }
+)
+
+function Assert-TestCaps {
+    Write-Host "`n=== Test-count caps ===" -ForegroundColor Cyan
+    $listed = @{}
+    $over = @()
+    foreach ($cap in $testCaps) {
+        if (-not $listed.ContainsKey($cap.Project)) {
+            # Test names are the indented lines after the "available" banner.
+            $listed[$cap.Project] = @(dotnet test (Join-Path $root $cap.Project) --list-tests --no-build -nologo 2>$null |
+                Where-Object { $_ -match '^\s{4}\S' } | ForEach-Object { $_.Trim() })
+        }
+        $names = $listed[$cap.Project]
+        if ($cap.Match) { $names = @($names | Where-Object { $_.Contains($cap.Match) }) }
+        $count = $names.Count
+        $colour = if ($count -gt $cap.Cap) { 'Red' } else { 'Green' }
+        Write-Host ("  {0,-12} {1,4} / {2}" -f $cap.Name, $count, $cap.Cap) -ForegroundColor $colour
+        if ($count -gt $cap.Cap) { $over += "$($cap.Name) has $count tests (cap $($cap.Cap))" }
+    }
+    if ($over.Count -gt 0) { throw "Test-count cap exceeded: $($over -join '; ')." }
+}
+
+Assert-TestCaps
+
 # ── Tier 1: Unit (no I/O) ───────────────────────────────────────────────────
 if ($runUnit) {
     Invoke-Tier -TierName 'UnitTests' -DisplayName 'Unit (pure, no I/O)' `

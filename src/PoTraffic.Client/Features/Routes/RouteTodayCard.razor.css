@@ -1,0 +1,51 @@
+/* RouteTodayCard — scoped styles (moved from RouteDetailPage). */
+.pt-trend-selection {
+    align-items: center;
+    background: var(--pt-bg-tint);
+    border-radius: var(--pt-radius-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--pt-space-3);
+    margin-top: var(--pt-space-3);
+    padding: var(--pt-space-2) var(--pt-space-3);
+}
+
+.pt-trend-selection-time {
+    color: var(--pt-fg-primary);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--pt-weight-semibold);
+}
+
+.pt-trend-selection-value {
+    color: var(--pt-color-brand-on-surface);
+    font-weight: var(--pt-weight-semibold);
+}
+
+.pt-trend-selection-meta {
+    color: var(--pt-fg-secondary);
+    flex: 1;
+    font-size: var(--pt-text-sm);
+    min-width: 0;
+}
+
+.pt-trend-selection-flag {
+    color: var(--pt-color-danger-on-surface);
+    font-weight: var(--pt-weight-semibold);
+    margin-left: var(--pt-space-2);
+}
+
+.pt-trend-selection-clear {
+    align-items: center;
+    background: none;
+    border: none;
+    border-radius: var(--pt-radius-sm);
+    color: var(--pt-fg-tertiary);
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    padding: var(--pt-space-1);
+}
+
+.pt-trend-selection-clear:hover {
+    color: var(--pt-fg-body);
+}

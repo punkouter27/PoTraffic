@@ -17,7 +17,6 @@
 <PageTitle>Commutes — PoTraffic</PageTitle>
 
 @* The page leads with a heading like every other route. *@
-<DashboardAmbient RecentPolls="_recentPolls" />
 
 <PageHeader Title="Your commutes"
             Subtitle="@_subtitle" />
@@ -111,33 +110,7 @@ else if (VisibleRoutes.Count == 0 && !_hydrated)
 }
 else if (VisibleRoutes.Count == 0)
 {
-    <div class="pt-empty-state">
-        <PtIcon Name="route" Size="xl" Class="pt-empty-state-icon" />
-        <div class="pt-empty-state-title">No commutes yet</div>
-        <div class="pt-empty-state-text">
-            @* The previous copy said "Tap the + button below" — fine on a phone,
-               where the bottom-nav's FAB is in view, but on desktop the bottom
-               nav doesn't render and the sentence was pointing at nothing. The
-               primary action now lives here at every width; the phone still has
-               the FAB as a shortcut, and this CTA is the universal fallback. *@
-            Add a commute you drive often — home → work or work → home, say —
-            and once we've sampled it a few days the page will start telling you
-            when to leave.
-        </div>
-        <div class="pt-empty-state-actions">
-            <RadzenButton Text="Add your first commute" ButtonStyle="ButtonStyle.Primary"
-                          Icon="add" Click="@(() => Nav.NavigateTo("/routes/create"))" />
-            @* "Once we've sampled it a few days" is an honest promise and a terrible first
-               run: every chart here needs accumulated history, so a brand-new account has
-               nothing to judge the app by. The sample route is that history, pre-built. *@
-            <RadzenButton Text="Explore a sample commute" ButtonStyle="ButtonStyle.Light"
-                          Icon="science" Click="CreateSampleRouteAsync" IsBusy="_creatingSample" />
-        </div>
-        @if (_sampleError is not null)
-        {
-            <div class="pt-field-error" role="alert">@_sampleError</div>
-        }
-    </div>
+    <DashboardEmptyState />
 }
 else
 {
@@ -207,54 +180,9 @@ else
     /// <summary>The configured daily limit from the quota endpoint; the constant until it loads.</summary>
     private int _quotaLimit = QuotaConstants.DefaultDailyQuota;
     private bool _hydrated;
-    private bool _creatingSample;
-    private string? _sampleError;
 
     protected override TimeSpan PollingInterval => TimeSpan.FromSeconds(60);
 
-    /// <summary>
-    /// Seeds the demo route and opens it. The browser's UTC offset goes with the request:
-    /// the server generates the history around the user's morning, and it has no other way
-    /// to know what that is.
-    /// </summary>
-    private async Task CreateSampleRouteAsync()
-    {
-        _creatingSample = true;
-        _sampleError = null;
-        try
-        {
-            int offsetMinutes = (int)DateTimeOffset.Now.Offset.TotalMinutes;
-            HttpResponseMessage response = await Http.PostAsJsonAsync(
-                "/api/routes/sample",
-                new CreateSampleRouteRequest(offsetMinutes),
-                AppJsonContext.Default.CreateSampleRouteRequest);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _sampleError = "Couldn't build the sample commute. Please try again.";
-                return;
-            }
-
-            RouteDto? route = await response.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);
-            if (route is null)
-            {
-                _sampleError = "Couldn't build the sample commute. Please try again.";
-                return;
-            }
-
-            // Straight to the route page: the sample exists to be looked at, and the
-            // dashboard card is a worse first impression than the charts it links to.
-            Nav.NavigateTo($"/routes/{route.Id}");
-        }
-        catch
-        {
-            _sampleError = "Unable to connect. Please try again.";
-        }
-        finally
-        {
-            _creatingSample = false;
-        }
-    }
 
     /// <summary>
     /// Routes with a pending delete are hidden immediately, so the swipe feels instant
@@ -400,7 +328,7 @@ else
             _quotaLimit = quota.DailyLimit;
         }
 
-        // UI-2/UI-12: Load optimal departure + 24h trend for each route. Every route's
+        // UI-2/UI-12: Load the departure answer + 24h trend for each route. Every route's
         // pair is independent of every other's, so they all go out at once — awaiting
         // them in a loop made the refresh cost the SUM of 2×N latencies every 60s.
         // Per-route failures stay non-fatal.
@@ -414,7 +342,7 @@ else
             try
             {
                 // Routes with no active monitoring window cannot have polls yet,
-                // so /optimal-departure is guaranteed to return 204 and
+                // so /departure is guaranteed to return 204 and
                 // /poll-history is guaranteed to return empty. Both endpoints
                 // are cheap, but on a dashboard with several freshly-created
                 // routes the noise was real: every 60 s the WASM client logged
@@ -425,9 +353,9 @@ else
                 // own page showed a week of data.
                 bool isMonitored = route.IsSample || route.Windows.Any(w => w.IsActive);
 
-                Task<OptimalDepartureDto?>? optimalTask = isMonitored
-                    ? Http.GetFromJsonAsync(
-                        $"/api/routes/{route.Id}/optimal-departure?dayOfWeek={dayOfWeek}", AppJsonContext.Default.OptimalDepartureDto)
+                // One call carries both the quickest slot and, with an arrive-by target, the plan.
+                Task<HttpResponseMessage>? departureTask = isMonitored
+                    ? Http.GetAsync($"/api/routes/{route.Id}/departure?dayOfWeek={dayOfWeek}")
                     : null;
 
                 Task<PagedResult<PollRecordDto>?>? historyTask = isMonitored
@@ -435,23 +363,14 @@ else
                         $"/api/routes/{route.Id}/poll-history?page=1&pageSize=60&sinceUtc={sinceUtc}", AppJsonContext.Default.PagedResultPollRecordDto)
                     : null;
 
-                // Only routes with an arrive-by target have a plan; the rest would all 204.
-                Task<HttpResponseMessage>? planTask = isMonitored && route.ArriveBy is not null
-                    ? Http.GetAsync($"/api/routes/{route.Id}/departure-plan?dayOfWeek={dayOfWeek}")
-                    : null;
-
-                if (optimalTask is not null)
+                if (departureTask is not null
+                    && await departureTask is { StatusCode: System.Net.HttpStatusCode.OK } departureResp
+                    && await departureResp.Content.ReadFromJsonAsync(AppJsonContext.Default.DepartureDto) is { } departure)
                 {
-                    OptimalDepartureDto? optimal = await optimalTask;
-                    if (optimal is not null)
-                        departures[route.Id] = optimal;
-                }
-
-                if (planTask is not null
-                    && await planTask is { StatusCode: System.Net.HttpStatusCode.OK } planResp
-                    && await planResp.Content.ReadFromJsonAsync(AppJsonContext.Default.DeparturePlanDto) is { } plan)
-                {
-                    plans[route.Id] = plan;
+                    if (departure.Best is { } best)
+                        departures[route.Id] = best;
+                    if (departure.Plan is { } plan)
+                        plans[route.Id] = plan;
                 }
 
                 if (historyTask is not null)

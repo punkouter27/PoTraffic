@@ -67,6 +67,10 @@ prints the URL.
 ./SCRIPTS/run-tests.ps1
 ```
 
+The script fails fast if a tier holds more test cases than its cap — 100 unit, 50
+integration, 25 E2E API, 25 E2E UI (theory rows count individually). Merge or trim tests
+rather than raising a cap.
+
 Or run individual suites:
 
 ```powershell
@@ -116,17 +120,12 @@ when running the app normally.
 ## Client experience
 
 - **Dashboard:** one toolbar for search, status filter and sort; **Select** opens a drawer to
-  pause, resume or delete several commutes at once. A WebGL background
-  (`DashboardAmbient`, `pt-ambient.js`) tints with overall traffic right now. First load shows
-  skeletons the same size as the final cards, so nothing jumps.
-- **Sound:** short Web Audio cues (`pt-audio.js`) for Check now, new alerts, saves and undo.
-  Check now's pitch rises with delay against the usual time; a faster-than-usual result also
-  gets a particle burst. Mute it under Settings → Sound.
+  pause, resume or delete several commutes at once. First load shows skeletons the same size
+  as the final cards, so nothing jumps.
 - **Graphics:** route cards and panels use frosted glass (`pt-glass.css`) with a solid
-  fallback; the heatmap terrain is lit by a time-of-day sun; route flow renders with WebGPU,
-  then WebGL2, then Canvas2D; map pins pulse faster as delay grows; the trend chart morphs
-  between ranges. Chart and terrain data cross to JS as typed arrays via `[JSImport]`
-  (`FxInterop.cs`). Everything respects the Motion setting and `prefers-reduced-motion`.
+  fallback; map pins pulse faster as delay grows; the trend chart morphs between ranges.
+  Chart data crosses to JS as typed arrays via `[JSImport]` (`FxInterop.cs`). Everything
+  respects the Motion setting and `prefers-reduced-motion`.
 - **Keyboard:** `/` search, `n` new commute, `c` Check now, `?` shortcut help, `Esc` closes.
 - **Settings:** common options on top; density, motion, locale, quota and extra panels sit
   in a collapsible Advanced section.

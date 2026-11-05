@@ -20,7 +20,7 @@ public sealed class DeparturePlanTests
             (At(7, 50), 30 * 60), (At(7, 51), 30 * 60), (At(7, 52), 45 * 60),
         ];
 
-        var plan = GetDeparturePlanQueryHandler.Build(samples, At(8, 30));
+        var plan = GetDepartureQueryHandler.BuildPlan(samples, At(8, 30));
 
         plan.Should().NotBeNull();
         plan!.LeaveByMinute.Should().Be(At(7, 40), "07:50 is on time on average but not 9 days in 10");
@@ -33,6 +33,6 @@ public sealed class DeparturePlanTests
     {
         (int, int)[] samples = [(At(7, 40), 30 * 60), (At(7, 41), 30 * 60)];
 
-        GetDeparturePlanQueryHandler.Build(samples, At(8, 30)).Should().BeNull();
+        GetDepartureQueryHandler.BuildPlan(samples, At(8, 30)).Should().BeNull();
     }
 }

@@ -4,7 +4,6 @@
 @inject NavigationManager Nav
 @inject PageActivityMonitor Activity
 @inject PoTraffic.Client.Infrastructure.PwaService Pwa
-@inject PoTraffic.Client.Infrastructure.FxService Fx
 
 @* Rendered only for a signed-in user — NavMenu gates it on the same auth state —
    so there is no second auth check here. *@
@@ -57,13 +56,7 @@
     private int _unreadCount;
     private List<AlertDto> _alerts = [];
     private System.Timers.Timer? _timer;
-
-    /// <summary>
-    /// Unread alerts already announced. Null until the first load, which announces nothing:
-    /// alerts that were waiting when the page opened are not "arriving", and a chime on
-    /// every sign-in would teach people to ignore the chime.
-    /// </summary>
-    private HashSet<AlertId>? _announced;
+    private bool _disposed;
 
     protected override async Task OnInitializedAsync()
     {
@@ -71,6 +64,10 @@
         Activity.Resumed += OnResumedAsync;
 
         await RefreshAsync();
+        // Navigating away during the first load disposes the component before this line;
+        // a timer started now would never be stopped.
+        if (_disposed)
+            return;
         _timer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds) { AutoReset = true };
         // Skip the tick outright while the tab is hidden or offline: an alert nobody can
         // see is not worth a request every 30 seconds, and the resume handler catches up.
@@ -95,12 +92,6 @@
         {
             _alerts = alerts;
             _unreadCount = alerts.Count(a => !a.IsRead);
-
-            HashSet<AlertId> unread = [.. alerts.Where(a => !a.IsRead).Select(a => a.Id)];
-            bool arrived = _announced is not null && unread.Any(id => !_announced.Contains(id));
-            _announced = unread;
-            if (arrived)
-                await Fx.CueAsync(PoTraffic.Client.Infrastructure.SoundCue.Alert);
 
             await Pwa.SetBadgeAsync(_unreadCount);
             await InvokeAsync(StateHasChanged);
@@ -127,6 +118,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         Activity.Resumed -= OnResumedAsync;
         _timer?.Stop();
         _timer?.Dispose();

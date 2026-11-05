@@ -43,9 +43,6 @@ public sealed class UiPreferences
 
     public UiPreferences(IJSRuntime js) => _js = js;
 
-    /// <summary>Raised after a switch is flipped, so a page already showing can follow it.</summary>
-    public event Action? Changed;
-
     public bool IsOn(AdvancedPanel panel) => _on.Contains(panel);
 
     /// <summary>Reads every stored switch. Called once at startup; never throws.</summary>
@@ -69,7 +66,6 @@ public sealed class UiPreferences
     {
         if (on) _on.Add(panel);
         else _on.Remove(panel);
-        Changed?.Invoke();
 
         try
         {

@@ -17,11 +17,11 @@
   </ItemGroup>
 
   <ItemGroup Label="ASP.NET Core / Blazor">
-    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup Label="Serilog">
@@ -73,7 +73,7 @@
          can never fall back to a build carrying CVE-2024-21907 (fixed in 13.0.1). Not dead —
          do not remove it as an "unused" package. -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
-    <!-- Override transitive Microsoft.OpenApi 2.0.0 (GHSA-v5pm-xwqc-g5wc); 2.12.2 also satisfies Microsoft.AspNetCore.OpenApi 10.0.13. -->
+    <!-- Override transitive Microsoft.OpenApi 2.0.0 (GHSA-v5pm-xwqc-g5wc); 2.12.2 also satisfies Microsoft.AspNetCore.OpenApi 10.0.14. -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.12.2" />
     <!-- System.Security.Cryptography.Xml was pinned here too; on net10.0 it is part of the
          ASP.NET Core shared framework and pruned from every project's package graph, so the pin

@@ -9,7 +9,7 @@
 }
 
 /* ── Glass ───────────────────────────────────────────────────────────────
-   The card is frosted over the dashboard's ambient wash (js/pt-ambient.js).
+   The card is frosted glass (pt-glass.css).
    Tokens only (pt-tokens.css): they carry the opacity that keeps the card's
    text at full contrast, and they collapse to the solid surface under
    prefers-reduced-transparency, prefers-contrast: more, and wherever
@@ -33,4 +33,55 @@
     .pt-route-card:hover {
         box-shadow: var(--pt-elev-3), inset 0 1px 0 var(--pt-glass-highlight);
     }
+}
+
+/* ── Card actions (moved from app.css) ─────────────────────────────────── */
+/* The last item on the card's own row, not a row of its own. Hidden until the card is
+   hovered or something inside it takes focus — but always in the tab order, because a
+   control that only appears on hover is a control a keyboard user does not have. */
+.pt-route-card-actions {
+    display: flex;
+    gap: var(--pt-space-1);
+    flex: 0 0 auto;
+    align-self: center;
+    transition: opacity var(--pt-dur-fast) var(--pt-ease);
+}
+
+/* Icon-only, so the box is the whole target: 2rem clears the 24px minimum. */
+.pt-route-card-actions ::deep .rz-button {
+    min-width: 2rem;
+    min-height: 2rem;
+}
+
+@container pt-cards (width < 26rem) {
+    .pt-route-card-actions { align-self: flex-end; }
+}
+
+/* Touch keeps them visible: there is no hover to reveal them, and swipe is not
+   discoverable enough to be the only way. */
+@media (hover: hover) {
+    .pt-route-card-actions { opacity: 0; }
+
+    .pt-route-card:hover .pt-route-card-actions,
+    .pt-route-card-actions:focus-within {
+        opacity: 1;
+    }
+
+    /* In the stacked (narrow) card the buttons took a row of their own — an empty
+       band at the bottom of every card while they were invisible. Overlay the
+       corner instead; the sparkline caption under them is left-aligned. */
+    @container pt-cards (width < 26rem) {
+        .pt-route-card-actions {
+            position: absolute;
+            right: var(--pt-space-3);
+            bottom: var(--pt-space-2);
+        }
+    }
+}
+
+/* A named route leads with its name; the street pair drops to a caption under it. */
+.pt-route-card-name + .pt-route-card-route {
+    font-size: var(--pt-text-sm);
+    font-weight: var(--pt-weight-regular);
+    color: var(--pt-fg-secondary);
 }

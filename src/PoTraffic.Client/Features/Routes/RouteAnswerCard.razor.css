@@ -1,0 +1,81 @@
+/* RouteAnswerCard — scoped styles (moved from RouteDetailPage). */
+/* ── The answer ─────────────────────────────────────────────────────────────
+   The only thing above the fold. It gets the largest type in the app and a
+   surface of its own, because everything below it exists to support this line. */
+.pt-answer {
+    background: linear-gradient(135deg,
+        color-mix(in oklab, var(--pt-color-brand-500) 14%, var(--pt-bg-surface)),
+        var(--pt-bg-surface));
+    border: 1px solid var(--pt-border-subtle);
+    border-radius: var(--pt-radius-lg);
+    padding: var(--pt-space-3) var(--pt-space-5);
+    margin-bottom: var(--pt-space-3);
+    box-shadow: var(--pt-elev-1);
+
+    container-type: inline-size;
+    container-name: pt-answer;
+}
+
+/* Narrow column: --pt-text-2xl at "Leave by 10:45 AM" wraps to three lines in a
+   phone's width, and a headline that wraps three times stops reading as one
+   answer. Keyed off the block's own width so it is also correct if the answer
+   is ever placed in a sidebar. */
+@container pt-answer (width < 22rem) {
+    .pt-answer-headline { font-size: var(--pt-text-xl); }
+    .pt-answer-pending { font-size: var(--pt-text-lg); }
+    .pt-answer-duration { font-size: var(--pt-text-base); }
+}
+
+.pt-answer-route {
+    display: flex;
+    align-items: center;
+    gap: var(--pt-space-2);
+    font-size: var(--pt-text-xs);
+    color: var(--pt-fg-tertiary);
+    margin-bottom: var(--pt-space-1);
+    min-width: 0;
+}
+
+.pt-answer-from,
+.pt-answer-to {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pt-answer-arrow {
+    color: var(--pt-fg-faint);
+    flex-shrink: 0;
+}
+
+.pt-answer-headline {
+    font-size: var(--pt-text-2xl);
+    font-weight: var(--pt-weight-bold);
+    line-height: var(--pt-leading-tight);
+    letter-spacing: -0.01em;
+    color: var(--pt-fg-primary);
+    text-wrap: balance;
+}
+
+.pt-answer-pending {
+    font-size: var(--pt-text-lg);
+    color: var(--pt-fg-secondary);
+    font-weight: var(--pt-weight-medium);
+}
+
+.pt-answer-duration {
+    font-size: var(--pt-text-base);
+    color: var(--pt-fg-body);
+    margin-top: var(--pt-space-1);
+}
+
+/* How much to trust the number, in a sentence rather than a progress bar. */
+.pt-answer-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--pt-space-2);
+    margin-top: var(--pt-space-2);
+    font-size: var(--pt-text-xs);
+    color: var(--pt-fg-tertiary);
+}

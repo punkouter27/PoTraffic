@@ -1,0 +1,89 @@
+@using PoTraffic.Shared.DTOs.Routes
+@using PoTraffic.Shared.Enums
+@using PoTraffic.Client.Features.MonitoringWindows
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject NotificationService Notifications
+
+@* The route page's Schedule tab: the monitoring window, the addresses, the return trip
+   and the pause switch — everything that changes what gets sampled, in one card. *@
+<RadzenCard class="pt-route-settings">
+    <SectionErrorBoundary Label="the schedule">
+        <WindowConfigPanel RouteId="Route.Id.Value" Window="Window" Session="Session" OnSaved="OnChanged" />
+    </SectionErrorBoundary>
+
+    <SectionErrorBoundary Label="the addresses">
+    <RouteAddressesRow RouteId="Route.Id.Value" Origin="@Route.OriginAddress" Destination="@Route.DestinationAddress" OnSaved="OnChanged" />
+    </SectionErrorBoundary>
+
+    @* Both states go through the same call: the endpoint creates the reversed route and
+       links it, or hands back the one already linked. Navigating straight to a stored
+       ReturnRouteId could open a route that had since been deleted. *@
+    <div class="pt-setting-row">
+        <span class="pt-setting-label">Return trip</span>
+        <span class="pt-setting-value">@(Route.ReturnRouteId is not null ? "Linked" : "Not tracked")</span>
+        <RadzenButton Text="@(Route.ReturnRouteId is not null ? "View" : "Track return trip")"
+                      ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="CreateReturnTripAsync" IsBusy="_creatingReturn" />
+    </div>
+
+    @* Stop above ends today's session only; this is the switch that lasts. *@
+    @{ bool paused = Route.MonitoringStatus == MonitoringStatus.Paused; }
+    <div class="pt-setting-row">
+        <span class="pt-setting-label">Monitoring</span>
+        <span class="pt-setting-value">@(paused ? "Paused — no checks until resumed" : "On")</span>
+        <RadzenButton Text="@(paused ? "Resume" : "Pause")" Icon="@(paused ? "play_arrow" : "pause")"
+                      ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                      Click="@(() => SetPausedAsync(!paused))" IsBusy="_pausing" />
+    </div>
+</RadzenCard>
+
+@code {
+    [Parameter, EditorRequired] public RouteDto Route { get; set; } = default!;
+
+    [Parameter] public MonitoringWindowDto? Window { get; set; }
+
+    [Parameter] public SessionDto? Session { get; set; }
+
+    /// <summary>Raised after anything here saved, so the page refreshes the route.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private bool _creatingReturn;
+    private bool _pausing;
+
+    /// <summary>Pauses or resumes monitoring; the schedule and history are kept either way.</summary>
+    private async Task SetPausedAsync(bool paused)
+    {
+        _pausing = true;
+        try
+        {
+            HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{Route.Id}/paused",
+                new SetRoutePausedRequest(paused), AppJsonContext.Default.SetRoutePausedRequest);
+            if (resp.IsSuccessStatusCode)
+                await OnChanged.InvokeAsync();
+            else
+                Notifications.Notify(NotificationSeverity.Error, paused ? "Couldn't pause" : "Couldn't resume", "Please try again.");
+        }
+        catch { Notifications.Notify(NotificationSeverity.Error, "Unable to connect", "Please try again."); }
+        finally { _pausing = false; }
+    }
+
+    /// <summary>Creates (or re-uses) the reverse-direction route and navigates to it.</summary>
+    private async Task CreateReturnTripAsync()
+    {
+        _creatingReturn = true;
+        try
+        {
+            HttpResponseMessage resp = await Http.PostAsync($"/api/routes/{Route.Id}/return-trip", null);
+            if (resp.IsSuccessStatusCode)
+            {
+                RouteDto? created = await resp.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);
+                // A normal SPA navigation: PollingComponentBase reloads on a route change.
+                if (created is not null && created.Id != Route.Id)
+                    Nav.NavigateTo($"/routes/{created.Id}");
+            }
+        }
+        catch { /* transient — user can retry */ }
+        finally { _creatingReturn = false; }
+    }
+}
