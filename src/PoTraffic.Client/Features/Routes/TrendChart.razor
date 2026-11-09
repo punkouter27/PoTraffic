@@ -49,6 +49,16 @@ else
     [Parameter] public IReadOnlyList<string> Labels { get; set; } = [];
 
     /// <summary>
+    /// Per-sample minutes since local midnight. When given, samples sit at their clock
+    /// time and the x axis spans the whole day, 00:00–23:59 (or the zoomed span);
+    /// when empty, samples are spaced evenly.
+    /// </summary>
+    [Parameter] public IReadOnlyList<double> Times { get; set; } = [];
+
+    /// <summary>The last minute of the day — the right edge of an unzoomed time axis.</summary>
+    private const double DayEnd = 23 * 60 + 59;
+
+    /// <summary>
     /// Per-sample weather condition (null when not recorded). Rain, snow, storm and fog
     /// shade their span of the chart so spikes can be read against the weather.
     /// </summary>
@@ -155,13 +165,20 @@ else
         IReadOnlyList<string> labels = Slice(Labels);
         IReadOnlyList<string?> weather = Slice(Weather);
         IReadOnlyList<double?> precipitation = Slice(Precipitation);
+        IReadOnlyList<double> times = Times.Count == Points.Count ? Slice(Times) : [];
 
-        if (OperatingSystem.IsBrowser() && await RenderTypedAsync(points, labels, weather, precipitation))
+        // Unzoomed, the axis is the whole day; zoomed, it is the span of the brushed samples.
+        (double from, double to) = times.Count == 0 ? (double.NaN, double.NaN)
+            : _zoom is null ? (0, DayEnd)
+            : (times[0], times[^1]);
+
+        if (OperatingSystem.IsBrowser() && await RenderTypedAsync(points, labels, weather, precipitation, times, from, to))
             return;
 
         try
         {
-            await _module.InvokeVoidAsync("render", _canvas, new { points, labels, weather, precipitation });
+            object? domain = double.IsNaN(from) ? null : new { from, to };
+            await _module.InvokeVoidAsync("render", _canvas, new { points, labels, weather, precipitation, times, domain });
         }
         catch
         {
@@ -179,9 +196,13 @@ else
         IReadOnlyList<double> points,
         IReadOnlyList<string> labels,
         IReadOnlyList<string?> weather,
-        IReadOnlyList<double?> precipitation)
+        IReadOnlyList<double?> precipitation,
+        IReadOnlyList<double> times,
+        double domainFrom,
+        double domainTo)
     {
         int n = points.Count;
+        double[] minutes = [.. times];
         double[] values = new double[n];
         double[] mm = new double[n];
         byte[] codes = new byte[n];
@@ -197,7 +218,7 @@ else
         try
         {
             await FxInterop.EnsureChartAsync(Nav.BaseUri);
-            FxInterop.RenderChart(_chartId, values, mm, codes, text);
+            FxInterop.RenderChart(_chartId, values, mm, codes, text, minutes, domainFrom, domainTo);
             return true;
         }
         catch (System.Runtime.InteropServices.JavaScript.JSException)

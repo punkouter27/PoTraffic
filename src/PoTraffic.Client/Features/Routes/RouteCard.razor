@@ -231,8 +231,8 @@
         // user-entered "4451 telfair blvd" and a Google-resolved "4451 Telfair
         // Blvd" would otherwise sit on the same dashboard with different
         // casings. Storage stays untouched; only the rendered string is shaped.
-        _originStreet = TextFormatting.ToTitleCase(Route.OriginAddress.Split(',')[0]);
-        _destStreet = TextFormatting.ToTitleCase(Route.DestinationAddress.Split(',')[0]);
+        _originStreet = TextFormatting.Street(Route.OriginAddress);
+        _destStreet = TextFormatting.Street(Route.DestinationAddress);
 
         if (OptimalDeparture is { } optimal)
         {
@@ -240,18 +240,15 @@
             // number on the card, with the [lower–upper] range to telegraph
             // how confident we are. Rounded, not truncated, so a 35-second
             // probe displays as "1 min" rather than "0 min".
-            int estMin = (int)Math.Round(optimal.PredictedDurationSeconds / 60.0);
+            int estMin = TextFormatting.Minutes(optimal.PredictedDurationSeconds);
 
             _durationLabel = optimal is { LowerBound: { } lower, UpperBound: { } upper }
-                ? $"{estMin} min · {lower / 60:F0}–{upper / 60:F0} min"
+                ? $"{estMin} min · {TextFormatting.Minutes(lower)}–{TextFormatting.Minutes(upper)} min"
                 : $"{estMin} min";
         }
         else
         {
-            int samples = RecentPolls.Count;
-            _pendingDetail = samples == 0
-                ? "No samples yet"
-                : $"{samples} sample{(samples == 1 ? "" : "s")} so far";
+            _pendingDetail = TextFormatting.SamplesSoFar(RecentPolls.Count);
         }
     }
 

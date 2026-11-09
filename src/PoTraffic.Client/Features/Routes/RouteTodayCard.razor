@@ -10,6 +10,7 @@
     <SectionErrorBoundary Label="today's chart">
     <TrendChart Points="@_trendPoints"
                 Labels="@_trendLabels"
+                Times="@_trendTimes"
                 Weather="@_trendWeather"
                 Precipitation="@_trendPrecipitation"
                 OnPointSelected="OnTrendPointSelected" />
@@ -42,6 +43,7 @@
     private IReadOnlyList<PollRecordDto>? _built;
     private double[] _trendPoints = [];
     private string[] _trendLabels = [];
+    private double[] _trendTimes = [];
     private string?[] _trendWeather = [];
     private double?[] _trendPrecipitation = [];
     private PollRecordDto? _selectedPoll;
@@ -54,6 +56,7 @@
 
         _trendPoints = [.. TodayPolls.Select(p => p.TravelDurationSeconds / 60.0)];
         _trendLabels = [.. TodayPolls.Select(p => p.PolledAtDateTime.ToString("HH:mm"))];
+        _trendTimes = [.. TodayPolls.Select(p => p.PolledAtDateTime.TimeOfDay.TotalMinutes)];
         _trendWeather = [.. TodayPolls.Select(p => p.WeatherCondition)];
         _trendPrecipitation = [.. TodayPolls.Select(p => p.PrecipitationMm)];
 

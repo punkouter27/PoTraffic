@@ -16,9 +16,9 @@ public static class WindowsEndpoints
             .RequireAuthorization("ProductionMicrosoftAuth")
             .WithTags("Windows");
 
-        group.MapGet("", GetWindows);
+        // No GET or DELETE: the client reads windows off the route payload and edits a
+        // window by replacing it (POST with ReplacesWindowId), so neither had a caller.
         group.MapPost("", CreateWindow);
-        group.MapDelete("{windowId:guid}", DeleteWindow);
         group.MapPost("{windowId:guid}/start", StartWindow);
         group.MapPost("{windowId:guid}/stop", StopWindow);
 
@@ -27,23 +27,6 @@ public static class WindowsEndpoints
 
     private static UserId? ExtractUserId(ClaimsPrincipal user)
         => user.GetUserIdOrNull();
-
-    // GET /api/routes/{routeId}/windows — direct query on MonitoringWindows table
-    private static async Task<IResult> GetWindows(
-        RouteId routeId,
-        HttpContext context,
-        GetWindowsQueryHandler handler)
-    {
-        UserId? userId = ExtractUserId(context.User);
-        if (userId is null) return Results.Unauthorized();
-
-        IReadOnlyList<MonitoringWindowDto>? windows =
-            await handler.Handle(new GetWindowsQuery(routeId, userId.Value), context.RequestAborted);
-
-        return windows is null
-            ? Results.NotFound()
-            : Results.Ok(windows);
-    }
 
     // POST /api/routes/{routeId}/windows
     private static async Task<IResult> CreateWindow(
@@ -72,20 +55,6 @@ public static class WindowsEndpoints
                 "WINDOW_ALREADY_ACTIVE" => Results.Conflict(new { error = result.ErrorCode }),
                 _ => Results.UnprocessableEntity(new { error = result.ErrorCode })
             };
-    }
-
-    // DELETE /api/routes/{routeId}/windows/{windowId}
-    private static async Task<IResult> DeleteWindow(
-        RouteId routeId,
-        WindowId windowId,
-        HttpContext context,
-        DeleteWindowCommandHandler handler)
-    {
-        UserId? userId = ExtractUserId(context.User);
-        if (userId is null) return Results.Unauthorized();
-
-        bool deleted = await handler.Handle(new DeleteWindowCommand(windowId, userId.Value), CancellationToken.None);
-        return deleted ? Results.NoContent() : Results.NotFound();
     }
 
     // POST /api/routes/{routeId}/windows/{windowId}/start

@@ -141,19 +141,12 @@ Content-Type: application/json
 { "paused": true }
 
 ### ── Monitoring windows ───────────────────────────────────────────────────────
-GET {{host}}/api/routes/{{routeId}}/windows
-X-Fake-User: {{user}}
-
-###
+# Windows are read off GET /api/routes/{id}; edit one by POSTing with replacesWindowId.
 POST {{host}}/api/routes/{{routeId}}/windows
 X-Fake-User: {{user}}
 Content-Type: application/json
 
 { "startTime": "07:00", "endTime": "09:00", "daysOfWeekMask": 31 }
-
-###
-DELETE {{host}}/api/routes/{{routeId}}/windows/{{windowId}}
-X-Fake-User: {{user}}
 
 ###
 POST {{host}}/api/routes/{{routeId}}/windows/{{windowId}}/start

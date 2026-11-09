@@ -27,11 +27,12 @@
    a phone, where the bottom nav's FAB is the same action under the thumb.
 
    Rendered during the first load as well (disabled), so the cards land under a
-   toolbar that is already there instead of pushing it in above them. On an account
-   with no commutes the list tools are left out — they would be controls for nothing. *@
+   toolbar that is already there instead of pushing it in above them. The list tools
+   only appear once the list is long enough to need them (ShowListTools): on a handful
+   of commutes they were four controls for a list you can read at a glance. *@
 <SectionErrorBoundary Label="the commute tools">
 <div class="pt-dash-toolbar" role="toolbar" aria-label="Commute list tools">
-    @if (_routes.Count > 0 || ShowSkeletons)
+    @if (ShowListTools)
     {
         <div class="pt-dash-toolbar-find">
             <PtIcon Name="search" Size="sm" Class="pt-dash-search-icon" />
@@ -293,6 +294,20 @@ else
     /// background refresh must never blank a dashboard the user is already reading.
     /// </summary>
     private bool ShowSkeletons => IsFirstLoad && !_hydrated;
+
+    /// <summary>Below this many commutes the list is read at a glance and needs no search, filter, sort or bulk select.</summary>
+    private const int ListToolsThreshold = 6;
+
+    /// <summary>
+    /// Search, filter, sort and Select show on a long list, and whenever a search or filter
+    /// is active — a delete must never hide the control that would clear a filter still in
+    /// force. Not during the skeleton: most accounts are short, and tools that appeared and
+    /// then vanished would shift the page more than tools that arrive with a long list.
+    /// </summary>
+    private bool ShowListTools =>
+        _routes.Count >= ListToolsThreshold
+        || !string.IsNullOrEmpty(_search)
+        || _filter != StatusFilter.All;
 
     protected override void OnInitialized() => Pending.Changed += OnPendingChanged;
 

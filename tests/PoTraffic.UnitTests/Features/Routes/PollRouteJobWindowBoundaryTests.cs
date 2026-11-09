@@ -120,7 +120,7 @@ public sealed class PollRouteJobWindowBoundaryTests
     }
 
     /// <summary>
-    /// The create-route default is 03:00 → midnight local, stored with End = 00:00. For an
+    /// The old create-route default was 03:00 → midnight local, stored with End = 00:00. For an
     /// Eastern user its evening crosses UTC midnight; it must still be one local day — open
     /// until local midnight, gated by the local weekday, and keyed to the local date so it
     /// costs one session rather than two.

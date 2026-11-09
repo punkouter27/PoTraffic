@@ -50,6 +50,7 @@ public sealed class DeleteRouteCommandHandler
         route.JobChainId = null;
 
         await _db.SaveChangesAsync(ct);
+        PoTraffic.API.Features.MonitoringWindows.StartWindowCommandHandler.ForgetRoute(route.Id);
         _logger.LogInformation("Route {RouteId} soft-deleted by user {UserId}", route.Id, cmd.UserId);
         return true;
     }

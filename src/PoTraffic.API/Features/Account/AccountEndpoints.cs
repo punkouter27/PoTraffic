@@ -51,6 +51,34 @@ public static class AccountEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status404NotFound);
 
+        // Settings → Advanced switches, saved on the account so they follow the user.
+        grp.MapGet("/panels", async (ClaimsPrincipal user, GetAdvancedPanelsHandler handler, CancellationToken ct) =>
+        {
+            string[]? panels = await handler.Handle(new GetAdvancedPanelsQuery(user.GetUserId()), ct);
+            return panels is null ? Results.NotFound() : Results.Ok(panels);
+        })
+        .WithName("GetAdvancedPanels")
+        .Produces<string[]>()
+        .Produces(StatusCodes.Status404NotFound);
+
+        grp.MapPut("/panels/{panel}", async (
+            ClaimsPrincipal user,
+            string panel,
+            [FromBody] AdvancedPanelRequest body,
+            SetAdvancedPanelHandler handler) =>
+        {
+            if (!Enum.TryParse(panel, ignoreCase: true, out PoTraffic.Shared.Enums.AdvancedPanel parsed)
+                || !Enum.IsDefined(parsed))
+                return Results.NotFound();
+
+            bool found = await handler.Handle(
+                new SetAdvancedPanelCommand(user.GetUserId(), parsed, body.On), CancellationToken.None);
+            return found ? Results.NoContent() : Results.NotFound();
+        })
+        .WithName("SetAdvancedPanel")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status404NotFound);
+
         grp.MapGet("/quota", async (ClaimsPrincipal user, GetQuotaHandler handler, CancellationToken ct) =>
         {
             UserId userId = user.GetUserId();

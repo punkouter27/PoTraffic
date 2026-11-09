@@ -121,9 +121,8 @@ public sealed class RouteCreationSchedulingApiScenarios
         // If a window already exists for this route (e.g. from a prior run
         // sharing the same GUEST account), reuse it rather than failing on the
         // "only one active window per route" rule.
-        List<MonitoringWindowDto>? existing = await client.GetFromJsonAsync(
-            $"/api/routes/{routeId}/windows", ApiJsonContext.Default.ListMonitoringWindowDto);
-        MonitoringWindowDto? active = existing?.FirstOrDefault(w => w.IsActive);
+        // Windows come back on the route payload — the same place the client reads them.
+        MonitoringWindowDto? active = (await GetRouteAsync(client, routeId)).Windows.FirstOrDefault(w => w.IsActive);
         if (active is not null) return active;
 
         var request = new
@@ -138,12 +137,16 @@ public sealed class RouteCreationSchedulingApiScenarios
         Assert.True(response.IsSuccessStatusCode,
             $"POST /windows failed: {(int)response.StatusCode} {response.StatusCode}\n{await response.Content.ReadAsStringAsync()}");
 
-        List<MonitoringWindowDto>? windows = await client.GetFromJsonAsync(
-            $"/api/routes/{routeId}/windows", ApiJsonContext.Default.ListMonitoringWindowDto);
-        Assert.NotNull(windows);
-        MonitoringWindowDto? window = windows!.FirstOrDefault(w => w.IsActive);
+        MonitoringWindowDto? window = (await GetRouteAsync(client, routeId)).Windows.FirstOrDefault(w => w.IsActive);
         Assert.NotNull(window);
         return window!;
+    }
+
+    private static async Task<RouteDto> GetRouteAsync(HttpClient client, RouteId routeId)
+    {
+        RouteDto? route = await client.GetFromJsonAsync($"/api/routes/{routeId}", ApiJsonContext.Default.RouteDto);
+        Assert.NotNull(route);
+        return route!;
     }
 
     private static async Task StartMonitoringAsync(HttpClient client, RouteId routeId, WindowId windowId)

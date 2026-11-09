@@ -50,6 +50,9 @@ CLI commands to type or portal pages to click through.
 
 ## UI standing requirements
 
+Consolidate functionality and UI into shared components when possible — before adding a
+widget, look for an existing one that does the same job and extend it instead.
+
 The layout shows the build version as `YYMMDD` (from the build date or the git commit date),
 fixed in the bottom-right corner. Keep it there when changing the layout.
 
@@ -79,7 +82,10 @@ not technical jargon — so it reads like a person wrote it, then push without a
 
 - If a request removed more than 100 lines of code overall, say so.
 - If an answer runs longer than 100 words, end it with a TL;DR of 20 words or fewer.
-- If the code change is over 20 lines, append a three-tier summary, one sentence each:
+- If problems are found along the way, propose a solution for the user to approve.
+- If the code change is over 20 lines, append a three-tier summary, one sentence each,
+  plus a diagram that makes the change easier to follow
+  (style: https://github.com/cathrynlavery/diagram-design):
   1. **Toddler** — the simple intuition.
   2. **Child** — what it now does.
   3. **Adult** — the technical and architectural change.

@@ -266,7 +266,7 @@ public sealed class PollRouteJob
     /// (UTC for legacy windows); mask bit 0 = Monday … bit 6 = Sunday.
     /// Supports wrap-around midnight: when EndTime &lt; StartTime the window
     /// is active from StartTime through midnight and from midnight through EndTime.
-    /// An EndTime of 00:00 (the create-route default, 03:00 → midnight) means "until
+    /// An EndTime of 00:00 (the old create-route default, 03:00 → midnight) means "until
     /// midnight": it takes the wrap branch, whose <c>time &lt; 00:00</c> leg is never true,
     /// so the window is simply [StartTime, 24:00) and lies wholly on one local day — the day
     /// whose mask bit is checked, and the day <see cref="MonitoringWindow.LocalDateAt"/> keys.</summary>

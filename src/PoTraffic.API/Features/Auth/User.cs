@@ -33,6 +33,14 @@ public sealed class User
     /// </summary>
     public string AuthProvider { get; set; } = "microsoft";
 
+    /// <summary>
+    /// Advanced panels (Settings → Advanced) the user has switched on, by
+    /// <c>AdvancedPanel</c> name. Defaults to the route map and weather impact on, card
+    /// sparklines off. A stored row without this field (any account from before it existed)
+    /// hydrates with the same default; an empty list means the user switched everything off.
+    /// </summary>
+    public List<string> AdvancedPanels { get; set; } = ["Map", "Weather"];
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? LastLoginAt { get; set; }
 

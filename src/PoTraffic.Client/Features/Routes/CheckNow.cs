@@ -1,8 +1,9 @@
 using System.Net.Http.Json;
+using PoTraffic.Client.Infrastructure;
 using PoTraffic.Client.Infrastructure.Http;
 using Radzen;
 
-namespace PoTraffic.Client.Infrastructure;
+namespace PoTraffic.Client.Features.Routes;
 
 /// <summary>
 /// The one user-initiated probe. The dashboard card and the route page used to carry a

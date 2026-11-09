@@ -104,19 +104,17 @@
         start is null || end is null || TimeOnly.FromDateTime(end.Value) != TimeOnly.FromDateTime(start.Value);
 
     /// <summary>
-    /// The window both schedule editors start from: 03:00 through midnight, which covers
-    /// every commute anyone actually drives. New Route and the route page's editor used to
-    /// disagree (03:00→midnight vs. now→+2h), so the same route got a different schedule
-    /// depending on where it was set up. One default, here.
+    /// The window both schedule editors start from: the whole day, 00:00 → 23:59. New Route
+    /// and the route page's editor used to disagree (03:00→midnight vs. now→+2h), so the
+    /// same route got a different schedule depending on where it was set up. One default, here.
     ///
-    /// <para>The end is tomorrow's 00:00 so the picker shows a real instant; only its time
-    /// of day goes on the wire ("00:00"), which the poller reads as "until midnight", not
-    /// as a window that wraps into the next day.</para>
+    /// <para>The end is 23:59 rather than 00:00 because 00:00 → 00:00 is the one window the
+    /// validators reject (zero length). 00:00 → 23:59 is a plain same-day window.</para>
     /// </summary>
     internal static (DateTime Start, DateTime End) DefaultWindow()
     {
         DateTime today = DateTime.Today;
-        return (today.AddHours(3), today.AddDays(1));
+        return (today, today.AddHours(23).AddMinutes(59));
     }
 
     // Times are sent as local wall-clock with the browser's zone (LocalZoneId). The server

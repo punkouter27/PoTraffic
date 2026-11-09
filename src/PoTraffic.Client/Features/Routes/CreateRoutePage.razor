@@ -93,10 +93,8 @@
     private string? _destinationError;
     private string? _daysError;
 
-    // Default to watching nearly the whole day: 03:00 through midnight — the one default
-    // both schedule editors share (ScheduleFields.DefaultWindow). The end is stored as
-    // 00:00; PollRouteJob.IsWithinWindow reads 03:00–00:00 as ending at midnight, not as
-    // spilling into the next day.
+    // Default to watching the whole day, 00:00 → 23:59 — the one default both schedule
+    // editors share (ScheduleFields.DefaultWindow).
     private DateTime? _startTime = ScheduleFields.DefaultWindow().Start;
     private DateTime? _endTime = ScheduleFields.DefaultWindow().End;
     private IEnumerable<byte> _days = ScheduleFields.DefaultDayBits;

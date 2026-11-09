@@ -81,18 +81,12 @@
     {
         if (TodayPolls.Count == 0)
         {
-            _pendingDetail = "No samples recorded yet.";
+            _pendingDetail = TextFormatting.SamplesSoFar(0);
             return;
         }
 
-        // The polled values are whole seconds. Round to minutes so the worst reads as the
-        // integer minute a reader would actually feel on the road; truncation
-        // under-reported every sample shorter than 60 s as zero.
-        int bestMin = (int)Math.Round(TodayPolls.Min(p => p.TravelDurationSeconds) / 60.0);
-        int worstMin = (int)Math.Round(TodayPolls.Max(p => p.TravelDurationSeconds) / 60.0);
-
-        _durationLabel = bestMin == worstMin
-            ? $"{bestMin} min today"
-            : $"{bestMin}–{worstMin} min today";
+        _durationLabel = TextFormatting.MinuteRange(
+            TodayPolls.Min(p => p.TravelDurationSeconds),
+            TodayPolls.Max(p => p.TravelDurationSeconds)) + " today";
     }
 }

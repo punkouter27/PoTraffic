@@ -116,11 +116,16 @@
     overflow-wrap: anywhere;
 }
 
-.pt-admin-card-value {
+/* The value itself is rendered by ConfigValueEditor (a child component), hence ::deep. */
+.pt-admin-card-editor {
+    margin-top: var(--pt-space-1);
+}
+
+.pt-admin-cards ::deep .pt-admin-card-value {
+    display: block;
     color: var(--pt-fg-body);
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: var(--pt-text-sm);
-    margin-top: var(--pt-space-1);
     overflow-wrap: anywhere;
 }
 

@@ -62,5 +62,8 @@ internal static partial class FxInterop
         [JSMarshalAs<JSType.MemoryView>] Span<double> points,
         [JSMarshalAs<JSType.MemoryView>] Span<double> precipitation,
         [JSMarshalAs<JSType.MemoryView>] Span<byte> weather,
-        [JSMarshalAs<JSType.Array<JSType.String>>] string[] labels);
+        [JSMarshalAs<JSType.Array<JSType.String>>] string[] labels,
+        [JSMarshalAs<JSType.MemoryView>] Span<double> times,
+        double domainFrom,
+        double domainTo);
 }

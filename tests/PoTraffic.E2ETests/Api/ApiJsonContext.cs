@@ -20,7 +20,6 @@ namespace PoTraffic.E2ETests.Api;
 [JsonSerializable(typeof(MonitoringWindowDto))]
 [JsonSerializable(typeof(RouteDto))]
 [JsonSerializable(typeof(SessionDto))]
-[JsonSerializable(typeof(List<MonitoringWindowDto>))]
 [JsonSerializable(typeof(List<SessionDto>))]
 [JsonSerializable(typeof(ApiSessionFactory.GuestLoginResponse))]
 [JsonSerializable(typeof(ProfileDto))]

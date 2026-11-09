@@ -79,16 +79,9 @@ public sealed class CreateRouteIntegrationTests : BaseIntegrationTest
         routeResp.StatusCode.Should().Be(HttpStatusCode.Created, "route must be created first");
         RouteDto? route = await routeResp.Content.ReadFromJsonAsync<RouteDto>();
 
-        // The route creation always provisions a default 07:00-09:00 window (CreateRouteCommand defaults).
-        // Delete it so we can verify a fresh window can be added via POST /windows.
-        if (route!.Windows is { Count: > 0 })
-        {
-            WindowId existingWindowId = route.Windows[0].Id;
-            HttpResponseMessage deleteResp = await client.DeleteAsync(
-                $"/api/routes/{route.Id}/windows/{existingWindowId}");
-            deleteResp.StatusCode.Should().Be(HttpStatusCode.NoContent,
-                "existing default window must be deleted before adding a new one");
-        }
+        // The route creation always provisions a default window. Replace it the way the
+        // client's schedule editor does (ReplacesWindowId), rather than deleting it first.
+        WindowId? existingWindowId = route!.Windows is { Count: > 0 } ? route.Windows[0].Id : null;
 
         // Act — create monitoring window
         HttpResponseMessage windowResp = await client.PostAsJsonAsync(
@@ -96,7 +89,8 @@ public sealed class CreateRouteIntegrationTests : BaseIntegrationTest
             {
                 StartTime = "07:00:00",
                 EndTime = "09:00:00",
-                DaysOfWeekMask = 31 // Mon-Fri (bits 0-4)
+                DaysOfWeekMask = 31, // Mon-Fri (bits 0-4)
+                ReplacesWindowId = existingWindowId
             });
 
         // Assert

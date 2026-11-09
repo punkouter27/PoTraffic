@@ -53,14 +53,15 @@ builder.Services.AddScoped<FxService>();
 // One once-a-second heartbeat shared by every live countdown, instead of a timer each.
 builder.Services.AddScoped<ClockTicker>();
 
-// Which advanced panels (map, heatmap, weather, sparklines) this browser has switched on.
+// Which advanced panels (map, weather, sparklines) the signed-in user has switched on —
+// saved on their account, so the choice follows them to every device.
 builder.Services.AddScoped<UiPreferences>();
 
 WebAssemblyHost host = builder.Build();
 
 // The advanced-panel switches are read before the first render, so a page that draws the
-// map or the heatmap knows it should on its first paint instead of popping them in later.
-// One localStorage read per switch — microseconds, and it never throws.
+// map knows it should on its first paint instead of popping it in later. One small GET;
+// it never throws, and signed out it simply reads as "all off".
 await host.Services.GetRequiredService<UiPreferences>().LoadAsync();
 
 await host.RunAsync();

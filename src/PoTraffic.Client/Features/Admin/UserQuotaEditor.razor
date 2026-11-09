@@ -1,0 +1,15 @@
+@* A user's daily session limit, shared by the desktop grid and the phone cards. Empty means
+   "use the global default", which the placeholder names. *@
+<RadzenNumeric TValue="int?" Value="@User.DailySessionQuota" Min="1" Max="200"
+               Placeholder="@Placeholder" ShowUpDown="false"
+               Change="@(v => OnSave.InvokeAsync(v))"
+               aria-label="@($"Daily session limit for {User.Email}")" class="pt-admin-quota" />
+
+@code {
+    [Parameter, EditorRequired] public UserDailyUsageDto User { get; set; } = default!;
+
+    [Parameter] public string Placeholder { get; set; } = string.Empty;
+
+    /// <summary>Raised with the new limit (null = back to the default).</summary>
+    [Parameter] public EventCallback<int?> OnSave { get; set; }
+}

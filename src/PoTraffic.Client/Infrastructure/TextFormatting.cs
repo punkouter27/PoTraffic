@@ -22,6 +22,23 @@ public static class TextFormatting
     /// </summary>
     public static int Minutes(int seconds) => (int)Math.Round(seconds / 60.0, MidpointRounding.AwayFromZero);
 
+    /// <summary>Whole minutes from a fractional second count (bounds, predictions).</summary>
+    public static int Minutes(double seconds) => (int)Math.Round(seconds / 60.0, MidpointRounding.AwayFromZero);
+
+    /// <summary>"No samples yet" / "1 sample so far" / "N samples so far" — the one wording for a route still learning.</summary>
+    public static string SamplesSoFar(int count) =>
+        count == 0 ? "No samples yet" : $"{count} sample{(count == 1 ? "" : "s")} so far";
+
+    /// <summary>A minute range, collapsed to one value when both ends round the same: "24–35 min".</summary>
+    public static string MinuteRange(int lowSeconds, int highSeconds)
+    {
+        int low = Minutes(lowSeconds), high = Minutes(highSeconds);
+        return low == high ? $"{low} min" : $"{low}–{high} min";
+    }
+
+    /// <summary>The title-cased street line of an address — everything before the first comma.</summary>
+    public static string Street(string? address) => ToTitleCase(address?.Split(',')[0]);
+
     /// <summary>
     /// A distance in the units the user's roads are signed in: miles where the browser's
     /// region drives in miles (US, UK, Liberia, Myanmar), kilometres everywhere else.

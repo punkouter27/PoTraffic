@@ -198,6 +198,7 @@ else
                 </RadzenTabsItem>
             }
 
+            @* Always shown, for every user — the weekly pattern is core, not an extra. *@
             <RadzenTabsItem Text="Heatmap" Icon="calendar_month">
                 <div class="pt-route-history">
                     <RadzenCard>
@@ -431,8 +432,8 @@ else
             // See RouteCard.razor — title-case at the read site so the dashboard
             // list and this header always render the same casing for the same
             // street, regardless of how the address was first entered.
-            _originStreet = TextFormatting.ToTitleCase(_route.OriginAddress.Split(',')[0]);
-            _destStreet = TextFormatting.ToTitleCase(_route.DestinationAddress.Split(',')[0]);
+            _originStreet = TextFormatting.Street(_route.OriginAddress);
+            _destStreet = TextFormatting.Street(_route.DestinationAddress);
             _pageTitle = _route.Name ?? $"{_originStreet} → {_destStreet}";
             _activeWindow = _route.Windows.FirstOrDefault(w => w.IsActive);
         }
@@ -458,8 +459,11 @@ else
             // Newest-first off the wire is wrong for everything plotted: the trend line
             // drew today in reverse, so its x-axis ran 08:45 → 08:00 → 18:30. Sorted once
             // here rather than at each of the projections below, all of which are positional.
-            _todayPolls = [.. historyResult.Items.OrderBy(p => p.PolledAtDateTime)];
-            LatestPoll = _todayPolls.Count > 0 ? _todayPolls[^1] : null;
+            List<PollRecordDto> recent = [.. historyResult.Items.OrderBy(p => p.PolledAtDateTime)];
+            // The fetch is a rolling 24 h so "last checked" survives midnight, but "today"
+            // means the browser's calendar day — the chart's axis is fixed at 00:00–23:59.
+            _todayPolls = [.. recent.Where(p => p.PolledAtDateTime.Date == DateTime.Today)];
+            LatestPoll = recent.Count > 0 ? recent[^1] : null;
         }
 
         _plan = (await planTask)?.Plan;

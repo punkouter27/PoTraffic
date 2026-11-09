@@ -24,7 +24,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="FluentAssertions" />
     <!-- Playwright .NET C# for Ui/ scenarios -->
     <PackageReference Include="Microsoft.Playwright" />
   </ItemGroup>

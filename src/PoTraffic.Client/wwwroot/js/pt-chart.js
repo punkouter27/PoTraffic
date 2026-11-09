@@ -174,12 +174,57 @@ function yForValue(v, min, max, plot) {
     return plot.y + (span <= 0 ? plot.h / 2 : plot.h - ((v - min) / span) * plot.h);
 }
 
-function drawSeries(ctx, values, count, min, max, plot) {
+/** True when the view places samples by clock time (minutes since midnight) over a fixed domain. */
+function isTimed(view, count) {
+    return !!(view.times && view.domain && view.times.length === count);
+}
+
+function xForMinute(t, domain, plot) {
+    const span = domain.to - domain.from;
+    return plot.x + (span <= 0 ? plot.w / 2 : ((t - domain.from) / span) * plot.w);
+}
+
+/**
+ * X of sample position `pos` (may be fractional, for the draw-in's leading end). On a
+ * timed view the sample sits at its clock time; otherwise samples are spaced evenly.
+ */
+function xAt(view, pos, count, plot) {
+    if (!isTimed(view, count)) return xForIndex(pos, count, plot);
+    const lo = Math.max(0, Math.min(count - 1, Math.floor(pos)));
+    const hi = Math.min(count - 1, lo + 1);
+    const t = view.times[lo] + (view.times[hi] - view.times[lo]) * (pos - lo);
+    return xForMinute(t, view.domain, plot);
+}
+
+/** `lastPos`, when set, is the fractional position of the final (partially revealed) point. */
+function drawSeries(ctx, values, view, count, min, max, plot, lastPos = null) {
     for (let i = 0; i < values.length; i++) {
-        const x = xForIndex(i, count, plot);
+        const pos = i === values.length - 1 && lastPos !== null ? lastPos : i;
+        const x = xAt(view, pos, count, plot);
         const y = yForValue(values[i], min, max, plot);
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
+}
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const clockOf = (minutes) => `${pad2(Math.floor(minutes / 60))}:${pad2(Math.floor(minutes % 60))}`;
+
+/**
+ * Clock ticks across a timed domain at a round step (whole hours for a full day), plus
+ * the domain's own end — so a full day reads 00:00 … 21:00, 23:59.
+ */
+function timeTicks(domain, plotWidth) {
+    const span = domain.to - domain.from;
+    if (!(span > 0)) return [domain.from];
+
+    const maxTicks = Math.max(2, Math.floor(plotWidth / 62));
+    const step = [5, 10, 15, 30, 60, 120, 180, 240, 360, 720].find((s) => span / s <= maxTicks - 1) ?? 720;
+
+    const ticks = [];
+    for (let t = Math.ceil(domain.from / step) * step; t <= domain.to; t += step) ticks.push(t);
+    if (ticks.length === 0 || ticks[0] - domain.from > step / 2) ticks.unshift(domain.from);
+    if (domain.to - ticks[ticks.length - 1] > step / 2) ticks.push(domain.to);
+    return ticks;
 }
 
 /**
@@ -229,10 +274,15 @@ const WEATHER_STYLE = {
     Fog:   { fill: "rgba(148, 163, 184, 0.14)", glyph: "🌫" }
 };
 
-function drawWeather(ctx, weather, count, plot) {
+function drawWeather(ctx, view, count, plot) {
+    const weather = view.weather;
     if (!weather || count < 2) return;
 
-    const half = plot.w / (count - 1) / 2;
+    // A band reaches halfway to each neighbouring sample.
+    const x = (i) => xAt(view, i, count, plot);
+    const leftEdge = (i) => (i > 0 ? (x(i - 1) + x(i)) / 2 : x(i) - (x(1) - x(0)) / 2);
+    const rightEdge = (j) => (j < count - 1 ? (x(j) + x(j + 1)) / 2 : x(j) + (x(j) - x(j - 1)) / 2);
+
     let i = 0;
     while (i < count) {
         const style = WEATHER_STYLE[weather[i]];
@@ -241,8 +291,8 @@ function drawWeather(ctx, weather, count, plot) {
         let j = i;
         while (j + 1 < count && weather[j + 1] === weather[i]) j++;
 
-        const x1 = Math.max(plot.x, xForIndex(i, count, plot) - half);
-        const x2 = Math.min(plot.x + plot.w, xForIndex(j, count, plot) + half);
+        const x1 = Math.max(plot.x, leftEdge(i));
+        const x2 = Math.min(plot.x + plot.w, rightEdge(j));
         ctx.fillStyle = style.fill;
         ctx.fillRect(x1, plot.y, x2 - x1, plot.h);
 
@@ -297,9 +347,11 @@ function draw(canvas) {
     // ── X axis: 24-hour clock ─────────────────────────────────────────────
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    for (const i of xTickIndices(count, plot.w)) {
-        const x = xForIndex(i, count, plot);
-        const label = view.labels[i];
+    // Timed views label the clock itself (fixed day axis); untimed ones label samples.
+    const xTicks = isTimed(view, count)
+        ? timeTicks(view.domain, plot.w).map((t) => ({ x: xForMinute(t, view.domain, plot), label: clockOf(t) }))
+        : xTickIndices(count, plot.w).map((i) => ({ x: xForIndex(i, count, plot), label: view.labels[i] }));
+    for (const { x, label } of xTicks) {
         if (!label) continue;
 
         ctx.strokeStyle = theme.grid;
@@ -338,7 +390,7 @@ function draw(canvas) {
     // spike that lines up with a wet stretch reads as weather at a glance. Clear and
     // Cloudy are not drawn: they are the normal case, and shading them would bury the
     // signal. Runs of the same condition merge into one band with one glyph.
-    drawWeather(ctx, view.weather, count, plot);
+    drawWeather(ctx, view, count, plot);
 
     // ── Observed travel times ────────────────────────────────────────────
     //
@@ -353,6 +405,7 @@ function draw(canvas) {
     // itself in instead of snapping into place.
     const reveal = st.reveal ?? 1;
     const shown = reveal >= 1 ? points : revealed(points, reveal);
+    const lastPos = reveal >= 1 ? null : reveal * (count - 1);
 
     if (shown.length >= 2) {
         ctx.lineJoin = "round";
@@ -366,7 +419,7 @@ function draw(canvas) {
             ctx.shadowColor = theme.line;
             ctx.shadowBlur = pass.blur;
             ctx.beginPath();
-            drawSeries(ctx, shown, count, min, max, plot);
+            drawSeries(ctx, shown, view, count, min, max, plot, lastPos);
             ctx.stroke();
         }
 
@@ -377,13 +430,13 @@ function draw(canvas) {
         ctx.strokeStyle = theme.line;
         ctx.lineWidth = 2;
         ctx.beginPath();
-        drawSeries(ctx, shown, count, min, max, plot);
+        drawSeries(ctx, shown, view, count, min, max, plot, lastPos);
         ctx.stroke();
 
         // Leading dot during the draw-in animation.
         if (reveal < 1) {
             const i = shown.length - 1;
-            const x = xForIndex(i, count, plot);
+            const x = xAt(view, lastPos, count, plot);
             const y = yForValue(shown[i], min, max, plot);
             ctx.save();
             ctx.globalCompositeOperation = "lighter";
@@ -399,7 +452,7 @@ function draw(canvas) {
 
     // Crosshair on the hovered sample
     if (st.hoverIndex !== null && st.hoverIndex >= 0 && st.hoverIndex < count) {
-        const x = xForIndex(st.hoverIndex, count, plot);
+        const x = xAt(view, st.hoverIndex, count, plot);
         const y = yForValue(points[st.hoverIndex], min, max, plot);
 
         ctx.strokeStyle = theme.lineStrong;
@@ -434,8 +487,17 @@ function buildView(data) {
     const min = points.length ? lo * 0.95 : 0;
     const max = points.length ? hi * 1.05 : 60;
 
+    const times = data.times && data.times.length === points.length
+        ? (data.times instanceof Float64Array ? data.times : Float64Array.from(data.times))
+        : null;
+    const domain = times && data.domain && Number.isFinite(data.domain.from) && Number.isFinite(data.domain.to)
+        ? { from: data.domain.from, to: data.domain.to }
+        : null;
+
     return {
         points,
+        times,
+        domain,
         labels: data.labels ?? [],
         weather: data.weather ?? [],
         precipitation: data.precipitation ?? [],
@@ -496,7 +558,7 @@ function updateTooltip(canvas) {
 
     // Flip the tooltip to the left of the cursor near the right edge so it
     // never runs off the card.
-    const x = xForIndex(i, view.points.length, plotOf(st.w, st.h));
+    const x = xAt(view, i, view.points.length, plotOf(st.w, st.h));
     const flip = x > st.w - 130;
     tip.style.left = `${flip ? x - 12 : x + 12}px`;
     tip.style.transform = flip ? "translateX(-100%)" : "none";
@@ -518,6 +580,16 @@ function indexAt(canvas, clientX) {
     // Measured against the plot rectangle, not the whole canvas: with the axis
     // gutters in place those differ by 60px, which is several samples of skew.
     const plot = plotOf(st.w, st.h);
+    if (isTimed(st.view, count)) {
+        // Samples are unevenly spaced: snap to the nearest one by x.
+        const px = localX(canvas, st, clientX);
+        let best = 0, bestDist = Infinity;
+        for (let i = 0; i < count; i++) {
+            const d = Math.abs(xAt(st.view, i, count, plot) - px);
+            if (d < bestDist) { bestDist = d; best = i; }
+        }
+        return best;
+    }
     const ratio = (localX(canvas, st, clientX) - plot.x) / plot.w;
     return Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
 }
@@ -639,7 +711,7 @@ const WEATHER_CODES = [null, "Rain", "Snow", "Storm", "Fog"];
  * @param {{slice: () => Uint8Array}}   weather        WEATHER_CODES index per sample
  * @param {string[]} labels         per-sample tooltip / axis labels
  */
-export function renderTyped(id, points, precipitation, weather, labels) {
+export function renderTyped(id, points, precipitation, weather, labels, times, domainFrom, domainTo) {
     const canvas = document.querySelector(`canvas[data-pt-chart="${CSS.escape(id)}"]`);
     if (!canvas) return;
 
@@ -651,6 +723,8 @@ export function renderTyped(id, points, precipitation, weather, labels) {
         labels,
         weather: Array.from(codes, (c) => WEATHER_CODES[c] ?? null),
         precipitation: Array.from(mm, (v) => (Number.isNaN(v) ? null : v)),
+        times: times.slice(),
+        domain: { from: domainFrom, to: domainTo },
     });
 }
 

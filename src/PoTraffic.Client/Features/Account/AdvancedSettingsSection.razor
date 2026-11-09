@@ -112,12 +112,13 @@
 
         @* Progressive disclosure. The app's default is the minimum that answers "when do I
            leave": the commute list, live status, today's chart and the schedule. These are
-           the extras — real, working, and off until asked for. Per browser, like the theme. *@
+           the extras — real, working, and off until asked for. Saved on the account, so they
+           follow the user to every device (UiPreferences). *@
         <SectionErrorBoundary Label="the extra panels">
         <section class="pt-settings-subsection">
             <h4 class="pt-settings-subheading">Extra panels</h4>
             <p class="pt-settings-meta pt-mb-3">
-                Extra detail for the curious. Off by default to keep things simple — switch on what you'd use.
+                Extra detail for the curious. The map and weather start on; switch on or off what you'd use.
             </p>
             <div class="pt-settings-grid">
                 @foreach ((AdvancedPanel panel, string label, string detail) in AdvancedPanels)

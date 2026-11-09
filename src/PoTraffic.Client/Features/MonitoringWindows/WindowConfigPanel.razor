@@ -78,7 +78,7 @@
     private bool _editing;
     private string? _error;
 
-    // A new window starts from the same default New Route uses: 03:00 through midnight.
+    // A new window starts from the same default New Route uses: 00:00 → 23:59.
     // This used to be "now → +2h", so a route got a different schedule depending on
     // which of the two editors it was set up in.
     private DateTime? _startTime = ScheduleFields.DefaultWindow().Start;

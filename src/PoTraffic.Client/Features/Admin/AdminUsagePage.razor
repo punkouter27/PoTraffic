@@ -95,10 +95,7 @@
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="UserDailyUsageDto" Property="DailySessionQuota" Title="Daily limit" Width="10rem" Sortable="false" Filterable="false">
                                 <Template Context="u">
-                                    <RadzenNumeric TValue="int?" Value="@u.DailySessionQuota" Min="1" Max="200"
-                                                   Placeholder="@DefaultQuotaText" ShowUpDown="false"
-                                                   Change="@(v => SaveUserQuotaAsync(u, v))"
-                                                   aria-label="@($"Daily session limit for {u.Email}")" class="pt-admin-quota" />
+                                    <UserQuotaEditor User="u" Placeholder="@DefaultQuotaText" OnSave="@(v => SaveUserQuotaAsync(u, v))" />
                                 </Template>
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="UserDailyUsageDto" Property="LastLoginAt" Title="Last Login" Width="11rem">
@@ -128,12 +125,7 @@
                                     <dt>Locale</dt><dd>@u.Locale</dd>
                                     <dt>Last login</dt><dd>@(u.LastLoginAt?.ToLocalTime().ToString("MMM d, h:mm tt") ?? "—")</dd>
                                     <dt>Daily limit</dt>
-                                    <dd>
-                                        <RadzenNumeric TValue="int?" Value="@u.DailySessionQuota" Min="1" Max="200"
-                                                   Placeholder="@DefaultQuotaText" ShowUpDown="false"
-                                                   Change="@(v => SaveUserQuotaAsync(u, v))"
-                                                   aria-label="@($"Daily session limit for {u.Email}")" class="pt-admin-quota" />
-                                    </dd>
+                                    <dd><UserQuotaEditor User="u" Placeholder="@DefaultQuotaText" OnSave="@(v => SaveUserQuotaAsync(u, v))" /></dd>
                                 </dl>
                             </li>
                         }
@@ -199,24 +191,7 @@
                             <RadzenDataGridColumn TItem="SystemConfigDto" Property="Key" Title="Key" Width="14rem" />
                             <RadzenDataGridColumn TItem="SystemConfigDto" Property="Value" Title="Value" Width="13rem">
                                 <Template Context="c">
-                                    @if (c.IsSensitive)
-                                    {
-                                        <span class="pt-diag-sensitive">@c.Value</span>
-                                    }
-                                    else if (c.IsEditable && IsFlag(c))
-                                    {
-                                        <RadzenSwitch Value="@(c.Value == "true")" Change="@(on => SaveConfigAsync(c, on ? "true" : "false"))"
-                                                      aria-label="@($"Value for {c.Key}")" />
-                                    }
-                                    else if (c.IsEditable)
-                                    {
-                                        <RadzenTextBox Value="@c.Value" Change="@(v => SaveConfigAsync(c, v))"
-                                                       aria-label="@($"Value for {c.Key}")" class="pt-admin-config-input" />
-                                    }
-                                    else
-                                    {
-                                        @c.Value
-                                    }
+                                    <ConfigValueEditor Config="c" OnSave="@(v => SaveConfigAsync(c, v))" />
                                 </Template>
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="SystemConfigDto" Property="Description" Title="Description" />
@@ -253,20 +228,9 @@
                                         <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Sensitive" />
                                     }
                                 </div>
-                                @if (!c.IsSensitive && c.IsEditable && IsFlag(c))
-                                {
-                                    <RadzenSwitch Value="@(c.Value == "true")" Change="@(on => SaveConfigAsync(c, on ? "true" : "false"))"
-                                                  aria-label="@($"Value for {c.Key}")" />
-                                }
-                                else if (!c.IsSensitive && c.IsEditable)
-                                {
-                                    <RadzenTextBox Value="@c.Value" Change="@(v => SaveConfigAsync(c, v))"
-                                                   aria-label="@($"Value for {c.Key}")" class="pt-admin-config-input" />
-                                }
-                                else
-                                {
-                                    <div class="pt-admin-card-value @(c.IsSensitive ? "pt-diag-sensitive" : "")">@c.Value</div>
-                                }
+                                <div class="pt-admin-card-editor">
+                                    <ConfigValueEditor Config="c" OnSave="@(v => SaveConfigAsync(c, v))" />
+                                </div>
                                 @if (!string.IsNullOrEmpty(c.Description))
                                 {
                                     <div class="pt-admin-card-desc">@c.Description</div>
@@ -309,13 +273,6 @@
 
     // ── Spending + editable limits ───────────────────────────────────────────
     private SpendingDto? _spending;
-
-    /// <summary>
-    /// An on/off setting (feature.*) renders as a switch; the server decides which keys are
-    /// editable (<see cref="SystemConfigDto.IsEditable"/>) and rejects anything else with 422.
-    /// </summary>
-    private static bool IsFlag(SystemConfigDto c) =>
-        c.Key.StartsWith("feature.", StringComparison.Ordinal) && c.Value is "true" or "false";
 
     /// <summary>Placeholder for users with no override: the global limit they fall back to.</summary>
     private string DefaultQuotaText =>

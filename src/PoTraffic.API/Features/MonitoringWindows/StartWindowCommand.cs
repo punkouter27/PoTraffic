@@ -45,6 +45,18 @@ public sealed class StartWindowCommandHandler
     private static SemaphoreSlim GateFor(RouteId routeId) =>
         s_routeGates.GetOrAdd(routeId, static _ => new SemaphoreSlim(1, 1));
 
+    /// <summary>
+    /// Drops a deleted route's gate so the map doesn't grow for the life of the process.
+    /// Only an idle gate is removed (a Start in flight keeps it), and it is not disposed:
+    /// a racing caller that already holds the reference can still use it, and a Start on
+    /// a deleted route returns NotFound anyway.
+    /// </summary>
+    internal static void ForgetRoute(RouteId routeId)
+    {
+        if (s_routeGates.TryGetValue(routeId, out SemaphoreSlim? gate) && gate.CurrentCount == 1)
+            s_routeGates.TryRemove(new KeyValuePair<RouteId, SemaphoreSlim>(routeId, gate));
+    }
+
     private readonly TableStorageContext _db;
     private readonly IJobScheduler _scheduler;
     private readonly ILogger<StartWindowCommandHandler> _logger;

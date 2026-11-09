@@ -1,0 +1,31 @@
+@* One system-config value, rendered the same way in the desktop grid and the phone cards:
+   masked when sensitive, a switch for an editable feature flag, a text box for any other
+   editable value, plain text otherwise. *@
+@if (!Config.IsSensitive && Config.IsEditable && IsFlag(Config))
+{
+    <RadzenSwitch Value="@(Config.Value == "true")" Change="@(on => OnSave.InvokeAsync(on ? "true" : "false"))"
+                  aria-label="@($"Value for {Config.Key}")" />
+}
+else if (!Config.IsSensitive && Config.IsEditable)
+{
+    <RadzenTextBox Value="@Config.Value" Change="@(v => OnSave.InvokeAsync(v))"
+                   aria-label="@($"Value for {Config.Key}")" class="pt-admin-config-input" />
+}
+else
+{
+    <span class="pt-admin-card-value @(Config.IsSensitive ? "pt-diag-sensitive" : "")">@Config.Value</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public SystemConfigDto Config { get; set; } = default!;
+
+    /// <summary>Raised with the new value; the page saves it and updates its list.</summary>
+    [Parameter] public EventCallback<string> OnSave { get; set; }
+
+    /// <summary>
+    /// An on/off setting (feature.*) renders as a switch; the server decides which keys are
+    /// editable (<see cref="SystemConfigDto.IsEditable"/>) and rejects anything else with 422.
+    /// </summary>
+    private static bool IsFlag(SystemConfigDto c) =>
+        c.Key.StartsWith("feature.", StringComparison.Ordinal) && c.Value is "true" or "false";
+}

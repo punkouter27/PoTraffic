@@ -19,6 +19,8 @@ namespace PoTraffic.Client.Infrastructure;
 /// </para>
 ///
 /// <para>
+/// Generic over the key: it knows nothing about routes, only that something with that id
+/// is hidden and may be restored. Keys must have value equality (the strongly-typed ids do).
 /// Scoped per user session and observable, so the dashboard can filter its list and a
 /// single undo bar in the layout can render the countdown, without either of them
 /// owning the timer.
@@ -29,8 +31,8 @@ public sealed class PendingDeletionService : IDisposable
     /// <summary>How long the user has to change their mind.</summary>
     public static readonly TimeSpan GracePeriod = TimeSpan.FromSeconds(6);
 
-    private readonly Dictionary<RouteId, CancellationTokenSource> _awaitingCommit = [];
-    private readonly HashSet<RouteId> _hidden = [];
+    private readonly Dictionary<object, CancellationTokenSource> _awaitingCommit = [];
+    private readonly HashSet<object> _hidden = [];
 
     /// <summary>Raised whenever a deletion is scheduled, undone, committed, or fails.</summary>
     public event Action? Changed;
@@ -38,11 +40,11 @@ public sealed class PendingDeletionService : IDisposable
     /// <summary>The deletion the undo bar is currently offering, if any.</summary>
     public PendingDeletion? Current { get; private set; }
 
-    /// <summary>True while <paramref name="routeId"/> should be kept out of route lists.</summary>
-    public bool IsPending(RouteId routeId) => _hidden.Contains(routeId);
+    /// <summary>True while <paramref name="key"/> should be kept out of lists.</summary>
+    public bool IsPending(object key) => _hidden.Contains(key);
 
     /// <summary>
-    /// Hides <paramref name="routeId"/> immediately and runs <paramref name="commit"/> once
+    /// Hides <paramref name="key"/> immediately and runs <paramref name="commit"/> once
     /// the grace period elapses. A route already scheduled is left alone.
     /// </summary>
     /// <param name="label">Human-readable description shown in the undo bar.</param>
@@ -50,39 +52,39 @@ public sealed class PendingDeletionService : IDisposable
     /// <param name="onCommitted">Invoked after a successful commit so the owner can refresh.</param>
     /// <param name="onFailed">Invoked when the commit throws; the route is restored first.</param>
     public void Schedule(
-        RouteId routeId,
+        object key,
         string label,
         Func<Task> commit,
         Func<Task>? onCommitted = null,
         Func<Task>? onFailed = null)
     {
-        if (_awaitingCommit.ContainsKey(routeId))
+        if (_awaitingCommit.ContainsKey(key))
             return;
 
         CancellationTokenSource cts = new();
-        _awaitingCommit[routeId] = cts;
-        _hidden.Add(routeId);
-        Current = new PendingDeletion(routeId, label, DateTimeOffset.UtcNow + GracePeriod);
+        _awaitingCommit[key] = cts;
+        _hidden.Add(key);
+        Current = new PendingDeletion(key, label, DateTimeOffset.UtcNow + GracePeriod);
         Changed?.Invoke();
 
-        _ = RunAsync(routeId, commit, onCommitted, onFailed, cts.Token);
+        _ = RunAsync(key, commit, onCommitted, onFailed, cts.Token);
     }
 
-    /// <summary>Cancels the pending delete for <paramref name="routeId"/>, restoring it.</summary>
-    public void Undo(RouteId routeId)
+    /// <summary>Cancels the pending delete for <paramref name="key"/>, restoring it.</summary>
+    public void Undo(object key)
     {
-        if (!_awaitingCommit.Remove(routeId, out CancellationTokenSource? cts))
+        if (!_awaitingCommit.Remove(key, out CancellationTokenSource? cts))
             return;
 
         Cancel(cts);
         cts.Dispose();
-        _hidden.Remove(routeId);
-        ClearCurrent(routeId);
+        _hidden.Remove(key);
+        ClearCurrent(key);
         Changed?.Invoke();
     }
 
     private async Task RunAsync(
-        RouteId routeId,
+        object key,
         Func<Task> commit,
         Func<Task>? onCommitted,
         Func<Task>? onFailed,
@@ -99,9 +101,9 @@ public sealed class PendingDeletionService : IDisposable
         }
 
         // The window has closed: retire the undo bar, but keep the route hidden.
-        if (_awaitingCommit.Remove(routeId, out CancellationTokenSource? done))
+        if (_awaitingCommit.Remove(key, out CancellationTokenSource? done))
             done.Dispose();
-        ClearCurrent(routeId);
+        ClearCurrent(key);
         Changed?.Invoke();
 
         try
@@ -111,7 +113,7 @@ public sealed class PendingDeletionService : IDisposable
         catch
         {
             // Put the route back rather than leaving a phantom gap in the list.
-            _hidden.Remove(routeId);
+            _hidden.Remove(key);
             Changed?.Invoke();
 
             if (onFailed is not null)
@@ -127,9 +129,9 @@ public sealed class PendingDeletionService : IDisposable
         }
     }
 
-    private void ClearCurrent(RouteId routeId)
+    private void ClearCurrent(object key)
     {
-        if (Current?.RouteId == routeId)
+        if (Current is not null && Equals(Current.Key, key))
             Current = null;
     }
 
@@ -152,7 +154,7 @@ public sealed class PendingDeletionService : IDisposable
 }
 
 /// <summary>A delete awaiting commit, as rendered by the undo bar.</summary>
-/// <param name="RouteId">The hidden route.</param>
+/// <param name="Key">What is hidden — any value-equal id (a RouteId today).</param>
 /// <param name="Label">Human-readable description, e.g. "Home → Office".</param>
 /// <param name="ExpiresAtUtc">When the grace period runs out and the request is sent.</param>
-public sealed record PendingDeletion(RouteId RouteId, string Label, DateTimeOffset ExpiresAtUtc);
+public sealed record PendingDeletion(object Key, string Label, DateTimeOffset ExpiresAtUtc);
