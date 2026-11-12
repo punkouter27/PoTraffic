@@ -1,11 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 public sealed class ExternalAuthService(
     IEnumerable<IExternalIdentityProvider> providers,
@@ -116,6 +117,7 @@ public sealed class ExternalAuthService(
         return match ?? throw new InvalidOperationException($"Unsupported provider '{provider}'.");
     }
 
+    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize<TValue>(String, JsonSerializerOptions)")]
     private ExternalStatePayload? UnprotectState(string state)
     {
         try

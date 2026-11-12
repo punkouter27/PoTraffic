@@ -1,4 +1,4 @@
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject NotificationService NotificationService
 
@@ -93,7 +93,7 @@
         _deleting = true;
         try
         {
-            HttpResponseMessage resp = await Http.DeleteAsync("/api/account/");
+            HttpResponseMessage resp = await Api.DeleteAccountAsync();
             if (resp.IsSuccessStatusCode)
             {
                 Nav.NavigateTo("/login", forceLoad: true);

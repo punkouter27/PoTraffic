@@ -7,14 +7,14 @@
 @using PoTraffic.Client.Features.Routes
 @inherits PollingComponentBase
 @implements IDisposable
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject ClientCache Cache
 @inject PendingDeletionService Pending
 
 @using PoTraffic.Shared.Constants
 
-<PageTitle>Commutes — PoTraffic</PageTitle>
+<PageTitle>Commutes · PoTraffic</PageTitle>
 
 @* The page leads with a heading like every other route. *@
 
@@ -324,13 +324,9 @@ else
         if (IsFirstLoad)
             await HydrateFromCacheAsync();
 
-        string dayOfWeek = DateTime.Today.DayOfWeek.ToString();
-
         // The route list and the quota card are independent — one round-trip, not two.
-        Task<PagedResult<RouteDto>?> routesTask =
-            Http.GetFromJsonAsync("/api/routes?page=1&pageSize=100", AppJsonContext.Default.PagedResultRouteDto);
-        Task<QuotaDto?> quotaTask =
-            Http.GetFromJsonAsync("/api/account/quota", AppJsonContext.Default.QuotaDto);
+        Task<PagedResult<RouteDto>?> routesTask = Api.GetRoutesAsync(page: 1, pageSize: 100);
+        Task<QuotaDto?> quotaTask = Api.GetQuotaAsync();
 
         PagedResult<RouteDto>? result = await routesTask;
         if (result is not null)
@@ -350,7 +346,7 @@ else
         Dictionary<RouteId, OptimalDepartureDto> departures = [];
         Dictionary<RouteId, DeparturePlanDto> plans = [];
         Dictionary<RouteId, List<PollRecordDto>> polls = [];
-        string sinceUtc = Uri.EscapeDataString(DateTime.UtcNow.AddHours(-24).ToString("o"));
+        string sinceUtc = DateTime.UtcNow.AddHours(-24).ToString("o");
 
         await Task.WhenAll(_routes.Select(async route =>
         {
@@ -369,18 +365,15 @@ else
                 bool isMonitored = route.IsSample || route.Windows.Any(w => w.IsActive);
 
                 // One call carries both the quickest slot and, with an arrive-by target, the plan.
-                Task<HttpResponseMessage>? departureTask = isMonitored
-                    ? Http.GetAsync($"/api/routes/{route.Id}/departure?dayOfWeek={dayOfWeek}")
+                Task<DepartureDto?>? departureTask = isMonitored
+                    ? Api.GetDepartureOptionalAsync(route.Id, (int)DateTime.Today.DayOfWeek)
                     : null;
 
                 Task<PagedResult<PollRecordDto>?>? historyTask = isMonitored
-                    ? Http.GetFromJsonAsync(
-                        $"/api/routes/{route.Id}/poll-history?page=1&pageSize=60&sinceUtc={sinceUtc}", AppJsonContext.Default.PagedResultPollRecordDto)
+                    ? Api.GetPollHistoryAsync(route.Id, page: 1, pageSize: 60, sinceUtc: sinceUtc)
                     : null;
 
-                if (departureTask is not null
-                    && await departureTask is { StatusCode: System.Net.HttpStatusCode.OK } departureResp
-                    && await departureResp.Content.ReadFromJsonAsync(AppJsonContext.Default.DepartureDto) is { } departure)
+                if (departureTask is not null && await departureTask is { } departure)
                 {
                     if (departure.Best is { } best)
                         departures[route.Id] = best;

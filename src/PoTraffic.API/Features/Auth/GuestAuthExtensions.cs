@@ -1,8 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Auth;
 
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 /// <summary>
 /// GUEST login bypass of OAuth — shown as "Continue as Guest" in Development
@@ -32,7 +33,7 @@ public static class GuestAuthExtensions
             GuestLoginCommandHandler handler,
             IWebHostEnvironment env) =>
         {
-            if (!env.IsEnvironment("Testing") && !env.IsDevelopment())
+            if (!env.IsEnvironment("Test") && !env.IsDevelopment())
             {
                 return Results.NotFound();
             }

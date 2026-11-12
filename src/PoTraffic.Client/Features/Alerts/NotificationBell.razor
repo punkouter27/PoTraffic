@@ -1,9 +1,9 @@
 @using PoTraffic.Shared.DTOs.Alerts
 @implements IAsyncDisposable
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject PageActivityMonitor Activity
-@inject PoTraffic.Client.Infrastructure.PwaService Pwa
+@inject PoTraffic.Client.Services.PwaService Pwa
 
 @* Rendered only for a signed-in user — NavMenu gates it on the same auth state —
    so there is no second auth check here. *@
@@ -87,7 +87,7 @@
 
     private async Task RefreshAsync()
     {
-        List<AlertDto>? alerts = await Http.GetFromJsonAsync("/api/alerts", AppJsonContext.Default.ListAlertDto);
+        List<AlertDto>? alerts = await Api.GetAlertsAsync();
         if (alerts is not null)
         {
             _alerts = alerts;
@@ -104,7 +104,7 @@
     {
         if (!a.IsRead)
         {
-            try { await Http.PostAsync($"/api/alerts/{a.Id}/read", null); } catch { }
+            try { await Api.MarkAlertReadAsync(a.Id); } catch { }
         }
         _open = false;
         Nav.NavigateTo($"/routes/{a.RouteId}");
@@ -112,7 +112,7 @@
 
     private async Task MarkAllReadAsync()
     {
-        try { await Http.PostAsync("/api/alerts/read-all", null); } catch { }
+        try { await Api.MarkAllAlertsReadAsync(); } catch { }
         await RefreshAsync();
     }
 

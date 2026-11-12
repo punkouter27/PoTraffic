@@ -9,8 +9,8 @@
 }
 
 /* ── Glass ───────────────────────────────────────────────────────────────
-   The card is frosted glass (pt-glass.css).
-   Tokens only (pt-tokens.css): they carry the opacity that keeps the card's
+   The card is frosted glass (po-glass.css).
+   Tokens only (po-tokens.css): they carry the opacity that keeps the card's
    text at full contrast, and they collapse to the solid surface under
    prefers-reduced-transparency, prefers-contrast: more, and wherever
    backdrop-filter is unsupported — so the fallback needs no rule here.

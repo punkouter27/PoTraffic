@@ -1,11 +1,11 @@
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 
 using PoTraffic.Shared.DTOs.Account;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 public sealed record UpdateProfileCommand(UserId UserId, string Locale);
 

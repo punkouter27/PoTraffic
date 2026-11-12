@@ -1,15 +1,16 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Infrastructure.Observability;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Routes;
+using PoTraffic.Api.Infrastructure.Observability;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Infrastructure.Scheduling;
+namespace PoTraffic.Api.Infrastructure.Scheduling;
 
 /// <summary>
 /// BackgroundService that wakes when the next job it knows about is due (or every
@@ -258,6 +259,7 @@ public sealed class BackgroundSchedulerService : BackgroundService
         await ((Task)method.Invoke(jobInstance, args)!).WaitAsync(ct);
     }
 
+    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Deserialize(Type, JsonSerializerOptions)")]
     private static object?[] DeserializeArgs(string argsJson, ParameterInfo[] parameters)
     {
         if (string.IsNullOrWhiteSpace(argsJson) || argsJson == "[]")

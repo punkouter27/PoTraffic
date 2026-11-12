@@ -1,9 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
-using PoTraffic.API.Infrastructure.Http;
-using PoTraffic.API.Infrastructure.Security;
+using PoTraffic.Api.Infrastructure.Http;
+using PoTraffic.Api.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.History;
 
-namespace PoTraffic.API.Features.History;
+namespace PoTraffic.Api.Features.History;
 
 /// <summary>
 /// Read-only history for one route: poll samples, sessions, departure advice, the heatmap and

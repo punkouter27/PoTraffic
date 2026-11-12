@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Observability;
+using PoTraffic.Api.Infrastructure.Observability;
 
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 /// <summary>Explains a slowdown: the worst live incident on a route's road shape.</summary>
 public interface IIncidentProvider

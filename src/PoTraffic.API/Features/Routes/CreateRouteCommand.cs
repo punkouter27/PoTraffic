@@ -1,7 +1,7 @@
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Time;
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Logging;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Logging;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 
 
-using PoTraffic.API.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Providers;
 
 using PoTraffic.Shared.Constants;
 
@@ -18,7 +18,7 @@ using PoTraffic.Shared.DTOs.Routes;
 
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>Creates a new route after address verification. Strategy pattern — ITrafficProvider swaps mapping API per route.Provider.</summary>
 public sealed record CreateRouteCommand(
@@ -130,8 +130,8 @@ public sealed class CreateRouteCommandHandler(
         {
             Id = WindowId.New(),
             RouteId = route.Id,
-            StartTime = TimeOnly.Parse(cmd.StartTime),
-            EndTime = TimeOnly.Parse(cmd.EndTime),
+            StartTime = TimeOnly.Parse(cmd.StartTime, System.Globalization.CultureInfo.InvariantCulture),
+            EndTime = TimeOnly.Parse(cmd.EndTime, System.Globalization.CultureInfo.InvariantCulture),
             DaysOfWeekMask = cmd.DaysOfWeekMask,
             TimeZoneId = cmd.TimeZoneId,
             IsActive = true,
@@ -161,6 +161,6 @@ public sealed class CreateRouteCommandHandler(
         r.Windows.Select(w => w.ToDto()).ToList(),
         r.ReturnRouteId,
         r.IsSample,
-        r.ArriveBy?.ToString("HH:mm"),
+        r.ArriveBy?.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
         r.Name);
 }

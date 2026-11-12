@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace PoTraffic.API.Infrastructure.Storage;
+namespace PoTraffic.Api.Infrastructure.Storage;
 
 /// <summary>
 /// Source-generated (zero-allocation) log events for the Table Storage hydration

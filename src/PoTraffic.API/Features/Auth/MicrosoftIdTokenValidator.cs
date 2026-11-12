@@ -4,7 +4,7 @@ using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 /// <summary>
 /// Validates the Microsoft <c>id_token</c> returned by the authorization-code exchange (§4.3):

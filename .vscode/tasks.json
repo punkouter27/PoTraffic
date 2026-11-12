@@ -17,7 +17,7 @@
       "command": "dotnet",
       "args": [
         "build",
-        "${workspaceFolder}/src/PoTraffic.API/PoTraffic.API.csproj",
+        "${workspaceFolder}/src/PoTraffic.Api/PoTraffic.Api.csproj",
         "-c",
         "Debug",
         "/property:GenerateFullPaths=true",
@@ -32,7 +32,7 @@
       "label": "test",
       "type": "shell",
       "command": "pwsh",
-      "args": ["-NoProfile", "-File", "${workspaceFolder}/SCRIPTS/run-tests.ps1"],
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/scripts/run-tests.ps1"],
       "problemMatcher": [],
       "group": { "kind": "test", "isDefault": true }
     }

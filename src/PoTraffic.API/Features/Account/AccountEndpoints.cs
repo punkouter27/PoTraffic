@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using PoTraffic.API.Features.Account;
-using PoTraffic.API.Infrastructure.Security;
+using PoTraffic.Api.Features.Account;
+using PoTraffic.Api.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.Account;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 public static class AccountEndpoints
 {

@@ -1,5 +1,5 @@
-using PoTraffic.API.Infrastructure.Scheduling;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Scheduling;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 using Microsoft.Extensions.Logging;
@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 public sealed record DeleteRouteCommand(
     RouteId RouteId,
@@ -50,7 +50,7 @@ public sealed class DeleteRouteCommandHandler
         route.JobChainId = null;
 
         await _db.SaveChangesAsync(ct);
-        PoTraffic.API.Features.MonitoringWindows.StartWindowCommandHandler.ForgetRoute(route.Id);
+        PoTraffic.Api.Features.MonitoringWindows.StartWindowCommandHandler.ForgetRoute(route.Id);
         _logger.LogInformation("Route {RouteId} soft-deleted by user {UserId}", route.Id, cmd.UserId);
         return true;
     }

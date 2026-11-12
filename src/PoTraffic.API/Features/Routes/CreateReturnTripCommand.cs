@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>
 /// Creates the reverse-direction counterpart of an existing route and links the two (#3).

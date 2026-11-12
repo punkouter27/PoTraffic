@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-using PoTraffic.API.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Providers;
 
-namespace PoTraffic.API.Infrastructure.Testing;
+namespace PoTraffic.Api.Infrastructure.Testing;
 
 /// <summary>
 /// Deterministic stand-in for <see cref="IWeatherProvider"/> in Testing and mock-provider

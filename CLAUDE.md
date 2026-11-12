@@ -19,11 +19,11 @@ never configured).
 ## Commands
 
 ```powershell
-./SCRIPTS/start-dev.ps1        # stops a stale PoTraffic host, starts PoTraffic's Azurite, runs API (https)
-./SCRIPTS/stop-dev.ps1         # docker compose down (Azurite)
+./scripts/start-dev.ps1        # stops a stale PoTraffic host, starts PoTraffic's Azurite, runs API (https)
+./scripts/stop-dev.ps1         # docker compose down (Azurite)
 dotnet build                   # TreatWarningsAsErrors=true — a warning is a build break
-./SCRIPTS/setup.ps1            # first-time check: .NET SDK, Docker, az login / Key Vault, then build
-./SCRIPTS/post-deploy-smoke.ps1 -BaseUrl https://potraffic-api-win2.azurewebsites.net
+./scripts/setup.ps1            # first-time check: .NET SDK, Docker, az login / Key Vault, then build
+./scripts/post-deploy-smoke.ps1 -BaseUrl https://potraffic-api-win2.azurewebsites.net
 ```
 
 Port clashes: sibling projects on this machine use the same defaults (5000/5001 for a dev host,
@@ -53,18 +53,18 @@ It also enforces test-case caps per tier (100 unit / 50 integration / 25 E2E API
 before running anything.
 
 ```powershell
-pwsh ./SCRIPTS/run-tests.ps1                       # all tiers
-pwsh ./SCRIPTS/run-tests.ps1 -Tier unit,integration
-pwsh ./SCRIPTS/run-tests.ps1 -Tier e2e-ui -SkipBuild
+pwsh ./scripts/run-tests.ps1                       # all tiers
+pwsh ./scripts/run-tests.ps1 -Tier unit,integration
+pwsh ./scripts/run-tests.ps1 -Tier e2e-ui -SkipBuild
 ```
 
 Individual suites / single tests:
 
 ```powershell
-dotnet test tests/PoTraffic.UnitTests
-dotnet test tests/PoTraffic.UnitTests --filter "FullyQualifiedName~CreateRouteValidator"
-dotnet test tests/PoTraffic.IntegrationTests   # needs Docker
-dotnet test tests/PoTraffic.E2ETests          # needs a Testing host on E2E_BASE_URL
+dotnet test tests/PoTraffic.Unit
+dotnet test tests/PoTraffic.Unit --filter "FullyQualifiedName~CreateRouteValidator"
+dotnet test tests/PoTraffic.Integration   # needs Docker
+dotnet test tests/PoTraffic.E2EUI          # needs a Testing host on E2E_BASE_URL
 ```
 
 `E2E_HEADED=0` forces headless Playwright (headed is the local default). `E2E_BASE_URL`
@@ -74,16 +74,16 @@ overrides the E2E target.
 
 ### Projects
 
-`src/PoTraffic.API` (host + all server logic), `src/PoTraffic.Client` (Blazor WASM),
+`src/PoTraffic.Api` (host + all server logic), `src/PoTraffic.Client` (Blazor WASM),
 `src/PoTraffic.Shared` (DTOs, enums, strongly-typed IDs — referenced by both).
 
-Tests are `PoTraffic.UnitTests`, `PoTraffic.IntegrationTests` and `PoTraffic.E2ETests`, each
+Tests are `PoTraffic.Unit`, `PoTraffic.Integration` and `PoTraffic.E2EUI`, each
 named for the tier it holds. The E2E project splits `Api/` (live HTTP) from `Ui/` (Playwright),
 and namespaces follow the folders.
 
 ### Vertical slices
 
-Server features live under `src/PoTraffic.API/Features/<Name>/`: one `*Endpoints.cs` that
+Server features live under `src/PoTraffic.Api/Features/<Name>/`: one `*Endpoints.cs` that
 maps a `MapGroup`, plus one file per operation holding the command/query record, its
 `AbstractValidator` (if it has input to check), and its handler together. Entities live in the slice that owns them
 (`Features/Routes/Route.cs`, `Features/Auth/User.cs`). Do not add root-level `Services/`,

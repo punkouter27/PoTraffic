@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using PoTraffic.Client.Infrastructure.Auth;
+using PoTraffic.Client.Services.Auth;
 using PoTraffic.Shared.Constants;
 
 namespace PoTraffic.Client.Layout;

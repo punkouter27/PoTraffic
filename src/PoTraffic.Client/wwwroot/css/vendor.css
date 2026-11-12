@@ -19,7 +19,7 @@
    found zero Bootstrap classes in use — no grid, no utilities, no components. It
    was 230KB of CSS the app had stopped using, plus a second opinion about what
    `.btn` and `.card` mean, competing with Radzen for the same selectors.
-   pt-tokens.css owns the design system; Radzen owns the components. */
+   po-tokens.css owns the design system; Radzen owns the components. */
 @import url("../_content/Radzen.Blazor/css/default.css") layer(vendor);
 
 /* Leaflet belongs in the layer for the same reason: unlayered, its selectors such as

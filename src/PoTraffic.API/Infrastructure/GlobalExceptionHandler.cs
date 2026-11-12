@@ -1,9 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
-using PoTraffic.API.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Providers;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 /// <summary>
 /// Global exception handler — maps known exception types to structured HTTP responses.

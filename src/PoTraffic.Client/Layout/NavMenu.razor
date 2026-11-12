@@ -1,9 +1,11 @@
 @using Microsoft.AspNetCore.Components.Authorization
-@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
+@inject IWebAssemblyHostEnvironment HostEnvironment
+@inject IJSRuntime JS
 
 <header class="app-shell">
     @* ── Left: Branding ─────────────────────────────────────────────────── *@
@@ -52,6 +54,19 @@
                         <a class="pt-dropdown-item" href="@link.Href" role="menuitem">
                             <PtIcon Name="@link.Icon" Size="sm" />@link.Label
                         </a>
+                    }
+                    @if (!HostEnvironment.IsProduction())
+                    {
+                        <div class="pt-dropdown-divider" role="separator"></div>
+                        <button class="pt-dropdown-item" @onclick='() => SwitchFakeUserAsync("dev-commuter@potraffic.dev", "Commuter")' type="button" role="menuitem">
+                            <PtIcon Name="person" Size="sm" />Dev: Commuter
+                        </button>
+                        <button class="pt-dropdown-item" @onclick='() => SwitchFakeUserAsync("dev-admin@potraffic.dev", "Administrator")' type="button" role="menuitem">
+                            <PtIcon Name="admin_panel_settings" Size="sm" />Dev: Admin
+                        </button>
+                        <button class="pt-dropdown-item" @onclick="() => SwitchFakeUserAsync(null, null)" type="button" role="menuitem">
+                            <PtIcon Name="person_off" Size="sm" />Clear Dev User
+                        </button>
                     }
                     <div class="pt-dropdown-divider" role="separator"></div>
                     <button class="pt-dropdown-item danger" @onclick="LogoutAsync" type="button" role="menuitem">
@@ -106,13 +121,37 @@
     {
         try
         {
-            FeatureFlags? flags = await Http.GetFromJsonAsync("/api/system/features", AppJsonContext.Default.FeatureFlags);
+            FeatureFlags? flags = await Api.GetFeatureFlagsAsync();
             _useMockProviders = flags?.UseMockProviders == true;
         }
         catch
         {
             _useMockProviders = false;
         }
+    }
+
+    private async Task SwitchFakeUserAsync(string? email, string? roles)
+    {
+        _menuOpen = false;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                await JS.InvokeVoidAsync("localStorage.removeItem", DevFakeUserHandler.FakeUserStorageKey);
+                await JS.InvokeVoidAsync("localStorage.removeItem", DevFakeUserHandler.FakeRolesStorageKey);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", DevFakeUserHandler.FakeUserStorageKey, email);
+                await JS.InvokeVoidAsync("localStorage.setItem", DevFakeUserHandler.FakeRolesStorageKey, roles ?? "Commuter");
+            }
+        }
+        catch
+        {
+        }
+
+        if (AuthStateProvider is Services.Auth.CookieAuthenticationStateProvider cookie)
+            cookie.Refresh();
     }
 
     /// <summary>

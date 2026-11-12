@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace PoTraffic.API.Infrastructure.Storage;
+namespace PoTraffic.Api.Infrastructure.Storage;
 
 /// <summary>
 /// Registers <see cref="TableStorageContext"/> (singleton working set) backed by

@@ -1,10 +1,11 @@
 using PoTraffic.Shared.DTOs.Admin;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Infrastructure.Storage;
+using System.Diagnostics.CodeAnalysis;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 internal static class HealthCheckExtensions
 {
@@ -64,6 +65,7 @@ internal static class HealthCheckExtensions
     /// all connection status)"). Machine consumers use <c>/health/json</c>.
     /// </para>
     /// </summary>
+    [RequiresUnreferencedCode("Calls Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(String, Delegate)")]
     internal static WebApplication MapPoTrafficHealthChecks(this WebApplication app)
     {
         app.MapGet("/health/ready", (TableStorageContext ctx) =>

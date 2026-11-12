@@ -1,4 +1,6 @@
-namespace PoTraffic.API.Features.Config;
+using System.Diagnostics.CodeAnalysis;
+
+namespace PoTraffic.Api.Features.Config;
 
 /// <summary>
 /// The public, read-only face of the Config slice: the feature flags the Blazor client needs

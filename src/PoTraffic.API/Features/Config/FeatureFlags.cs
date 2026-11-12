@@ -1,6 +1,7 @@
-using PoTraffic.API.Infrastructure.Storage;
+using System.Diagnostics.CodeAnalysis;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Config;
+namespace PoTraffic.Api.Features.Config;
 
 /// <summary>
 /// The feature switches, read from <see cref="SystemConfiguration"/> on every access so an
@@ -39,5 +40,5 @@ public sealed class FeatureFlags(TableStorageContext db, bool mockProvidersForce
     /// vault or Google key away, so their checks keep reporting the live dependencies.
     /// </summary>
     public static bool IsMockForcedByHost(IConfiguration configuration, IHostEnvironment environment)
-        => environment.IsEnvironment("Testing") || configuration.GetValue<bool>("Features:UseMockProviders");
+        => environment.IsEnvironment("Test") || configuration.GetValue<bool>("Features:UseMockProviders");
 }

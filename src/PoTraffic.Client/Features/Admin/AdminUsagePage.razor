@@ -1,9 +1,10 @@
 @page "/admin"
 @attribute [Authorize(Roles = "Administrator")]
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
+@inject NavigationManager Nav
 @inject NotificationService Notifications
 
-<PageTitle>Admin — PoTraffic</PageTitle>
+<PageTitle>Admin · PoTraffic</PageTitle>
 
 @* Dependency health is not repeated here as a tab: /health is that page, and the tab
    called an admin endpoint that was never mapped, so it only ever showed an error. *@
@@ -17,7 +18,7 @@
    class on RadzenCard or RadzenTabs lands on markup without this page's scope id. *@
 <div class="pt-admin">
 <RadzenCard class="pt-admin-card-root">
-    <RadzenTabs>
+    <RadzenTabs SelectedIndex="@_tabIndex" SelectedIndexChanged="@OnTabChanged">
         <Tabs>
             <RadzenTabsItem Text="Usage" Icon="people">
                 <SectionErrorBoundary Label="usage insights">
@@ -73,8 +74,7 @@
                     <div class="pt-admin-wide">
                     <RadzenDataGrid Data="_users" TItem="UserDailyUsageDto"
                                     AllowSorting="true" AllowFiltering="true"
-                                    AllowVirtualization="true"
-                                    Style="height: 32rem"
+                                    AllowPaging="true" PageSize="20"
                                     Density="Density.Compact"
                                     AllowColumnResize="true"
                                     AllowColumnReorder="true"
@@ -182,6 +182,7 @@
                     <div class="pt-admin-wide">
                     <RadzenDataGrid Data="_configs" TItem="SystemConfigDto" AllowSorting="true"
                                     AllowFiltering="true" FilterMode="FilterMode.Simple"
+                                    AllowPaging="true" PageSize="20"
                                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                                     Density="Density.Compact" AllowColumnResize="true"
                                     AllowColumnPicking="true"
@@ -247,6 +248,11 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? Tab { get; set; }
+
+    private int _tabIndex;
+
     // ── Usage tab ──────────────────────────────────────────────────────────────
     private List<UserDailyUsageDto> _users = [];
     private bool _loading = true;
@@ -278,6 +284,29 @@
     private string DefaultQuotaText =>
         $"Default ({_configs.FirstOrDefault(c => c.Key == "quota.daily.default")?.Value ?? "10"})";
 
+    protected override void OnParametersSet()
+    {
+        _tabIndex = Tab?.ToLowerInvariant() switch
+        {
+            "volatility" => 1,
+            "config" => 2,
+            _ => 0
+        };
+    }
+
+    private void OnTabChanged(int index)
+    {
+        _tabIndex = index;
+        string slug = index switch
+        {
+            1 => "volatility",
+            2 => "config",
+            _ => "usage"
+        };
+        string uri = Nav.GetUriWithQueryParameter("tab", slug);
+        Nav.NavigateTo(uri, replace: true);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await Task.WhenAll(LoadUsageAsync(), LoadVolatilityAsync(), LoadConfigAsync(), LoadSpendingAsync());
@@ -286,15 +315,13 @@
     private async Task LoadSpendingAsync()
     {
         // The card is extra context, not the page: a failure just leaves it out.
-        try { _spending = await Http.GetFromJsonAsync("/api/admin/spending", AppJsonContext.Default.SpendingDto); }
+        try { _spending = await Api.GetAdminSpendingAsync(); }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { }
     }
 
     private async Task SaveUserQuotaAsync(UserDailyUsageDto user, int? limit)
     {
-        HttpResponseMessage resp = await Http.PutAsJsonAsync(
-            $"/api/admin/users/{user.UserId}/daily-quota", new SetUserDailyQuotaRequest(limit),
-            AppJsonContext.Default.SetUserDailyQuotaRequest);
+        HttpResponseMessage resp = await Api.SetUserDailyQuotaAsync(user.UserId, limit);
         if (resp.IsSuccessStatusCode)
         {
             int i = _users.IndexOf(user);
@@ -306,9 +333,7 @@
 
     private async Task SaveConfigAsync(SystemConfigDto config, string value)
     {
-        HttpResponseMessage resp = await Http.PutAsJsonAsync(
-            $"/api/admin/configuration/{Uri.EscapeDataString(config.Key)}", new UpdateSystemConfigRequest(value),
-            AppJsonContext.Default.UpdateSystemConfigRequest);
+        HttpResponseMessage resp = await Api.UpdateAdminConfigurationAsync(config.Key, value);
         if (resp.IsSuccessStatusCode)
         {
             int i = _configs.IndexOf(config);
@@ -344,7 +369,7 @@
     {
         try
         {
-            _users = await Http.GetFromJsonAsync("/api/admin/users", AppJsonContext.Default.ListUserDailyUsageDto) ?? [];
+            _users = await Api.GetAdminUsersAsync() ?? [];
         }
         catch (Exception ex)
         {
@@ -360,12 +385,8 @@
     {
         try
         {
-            _points = await Http.GetFromJsonAsync(
-                "/api/admin/global-volatility/recent?hours=24", AppJsonContext.Default.ListRecentVolatilityPointDto) ?? [];
+            _points = await Api.GetAdminRecentVolatilityAsync(24) ?? [];
             _series = [.. _points.Select(p =>
-                // PolledAt is a UTC DateTimeOffset on the wire (RecentVolatilityPointDto.PolledAt).
-                // Radzen's CategoryAxis treats DateTime as wall-clock and renders it as-is,
-                // so we convert to local here — an Eastern user seeing 14:00 UTC reads 10:00.
                 new VolatilityPoint(p.PolledAt.ToLocalTime().DateTime,
                     p.MeanDurationSeconds / 60.0, p.RouteCount))];
         }
@@ -383,7 +404,7 @@
     {
         try
         {
-            _configs = await Http.GetFromJsonAsync("/api/admin/configuration", AppJsonContext.Default.ListSystemConfigDto) ?? [];
+            _configs = await Api.GetAdminConfigurationAsync() ?? [];
         }
         catch (Exception ex)
         {

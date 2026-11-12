@@ -1,27 +1,24 @@
 using System.Net.Http.Json;
-using PoTraffic.Client.Infrastructure;
-using PoTraffic.Client.Infrastructure.Http;
+using PoTraffic.Client.Services;
+using PoTraffic.Client.Services.Http;
+using PoTraffic.Shared.DTOs;
 using Radzen;
 
 namespace PoTraffic.Client.Features.Routes;
 
 /// <summary>
-/// The one user-initiated probe. The dashboard card and the route page used to carry a
-/// copy each, with different labels ("Check now" / "Probe now") and different toasts
-/// for the same POST — the one action that spends money should not have two
-/// implementations that can drift.
+/// The one user-initiated probe shared by the dashboard card and the route page.
 /// </summary>
 public static class CheckNow
 {
-    /// <summary>Runs a live check and reports the result as a toast. The result on success, else null.</summary>
     public static async Task<CheckNowResponse?> RunAsync(
-        HttpClient http,
+        PoTrafficApiClient api,
         NotificationService notifications,
-        Guid routeId)
+        RouteId routeId)
     {
         try
         {
-            HttpResponseMessage resp = await http.PostAsync($"/api/routes/{routeId}/check-now", null);
+            HttpResponseMessage resp = await api.CheckNowAsync(routeId);
             if (resp.IsSuccessStatusCode)
             {
                 CheckNowResponse? data = await resp.Content.ReadFromJsonAsync(AppJsonContext.Default.CheckNowResponse);
@@ -37,16 +34,16 @@ public static class CheckNow
                 return data;
             }
 
-            Fail(notifications, resp.StatusCode switch
+            string fallback = resp.StatusCode switch
             {
                 System.Net.HttpStatusCode.ServiceUnavailable => "Traffic provider unavailable — try again in a moment.",
                 System.Net.HttpStatusCode.TooManyRequests => "Too many checks — wait a minute and try again.",
                 System.Net.HttpStatusCode.PaymentRequired => "This month's traffic budget is used up — checks resume next month.",
                 _ => $"Request failed ({(int)resp.StatusCode})."
-            });
+            };
+            ProblemDetailsParser.ParsedError parsed = await ProblemDetailsParser.ParseAsync(resp, fallback);
+            Fail(notifications, parsed.Message);
         }
-        // Timeouts surface as TaskCanceledException and a bad body as JsonException; left
-        // uncaught, either one raised Blazor's unhandled-error bar from a button click.
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
             Fail(notifications, "Unable to connect. Please try again.");

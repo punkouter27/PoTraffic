@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Features.Alerts;
-using PoTraffic.API.Features.MonitoringWindows;
-using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Features.Alerts;
+using PoTraffic.Api.Features.MonitoringWindows;
+using PoTraffic.Api.Features.Routes;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.Constants;
 using PoTraffic.Shared.DTOs.Alerts;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 /// <summary>
 /// Raises a proactive alert (#1) when a freshly-recorded poll crosses the route's baseline
@@ -189,7 +189,7 @@ public sealed class AlertEvaluator(
             return null;
 
         int tripMin = (int)Math.Round(trip.TotalMinutes);
-        string arrive = arriveBy.ToString("HH:mm");
+        string arrive = arriveBy.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
         if (untilLeave > TimeSpan.Zero)
             return $"Leave in {(int)Math.Ceiling(untilLeave.TotalMinutes)} min to arrive by {arrive} — the drive is {tripMin} min right now.";
 

@@ -1,7 +1,7 @@
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.Enums
 @using PoTraffic.Client.Features.MonitoringWindows
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject NotificationService Notifications
 
@@ -57,8 +57,7 @@
         _pausing = true;
         try
         {
-            HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{Route.Id}/paused",
-                new SetRoutePausedRequest(paused), AppJsonContext.Default.SetRoutePausedRequest);
+            HttpResponseMessage resp = await Api.SetRoutePausedAsync(Route.Id, paused);
             if (resp.IsSuccessStatusCode)
                 await OnChanged.InvokeAsync();
             else
@@ -74,7 +73,7 @@
         _creatingReturn = true;
         try
         {
-            HttpResponseMessage resp = await Http.PostAsync($"/api/routes/{Route.Id}/return-trip", null);
+            HttpResponseMessage resp = await Api.CreateReturnTripAsync(Route.Id);
             if (resp.IsSuccessStatusCode)
             {
                 RouteDto? created = await resp.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);

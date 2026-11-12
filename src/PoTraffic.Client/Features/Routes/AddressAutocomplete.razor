@@ -1,6 +1,6 @@
 @using PoTraffic.Shared.DTOs.Routes
 @implements IDisposable
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 
 @* #9 — debounced Google Places autocomplete (BFF-proxied). Degrades to a plain text box
    when the API returns nothing, so free-text entry always works. *@
@@ -78,8 +78,7 @@
         }
         try
         {
-            List<PlaceSuggestionDto>? results = await Http.GetFromJsonAsync(
-                $"/api/places/autocomplete?q={Uri.EscapeDataString(q)}", AppJsonContext.Default.ListPlaceSuggestionDto);
+            List<PlaceSuggestionDto>? results = await Api.SearchPlacesAsync(q);
             _suggestions = results ?? [];
             _open = _suggestions.Count > 0;
         }

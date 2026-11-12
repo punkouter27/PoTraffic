@@ -220,7 +220,7 @@ code {
 
 /* ═══════════════════════════════════════════════════════════════
    Small shared pieces. Keyframes are NOT redeclared here — they live
-   in pt-motion.css, which is the single home for them.
+   in po-motion.css, which is the single home for them.
 
    A block of `--pt-brand-*` / `--pt-accent-*` aliases used to sit here for
    "any third-party component that still references them". Nothing did, in this
@@ -426,7 +426,7 @@ code {
       gap instead — which also centres the glyph against the text rather than
       sitting it on the baseline.
    3. The selected item's colour comes from --rz-selectbar-selected-color, now
-      mapped in pt-tokens.css; the fill is pinned here to the same brand step
+      mapped in po-tokens.css; the fill is pinned here to the same brand step
       the primary button uses so the pair is a guaranteed contrast ratio rather
       than whatever --rz-primary resolves to per theme (brand-400 on dark would
       have put white text at about 2.5:1).
@@ -833,7 +833,7 @@ code {
    page that uses them. The rule applies the font treatment; the level-bumping
    has already happened in the markup. */
 .pt-section-heading {
-    /* Was var(--pt-text-md), which pt-tokens.css never defined — every card heading
+    /* Was var(--pt-text-md), which po-tokens.css never defined — every card heading
        silently fell back to 16px, the body size. */
     font-size: var(--pt-text-lg);
     line-height: 1.3;
@@ -1311,7 +1311,7 @@ code {
    no hover rule anywhere in the app may touch font-weight, padding or border
    width — those reflow the line they sit on.
 
-   pt-tokens.css owns the base durations and easings; these are aliases scoped to
+   po-tokens.css owns the base durations and easings; these are aliases scoped to
    interaction so a later retune is one edit. Reduced motion (the OS setting, or
    Motion: Still/Off in Settings) zeroes the movement but keeps the colour change,
    which is information, not decoration.

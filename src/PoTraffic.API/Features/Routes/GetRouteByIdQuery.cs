@@ -1,7 +1,7 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Routes;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>
 /// Fetches a single route by ID, verifying ownership in a single DB round-trip.

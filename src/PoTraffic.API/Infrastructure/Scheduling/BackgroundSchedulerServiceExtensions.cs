@@ -1,7 +1,7 @@
 using Azure.Data.Tables;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace PoTraffic.API.Infrastructure.Scheduling;
+namespace PoTraffic.Api.Infrastructure.Scheduling;
 
 /// <summary>
 /// DI registration for the custom background job scheduler.
@@ -18,7 +18,7 @@ public static class BackgroundSchedulerServiceExtensions
         this IServiceCollection services,
         IWebHostEnvironment environment)
     {
-        if (environment.IsEnvironment("Testing"))
+        if (environment.IsEnvironment("Test"))
         {
             services.AddSingleton<IJobScheduler>(new NoOpJobScheduler());
             return services;

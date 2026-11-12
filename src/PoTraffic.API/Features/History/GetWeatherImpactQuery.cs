@@ -1,11 +1,11 @@
-using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Features.Routes;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.Constants;
 using PoTraffic.Shared.DTOs.History;
 
-namespace PoTraffic.API.Features.History;
+namespace PoTraffic.Api.Features.History;
 
 public sealed record GetWeatherImpactQuery(RouteId RouteId, UserId UserId);
 

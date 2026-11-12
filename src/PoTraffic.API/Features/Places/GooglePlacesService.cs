@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Routes;
 
-namespace PoTraffic.API.Features.Places;
+namespace PoTraffic.Api.Features.Places;
 
 /// <summary>
 /// BFF proxy to the Google Places Autocomplete API (#9). The Google key stays server-side

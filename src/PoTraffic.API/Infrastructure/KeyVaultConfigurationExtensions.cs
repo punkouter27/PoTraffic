@@ -1,7 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 internal static class KeyVaultConfigurationExtensions
 {
@@ -20,6 +21,7 @@ internal static class KeyVaultConfigurationExtensions
     /// Production/Staging a Key Vault failure is a hard error — secrets MUST come from the vault.
     /// </para>
     /// </summary>
+    [RequiresUnreferencedCode("Calls Microsoft.Extensions.Configuration.ConfigurationBinder.GetValue<T>(String, T)")]
     internal static WebApplicationBuilder AddPoTrafficKeyVault(this WebApplicationBuilder builder)
     {
         string? vaultUri = builder.Configuration["KeyVault:Uri"];

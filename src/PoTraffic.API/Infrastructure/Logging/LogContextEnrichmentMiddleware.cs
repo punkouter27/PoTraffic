@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Serilog.Context;
 
-namespace PoTraffic.API.Infrastructure.Logging;
+namespace PoTraffic.Api.Infrastructure.Logging;
 
 /// <summary>
 /// Middleware — enriches the Serilog LogContext for every request.

@@ -1,25 +1,25 @@
-using PoTraffic.API.Platform;
+using PoTraffic.Api.Platform;
 using Microsoft.AspNetCore.HttpOverrides;
-using PoTraffic.API.Features.Account;
-using PoTraffic.API.Features.Admin;
-using PoTraffic.API.Features.Alerts;
-using PoTraffic.API.Features.Auth;
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Features.Diagnostics;
-using PoTraffic.API.Features.History;
-using PoTraffic.API.Features.Maintenance;
-using PoTraffic.API.Features.MonitoringWindows;
-using PoTraffic.API.Features.Places;
-using PoTraffic.API.Features.Routes;
-using PoTraffic.API.Infrastructure;
-using PoTraffic.API.Infrastructure.Caching;
-using PoTraffic.API.Infrastructure.Logging;
-using PoTraffic.API.Infrastructure.Observability;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Scheduling;
-using PoTraffic.API.Infrastructure.Security;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Testing;
+using PoTraffic.Api.Features.Account;
+using PoTraffic.Api.Features.Admin;
+using PoTraffic.Api.Features.Alerts;
+using PoTraffic.Api.Features.Auth;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Features.Diagnostics;
+using PoTraffic.Api.Features.History;
+using PoTraffic.Api.Features.Maintenance;
+using PoTraffic.Api.Features.MonitoringWindows;
+using PoTraffic.Api.Features.Places;
+using PoTraffic.Api.Features.Routes;
+using PoTraffic.Api.Infrastructure;
+using PoTraffic.Api.Infrastructure.Caching;
+using PoTraffic.Api.Infrastructure.Logging;
+using PoTraffic.Api.Infrastructure.Observability;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Scheduling;
+using PoTraffic.Api.Infrastructure.Security;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Testing;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -29,7 +29,7 @@ using Serilog;
 // is broken, not the host" signal. Enable it the moment the bootstrap logger exists.
 Log.Logger = new LoggerConfiguration()
     .Enrich.FromLogContext()
-    .WriteTo.Console()
+    .WriteTo.Console(formatProvider: System.Globalization.CultureInfo.InvariantCulture)
     .CreateBootstrapLogger();
 
 Serilog.Debugging.SelfLog.Enable(msg =>
@@ -41,7 +41,7 @@ try
 
     // Blazor WASM static web assets load automatically in Development and from published
     // output in Production; the Testing environment (E2E) must opt in explicitly.
-    if (builder.Environment.IsEnvironment("Testing"))
+    if (builder.Environment.IsEnvironment("Test"))
         builder.WebHost.UseStaticWebAssets();
 
     // Key Vault must be added BEFORE service registrations — services read secrets
@@ -68,7 +68,7 @@ try
     foreach (Type handler in typeof(Program).Assembly.GetTypes().Where(t =>
         t is { IsClass: true, IsAbstract: false }
         && t.Name.EndsWith("Handler", StringComparison.Ordinal)
-        && t.Namespace?.StartsWith("PoTraffic.API.Features", StringComparison.Ordinal) == true))
+        && t.Namespace?.StartsWith("PoTraffic.Api.Features", StringComparison.Ordinal) == true))
     {
         builder.Services.AddScoped(handler);
     }
@@ -101,7 +101,7 @@ try
     // setting KeyVault__Uri), the one traffic provider and the only sign-in (both from the vault).
     if (app.Environment.IsProduction())
     {
-        string[] missing = [.. new[] { "KeyVault:Uri", "GoogleMaps:ApiKey", "ExternalAuth:Microsoft:ClientId", "ExternalAuth:Microsoft:ClientSecret" }
+        string[] missing = [.. RequiredProductionKeys
             .Where(key => string.IsNullOrWhiteSpace(app.Configuration[key]))];
         if (missing.Length > 0)
             throw new InvalidOperationException($"Missing required production configuration: {string.Join(", ", missing)}");
@@ -159,7 +159,7 @@ try
     app.MapDiagnosticsEndpoints();
     // GUEST login bypass: Development (Rule 4.4 split view) + Testing. Production registers
     // Microsoft OAuth only; MapGuestEndpoints throws if wired into a Production host.
-    if (app.Environment.IsEnvironment("Testing") || app.Environment.IsDevelopment())
+    if (app.Environment.IsEnvironment("Test") || app.Environment.IsDevelopment())
         app.MapGuestEndpoints(app.Environment);
     app.MapRoutesEndpoints();
     app.MapWindowsEndpoints();
@@ -189,4 +189,13 @@ finally
 }
 
 // Marker so WebApplicationFactory<Program> can reference the host in integration tests.
-public partial class Program { }
+public partial class Program
+{
+    private static readonly string[] RequiredProductionKeys =
+    [
+        "KeyVault:Uri",
+        "GoogleMaps:ApiKey",
+        "ExternalAuth:Microsoft:ClientId",
+        "ExternalAuth:Microsoft:ClientSecret"
+    ];
+}

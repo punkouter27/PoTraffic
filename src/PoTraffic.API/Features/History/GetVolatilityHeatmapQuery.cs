@@ -1,8 +1,8 @@
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.DTOs.History;
 
-namespace PoTraffic.API.Features.History;
+namespace PoTraffic.Api.Features.History;
 
 public sealed record GetVolatilityHeatmapQuery(RouteId RouteId, UserId UserId);
 

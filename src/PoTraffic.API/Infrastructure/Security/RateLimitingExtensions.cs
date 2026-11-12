@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 
-namespace PoTraffic.API.Infrastructure.Security;
+namespace PoTraffic.Api.Infrastructure.Security;
 
 /// <summary>
 /// Per-user limits on the endpoints that spend money on a paid provider (Google Maps
@@ -19,7 +19,7 @@ public static class RateLimitingExtensions
     public static IServiceCollection AddPoTrafficRateLimiting(this IServiceCollection services, IWebHostEnvironment env)
     {
         // E2E scenarios drive these endpoints far faster than a person; they test behaviour, not limits.
-        int scale = env.IsEnvironment("Testing") ? 1000 : 1;
+        int scale = env.IsEnvironment("Test") ? 1000 : 1;
 
         services.AddRateLimiter(options =>
         {

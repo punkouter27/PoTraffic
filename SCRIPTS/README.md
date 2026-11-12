@@ -28,5 +28,5 @@ PowerShell utility scripts for local development and CI. Run all scripts from th
 
 ```powershell
 # Starts Azurite (docker compose) and runs the app, killing any stale dotnet processes first
-./SCRIPTS/start-dev.ps1
+./scripts/start-dev.ps1
 ```

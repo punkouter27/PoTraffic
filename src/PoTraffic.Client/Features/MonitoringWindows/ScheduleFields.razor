@@ -14,6 +14,7 @@
     <RadzenFormField Text="Start time">
         <ChildContent>
             <RadzenDatePicker Name="StartTime" TValue="DateTime?" Value="Start" ValueChanged="StartChanged"
+                              ValueExpression="@(() => Start)"
                               ShowTime="true" TimeOnly="true" DateFormat="HH:mm" aria-label="Start time" />
         </ChildContent>
         <Helper>
@@ -23,6 +24,7 @@
     <RadzenFormField Text="End time">
         <ChildContent>
             <RadzenDatePicker Name="EndTime" TValue="DateTime?" Value="End" ValueChanged="EndChanged"
+                              ValueExpression="@(() => End)"
                               ShowTime="true" TimeOnly="true" DateFormat="HH:mm" aria-label="End time" />
         </ChildContent>
         <Helper>

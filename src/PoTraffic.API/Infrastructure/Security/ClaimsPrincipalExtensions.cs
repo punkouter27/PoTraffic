@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 
-namespace PoTraffic.API.Infrastructure.Security;
+namespace PoTraffic.Api.Infrastructure.Security;
 
 /// <summary>
 /// Shared user-ID extraction logic so every endpoint file does not repeat the

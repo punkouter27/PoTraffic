@@ -1,7 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
-using PoTraffic.API.Infrastructure.Security;
+using PoTraffic.Api.Infrastructure.Security;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 public static class AlertsEndpoints
 {

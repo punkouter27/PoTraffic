@@ -1,9 +1,9 @@
-using PoTraffic.API.Features.Maintenance;
-using PoTraffic.API.Infrastructure.Scheduling;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Maintenance;
+using PoTraffic.Api.Infrastructure.Scheduling;
+using PoTraffic.Api.Infrastructure.Storage;
 using Serilog.Context;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 internal static class StartupTasksExtensions
 {

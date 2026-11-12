@@ -96,5 +96,5 @@ try {
 Write-Host "`n=== Setup complete ===" -ForegroundColor Green
 Write-Host 'Next steps:'
 Write-Host "  1. (Optional) Run `az login` if you need Key Vault access."
-Write-Host "  2. Launch the app:  ./SCRIPTS/start-dev.ps1"
-Write-Host "  3. Run the test suite: ./SCRIPTS/run-tests.ps1"
+Write-Host "  2. Launch the app:  ./scripts/start-dev.ps1"
+Write-Host "  3. Run the test suite: ./scripts/run-tests.ps1"

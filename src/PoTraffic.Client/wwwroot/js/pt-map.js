@@ -12,10 +12,10 @@
 // individual road is jammed would be a picture the data cannot support.
 //
 // The start and end pins pulse in that same colour, faster the further the latest
-// sample runs over the usual time (pt-motion.css owns the animation, so the motion
+// sample runs over the usual time (po-motion.css owns the animation, so the motion
 // settings still it). One glance at a pin is the verdict and its urgency.
 
-import * as fx from "./pt-fx.js";
+import * as fx from "./po-fx.js";
 
 /** @type {WeakMap<HTMLElement, object>} */
 const maps = new WeakMap();

@@ -1,7 +1,7 @@
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>Names a route; blank clears the name.</summary>
 public sealed record SetRouteNameCommand(RouteId RouteId, UserId UserId, string? Name);

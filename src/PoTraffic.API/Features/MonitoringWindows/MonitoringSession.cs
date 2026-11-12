@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace PoTraffic.API.Features.MonitoringWindows;
+namespace PoTraffic.Api.Features.MonitoringWindows;
 
 public sealed class MonitoringSession
 {

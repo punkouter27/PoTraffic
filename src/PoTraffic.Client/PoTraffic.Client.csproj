@@ -57,6 +57,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <!-- Radzen Blazor component library -->
+    <PackageReference Include="FluentValidation" />
     <PackageReference Include="Radzen.Blazor" />
   </ItemGroup>
 

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 /// <summary>
 /// Canonical cross-app sign-in telemetry. Every Po* app emits the SAME structured event so a

@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <RootNamespace>PoTraffic.API</RootNamespace>
-    <AssemblyName>PoTraffic.API</AssemblyName>
+    <RootNamespace>PoTraffic.Api</RootNamespace>
+    <AssemblyName>PoTraffic.Api</AssemblyName>
     <UserSecretsId>7c9e89ba-4021-4c24-82f9-585eb1df7be1</UserSecretsId>
   </PropertyGroup>
 
@@ -13,8 +13,8 @@
   -->
 
   <ItemGroup>
-    <InternalsVisibleTo Include="PoTraffic.IntegrationTests" />
-    <InternalsVisibleTo Include="PoTraffic.UnitTests" />
+    <InternalsVisibleTo Include="PoTraffic.Integration" />
+    <InternalsVisibleTo Include="PoTraffic.Unit" />
   </ItemGroup>
 
   <ItemGroup>

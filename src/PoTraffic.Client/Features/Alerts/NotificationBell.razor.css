@@ -46,7 +46,7 @@
     width: min(22rem, 90vw);
     max-height: 26rem;
     overflow-y: auto;
-    /* Glass panel (pt-tokens.css --pt-glass-panel-*): frosted over whatever it drops
+    /* Glass panel (po-tokens.css --pt-glass-panel-*): frosted over whatever it drops
        onto, solid under prefers-reduced-transparency, prefers-contrast: more, or
        without backdrop-filter — the tokens collapse, so no fallback rule is needed. */
     background: var(--pt-glass-panel-bg);

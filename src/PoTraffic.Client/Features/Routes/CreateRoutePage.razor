@@ -1,13 +1,13 @@
 @page "/routes/create"
 @attribute [Authorize]
-@using System.Net.Http.Json
+@using FluentValidation
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.Enums
 @using PoTraffic.Client.Features.MonitoringWindows
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 
-<PageTitle>New commute — PoTraffic</PageTitle>
+<PageTitle>New commute · PoTraffic</PageTitle>
 
 <div class="pt-create-route-card">
 <PageHeader Title="New commute" BackHref="/dashboard" BackLabel="Commutes" />
@@ -18,18 +18,13 @@
         <RadzenAlert AlertStyle="AlertStyle.Danger" AllowClose="false" class="pt-mb-3 pt-enter">@_error</RadzenAlert>
     }
 
-    @* RadzenTemplateForm gives the form real submit semantics — Enter submits, and the
-       schedule fields' validators bind to it. Every field is a RadzenFormField, so every
-       label, hint and error sits in the same place in the same type. The address inputs
-       are a custom component rather than an IRadzenFormComponent, so a Radzen validator
-       cannot bind to them; their messages go in the field's Helper slot with the
-       validator's own classes, which renders them exactly where and how the time
-       pickers' messages appear. No Cancel — the header's back link is it. *@
     <SectionErrorBoundary Label="the form">
     <RadzenTemplateForm TItem="CreateRouteForm" Data="@_form" Submit="@SaveAsync">
+        <FluentValidationValidator TModel="CreateRouteForm" Validator="@_validator" />
         <RadzenFormField Text="From" class="pt-w-100 pt-mb-2">
             <ChildContent>
-                <AddressAutocomplete @bind-Value="_origin" @bind-Value:after="() => _originError = null"
+                <AddressAutocomplete @bind-Value="_form.OriginAddress"
+                                     @bind-Value:after="() => _originError = null"
                                      Placeholder="e.g. Home or 1600 Amphitheatre Pkwy"
                                      AriaLabel="From" Invalid="@(_originError is not null)" />
             </ChildContent>
@@ -43,7 +38,8 @@
 
         <RadzenFormField Text="To" class="pt-w-100 pt-mb-3">
             <ChildContent>
-                <AddressAutocomplete @bind-Value="_destination" @bind-Value:after="() => _destinationError = null"
+                <AddressAutocomplete @bind-Value="_form.DestinationAddress"
+                                     @bind-Value:after="() => _destinationError = null"
                                      Placeholder="e.g. Work or 1 Apple Park Way"
                                      AriaLabel="To" Invalid="@(_destinationError is not null)" />
             </ChildContent>
@@ -55,9 +51,6 @@
             </Helper>
         </RadzenFormField>
 
-        @* Optional, but it is what turns the route page's answer into "Leave by …" from
-           day one — without it the page could only report a range of durations until the
-           user found the field on the route page. Same time picker as the schedule's. *@
         <RadzenFormField Text="Arrive by (optional)" class="pt-mb-3">
             <RadzenDatePicker Name="ArriveBy" TValue="DateTime?" Value="_arriveByTime" ValueChanged="OnArriveByChanged"
                               ShowTime="true" TimeOnly="true" DateFormat="HH:mm" AllowClear="true"
@@ -66,35 +59,49 @@
 
         <ScheduleFields @bind-Start="_startTime" @bind-End="_endTime" @bind-Days="_days" DaysError="@_daysError" />
 
-        <RadzenButton ButtonType="ButtonType.Submit" Text="Save & start monitoring"
-                      Icon="play_arrow" ButtonStyle="ButtonStyle.Primary"
-                      class="pt-w-100" IsBusy="_loading" />
+        <div class="pt-form-actions pt-mt-4">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save & start monitoring"
+                          Icon="play_arrow" ButtonStyle="ButtonStyle.Primary"
+                          IsBusy="_loading" Disabled="_loading" />
+            <RadzenButton ButtonType="ButtonType.Button" Text="Cancel"
+                          ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined"
+                          Disabled="_loading" Click="@(() => Nav.NavigateTo("/dashboard"))" />
+        </div>
     </RadzenTemplateForm>
     </SectionErrorBoundary>
 </RadzenCard>
 </div>
 
 @code {
-    /// <summary>
-    /// RadzenTemplateForm needs a model to bind to. The fields it validates are
-    /// bound directly to the component's own state, so this carries nothing —
-    /// it exists to give the form a TItem.
-    /// </summary>
-    private sealed class CreateRouteForm { }
+    public sealed class CreateRouteForm
+    {
+        public string OriginAddress { get; set; } = string.Empty;
+        public string DestinationAddress { get; set; } = string.Empty;
+        public byte DayMask { get; set; } = 0x1F;
+    }
+
+    private sealed class CreateRouteFormValidator : AbstractValidator<CreateRouteForm>
+    {
+        public CreateRouteFormValidator()
+        {
+            RuleFor(x => x.OriginAddress)
+                .NotEmpty().WithMessage("Enter an origin address.")
+                .MaximumLength(ValidationConstants.AddressMaxLength);
+            RuleFor(x => x.DestinationAddress)
+                .NotEmpty().WithMessage("Enter a destination address.")
+                .MaximumLength(ValidationConstants.AddressMaxLength);
+            RuleFor(x => x.DayMask)
+                .Must(m => m != 0).WithMessage("Select at least one day to probe.");
+        }
+    }
 
     private readonly CreateRouteForm _form = new();
+    private readonly CreateRouteFormValidator _validator = new();
 
-    private string _origin = string.Empty;
-    private string _destination = string.Empty;
-
-    // Per-field messages, so a problem is reported next to the input that caused
-    // it rather than only in a banner at the top of the card.
     private string? _originError;
     private string? _destinationError;
     private string? _daysError;
 
-    // Default to watching the whole day, 00:00 → 23:59 — the one default both schedule
-    // editors share (ScheduleFields.DefaultWindow).
     private DateTime? _startTime = ScheduleFields.DefaultWindow().Start;
     private DateTime? _endTime = ScheduleFields.DefaultWindow().End;
     private IEnumerable<byte> _days = ScheduleFields.DefaultDayBits;
@@ -105,17 +112,9 @@
 
     private byte DayMask => ScheduleFields.ToMask(_days);
 
-    /// <summary>The picker's value; only its time of day is used.</summary>
     private DateTime? _arriveByTime;
-
-    /// <summary>"HH:mm", or null when the user leaves it blank — the wire format.</summary>
     private string? ArriveByHHmm => _arriveByTime is { } t ? ScheduleFields.ToHHmm(t) : null;
 
-    /// <summary>
-    /// Setting an arrival also moves the window to the three hours before it — the span
-    /// the departure planner reads — so the two fields cannot quietly disagree. The user
-    /// can still change the window afterwards.
-    /// </summary>
     private void OnArriveByChanged(DateTime? value)
     {
         _arriveByTime = value;
@@ -129,47 +128,41 @@
 
     private async Task SaveAsync()
     {
+        if (_loading)
+            return;
+
         _error = "";
         _originError = null;
         _destinationError = null;
         _daysError = null;
 
-        // The schedule fields are covered by the form's own validators; these are
-        // the inputs Radzen can't reach. Every failing field is marked in one pass
-        // rather than stopping at the first, so the user fixes the form once.
-        if (string.IsNullOrWhiteSpace(_origin))
-            _originError = "Enter an origin address.";
-
-        if (string.IsNullOrWhiteSpace(_destination))
-            _destinationError = "Enter a destination address.";
-
-        if (DayMask == 0)
-            _daysError = "Select at least one day to probe.";
-
-        if (_originError is not null || _destinationError is not null || _daysError is not null)
+        _form.DayMask = DayMask;
+        FluentValidation.Results.ValidationResult validation = _validator.Validate(_form);
+        if (!validation.IsValid)
+        {
+            _originError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.OriginAddress))?.ErrorMessage;
+            _destinationError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DestinationAddress))?.ErrorMessage;
+            _daysError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DayMask))?.ErrorMessage;
             return;
+        }
 
-        // Belt and braces: the picker validators run first, but a submit that
-        // somehow arrives with an unusable window must not reach the API.
         if (_startTime is null || _endTime is null || !ScheduleFields.EndDiffersFromStart(_startTime, _endTime))
             return;
 
         _loading = true;
         try
         {
-            HttpResponseMessage createResp = await Http.PostAsJsonAsync("/api/routes", new CreateRouteRequest(
-                _origin,
-                _destination,
+            HttpResponseMessage createResp = await Api.CreateRouteAsync(new CreateRouteRequest(
+                _form.OriginAddress,
+                _form.DestinationAddress,
                 (RouteProvider)_provider,
                 ScheduleFields.ToHHmm(_startTime!.Value),
                 ScheduleFields.ToHHmm(_endTime!.Value),
                 DayMask,
-                ScheduleFields.LocalZoneId), AppJsonContext.Default.CreateRouteRequest);
+                ScheduleFields.LocalZoneId));
 
             if (!createResp.IsSuccessStatusCode)
             {
-                // A session/authorization failure returns a ProblemDetails body with no "error"
-                // field, so surface it as an auth problem rather than a misleading "bad address".
                 if (createResp.StatusCode is System.Net.HttpStatusCode.Unauthorized
                                           or System.Net.HttpStatusCode.Forbidden)
                 {
@@ -178,38 +171,29 @@
                     return;
                 }
 
-                // Only our structured 4xx responses carry an "error" code and use plain
-                // "application/json"; ProblemDetails (401/403/500) uses "application/problem+json",
-                // so we skip parsing those and fall through to the status-code messages below.
-                string? errorCode = null;
-                if (createResp.Content.Headers.ContentType?.MediaType == "application/json")
-                {
-                    var errBody = await createResp.Content.ReadFromJsonAsync(AppJsonContext.Default.JsonElement);
-                    errorCode = errBody.TryGetProperty("error", out var prop) ? prop.GetString() : null;
-                }
+                ProblemDetailsParser.ParsedError parsed = await ProblemDetailsParser.ParseAsync(
+                    createResp,
+                    "Failed to create commute. Please verify your addresses.");
 
-                _error = errorCode switch
+                _error = parsed.ErrorCode switch
                 {
                     RouteErrorCodes.MapsKeyMissing => "Maps integration is not configured on the server.",
                     RouteErrorCodes.AddressNotFound => "We couldn't find that address. Please check and try again.",
                     RouteErrorCodes.SameCoordinates => "Origin and destination resolve to the same location. Please use different addresses.",
                     _ when (int)createResp.StatusCode >= 500 => "Something went wrong on our end. Please try again in a moment.",
-                    _                  => "Failed to create commute. Please verify your addresses."
+                    _ => parsed.Message
                 };
                 return;
             }
 
             RouteDto? createdRoute = await createResp.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);
-            // Best effort: a failure here leaves a working route without a target, which the
-            // route page lets the user set — not worth failing the create over.
             if (createdRoute is not null && ArriveByHHmm is not null)
             {
                 try
                 {
-                    await Http.PutAsJsonAsync($"/api/routes/{createdRoute.Id}/arrive-by",
-                        new SetArriveByRequest(ArriveByHHmm), AppJsonContext.Default.SetArriveByRequest);
+                    await Api.SetArriveByAsync(createdRoute.Id, ArriveByHHmm);
                 }
-                catch { /* see above */ }
+                catch { }
             }
             MonitoringWindowDto? activeWindow = createdRoute?.Windows.FirstOrDefault(w => w.IsActive);
 
@@ -220,9 +204,7 @@
                 return;
             }
 
-            HttpResponseMessage startResp = await Http.PostAsync(
-                $"/api/routes/{createdRoute.Id}/windows/{activeWindow.Id}/start",
-                null);
+            HttpResponseMessage startResp = await Api.StartWindowAsync(createdRoute.Id, activeWindow.Id);
 
             if (startResp.IsSuccessStatusCode)
             {
@@ -230,14 +212,9 @@
                 return;
             }
 
-            if (startResp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            {
-                _error = "Commute created, but daily quota is exhausted. Monitoring can start tomorrow.";
-            }
-            else
-            {
-                _error = "Commute created, but automatic start failed. You can start monitoring from the commute page.";
-            }
+            _error = startResp.StatusCode == System.Net.HttpStatusCode.TooManyRequests
+                ? "Commute created, but daily quota is exhausted. Monitoring can start tomorrow."
+                : "Commute created, but automatic start failed. You can start monitoring from the commute page.";
 
             Nav.NavigateTo($"/routes/{createdRoute.Id}");
         }
@@ -250,5 +227,4 @@
             _loading = false;
         }
     }
-
 }

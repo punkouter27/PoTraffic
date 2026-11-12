@@ -1,9 +1,9 @@
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Admin;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Admin;
+namespace PoTraffic.Api.Features.Admin;
 
 // Query pattern — read-only admin user list with today's usage
 public sealed record GetUsersQuery;

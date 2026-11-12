@@ -1,11 +1,11 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 using PoTraffic.Shared.DTOs.History;
 
 using PoTraffic.Shared.DTOs.Routes;
 
-namespace PoTraffic.API.Features.History;
+namespace PoTraffic.Api.Features.History;
 
 public sealed record GetPollHistoryQuery(
     RouteId RouteId,

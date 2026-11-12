@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 public sealed class PollRecord
 {

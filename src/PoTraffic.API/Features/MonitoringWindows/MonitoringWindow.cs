@@ -1,8 +1,8 @@
 using System.Text.Json.Serialization;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.DTOs.Routes;
 
-namespace PoTraffic.API.Features.MonitoringWindows;
+namespace PoTraffic.Api.Features.MonitoringWindows;
 
 public sealed class MonitoringWindow
 {
@@ -46,8 +46,8 @@ public sealed class MonitoringWindow
     /// </summary>
     public MonitoringWindowDto ToDto() => new(
         Id,
-        StartTime.ToString("HH:mm"),
-        EndTime.ToString("HH:mm"),
+        StartTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+        EndTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
         DecodeDaysOfWeek(DaysOfWeekMask),
         IsActive,
         TimeZoneId);

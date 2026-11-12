@@ -1,12 +1,13 @@
-using PoTraffic.API.Platform;
+using PoTraffic.Api.Platform;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
-using PoTraffic.API.Features.Auth;
-using PoTraffic.API.Infrastructure.Resilience;
+using PoTraffic.Api.Features.Auth;
+using PoTraffic.Api.Infrastructure.Resilience;
+using System.Diagnostics.CodeAnalysis;
 
-namespace PoTraffic.API.Infrastructure.Security;
+namespace PoTraffic.Api.Infrastructure.Security;
 
 internal static class SecurityExtensions
 {
@@ -21,6 +22,7 @@ internal static class SecurityExtensions
     /// and the external OAuth provider. The Blazor WASM client never handles tokens —
     /// the HttpOnly SameSite=Strict cookie is the only session credential.
     /// </summary>
+    [RequiresUnreferencedCode("Calls Microsoft.Extensions.DependencyInjection.OptionsConfigurationServiceCollectionExtensions.Configure<TOptions>(IConfiguration)")]
     internal static IServiceCollection AddSecurityServices(
         this IServiceCollection services,
         IConfiguration configuration,

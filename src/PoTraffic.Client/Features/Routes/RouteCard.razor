@@ -1,8 +1,7 @@
-@using System.Net.Http.Json
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.DTOs.History
 @using PoTraffic.Shared.Enums
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject NotificationService NotificationService
 @inject UiPreferences Prefs
@@ -260,7 +259,7 @@
         _checking = true;
         try
         {
-            if (await CheckNow.RunAsync(Http, NotificationService, Route.Id.Value) is not null)
+            if (await CheckNow.RunAsync(Api, NotificationService, Route.Id) is not null)
                 await OnRefresh.InvokeAsync();
         }
         finally { _checking = false; }
@@ -276,7 +275,7 @@
             $"{_originStreet} → {_destStreet}",
             commit: async () =>
             {
-                HttpResponseMessage response = await Http.DeleteAsync($"/api/routes/{Route.Id}");
+                HttpResponseMessage response = await Api.DeleteRouteAsync(Route.Id);
                 response.EnsureSuccessStatusCode();
             },
             onCommitted: () => OnDeleted.InvokeAsync(),

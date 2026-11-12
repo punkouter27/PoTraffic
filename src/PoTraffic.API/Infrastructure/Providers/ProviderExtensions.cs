@@ -1,9 +1,9 @@
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Infrastructure.Resilience;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Testing;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Infrastructure.Resilience;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Testing;
 
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 public static class ProviderExtensions
 {

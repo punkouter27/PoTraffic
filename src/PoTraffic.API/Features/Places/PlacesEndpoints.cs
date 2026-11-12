@@ -1,7 +1,8 @@
-using PoTraffic.API.Infrastructure.Resilience;
-using PoTraffic.API.Infrastructure.Security;
+using System.Diagnostics.CodeAnalysis;
+using PoTraffic.Api.Infrastructure.Resilience;
+using PoTraffic.Api.Infrastructure.Security;
 
-namespace PoTraffic.API.Features.Places;
+namespace PoTraffic.Api.Features.Places;
 
 /// <summary>Address suggestions while typing — the BFF side of the route form's autocomplete.</summary>
 public static class PlacesEndpoints

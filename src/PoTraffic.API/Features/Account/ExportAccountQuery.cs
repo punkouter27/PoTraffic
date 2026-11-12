@@ -1,7 +1,7 @@
-using PoTraffic.API.Features.Alerts;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Alerts;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 /// <summary>
 /// GDPR Art. 20 — everything stored about the user, as one JSON document. Entities are

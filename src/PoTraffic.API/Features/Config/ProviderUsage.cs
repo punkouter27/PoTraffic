@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Features.Config;
+namespace PoTraffic.Api.Features.Config;
 
 /// <summary>
 /// How many billed Google calls of one kind were made in one UTC month, for the calls that

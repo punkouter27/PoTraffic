@@ -16,7 +16,7 @@ congestion or reroute anomalies in real time.
 | Background Jobs | Table Storage-backed scheduler |
 | Auth | Microsoft OAuth in dev/prod, Testing-only auth bypasses |
 | Logging | Serilog + WASM client log forwarding |
-| Observability | OpenTelemetry + Azure Monitor / Application Insights; app spans (`PoTraffic.API` source: jobs, Google Maps / TomTom / Open-Meteo calls, Table Storage writes) export only when App Insights or `OTEL_EXPORTER_OTLP_ENDPOINT` is configured |
+| Observability | OpenTelemetry + Azure Monitor / Application Insights; app spans (`PoTraffic.Api` source: jobs, Google Maps / TomTom / Open-Meteo calls, Table Storage writes) export only when App Insights or `OTEL_EXPORTER_OTLP_ENDPOINT` is configured |
 | Testing | xUnit + NSubstitute, integration tests, Playwright .NET E2E |
 
 The API and Blazor WASM static files are hosted together on Azure App Service.
@@ -26,13 +26,13 @@ CORS is intentionally not configured.
 
 ```text
 src/
-  PoTraffic.API/             # ASP.NET Core host, Features/ slices, Infrastructure/
+  PoTraffic.Api/             # ASP.NET Core host, Features/ slices, Infrastructure/
   PoTraffic.Client/          # Blazor WASM front-end
   PoTraffic.Shared/          # DTOs shared by API and client
 tests/
-  PoTraffic.UnitTests/
-  PoTraffic.IntegrationTests/
-  PoTraffic.E2ETests/
+  PoTraffic.Unit/
+  PoTraffic.Integration/
+  PoTraffic.E2EUI/
 ```
 
 ## Prerequisites
@@ -46,7 +46,7 @@ tests/
 ```powershell
 dotnet restore
 dotnet build
-./SCRIPTS/start-dev.ps1
+./scripts/start-dev.ps1
 ```
 
 The startup script stops a stale PoTraffic host, starts PoTraffic's own Azurite (host port
@@ -64,7 +64,7 @@ prints the URL.
 ## Running Tests
 
 ```powershell
-./SCRIPTS/run-tests.ps1
+./scripts/run-tests.ps1
 ```
 
 The script fails fast if a tier holds more test cases than its cap — 100 unit, 50
@@ -74,9 +74,9 @@ rather than raising a cap.
 Or run individual suites:
 
 ```powershell
-dotnet test tests/PoTraffic.UnitTests
-dotnet test tests/PoTraffic.IntegrationTests
-dotnet test tests/PoTraffic.E2ETests
+dotnet test tests/PoTraffic.Unit
+dotnet test tests/PoTraffic.Integration
+dotnet test tests/PoTraffic.E2EUI
 ```
 
 Test caps: at most 100 unit, 50 integration, 25 API (`E2ETests/Api`) and 25 UI tests —

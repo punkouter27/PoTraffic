@@ -1,12 +1,13 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Observability;
+using PoTraffic.Api.Infrastructure.Observability;
 
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 /// <summary>
 /// Conditions from Open-Meteo. Chosen over the keyed weather APIs because it needs no
@@ -60,6 +61,7 @@ public sealed class OpenMeteoWeatherProvider : IWeatherProvider
             cancellationToken: ct);
     }
 
+    [RequiresUnreferencedCode("Calls System.Net.Http.Json.HttpClientJsonExtensions.GetFromJsonAsync<TValue>(String, CancellationToken)")]
     private async ValueTask<WeatherObservation?> FetchAsync(double lat, double lon, CancellationToken ct)
     {
         string url = string.Create(CultureInfo.InvariantCulture,

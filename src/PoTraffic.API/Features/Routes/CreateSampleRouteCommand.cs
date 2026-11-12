@@ -1,13 +1,13 @@
 using System.Text;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Features.MonitoringWindows;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.MonitoringWindows;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Routes;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>
 /// Seeds the demo route (#10). <paramref name="UtcOffsetMinutes"/> is the caller's offset

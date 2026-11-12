@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace PoTraffic.API.Infrastructure.Storage;
+namespace PoTraffic.Api.Infrastructure.Storage;
 
 /// <summary>
 /// Azure Table Storage configuration for PoTraffic.

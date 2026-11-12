@@ -1,15 +1,14 @@
 @page "/login"
 @attribute [AllowAnonymous]
 @layout AuthLayout
-@using System.Net.Http.Json
 @using PoTraffic.Client.Layout
-@using PoTraffic.Client.Infrastructure.Auth
+@using PoTraffic.Client.Services.Auth
 @using Microsoft.AspNetCore.Components.Authorization
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Sign in — PoTraffic</PageTitle>
+<PageTitle>Sign in · PoTraffic</PageTitle>
 
 <RadzenCard class="pt-p-6">
     @* An <h1>, not a RadzenText H5. This is the app's landing page for anyone
@@ -77,7 +76,7 @@
 
         try
         {
-            var result = await Http.GetFromJsonAsync("/api/auth/providers", AppJsonContext.Default.ProvidersResponse);
+            ProvidersResponse? result = await Api.GetAuthProvidersAsync();
             if (result is not null)
             {
                 _availableProviders = result.Providers;
@@ -107,7 +106,7 @@
         _error = "";
         try
         {
-            HttpResponseMessage resp = await Http.PostAsync("/api/auth/guest-login", content: null);
+            HttpResponseMessage resp = await Api.GuestLoginAsync();
             if (resp.IsSuccessStatusCode)
             {
                 if (AuthStateProvider is CookieAuthenticationStateProvider cookieProvider)

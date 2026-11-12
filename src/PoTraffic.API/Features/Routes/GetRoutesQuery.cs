@@ -1,4 +1,4 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 
@@ -6,7 +6,7 @@ using PoTraffic.Shared.DTOs.Routes;
 
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 public sealed record GetRoutesQuery(
     UserId UserId,

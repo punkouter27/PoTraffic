@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>
 /// Returns live travel time for a route WITHOUT persisting a PollRecord or consuming quota (FR-016).

@@ -1,7 +1,7 @@
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>Sets (or clears, with null) the local time the user needs to arrive by.</summary>
 public sealed record SetArriveByCommand(RouteId RouteId, UserId UserId, string? ArriveBy);

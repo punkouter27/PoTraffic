@@ -1,8 +1,9 @@
-﻿@using PoTraffic.Client.Components
+@using PoTraffic.Client.Layout
+@using PoTraffic.Client.Features.Auth
 
 <CascadingAuthenticationState>
     <AppErrorBoundary>
-        <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+        <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Layout.NotFound)">
             <Found Context="routeData">
                 <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                     <NotAuthorized Context="authState">

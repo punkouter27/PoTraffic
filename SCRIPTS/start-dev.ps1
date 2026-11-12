@@ -1,5 +1,5 @@
 # start-dev.ps1 — Stop a stale PoTraffic host, start PoTraffic's own Azurite, then launch the API.
-# Run from repo root: ./SCRIPTS/start-dev.ps1
+# Run from repo root: ./scripts/start-dev.ps1
 #
 # Sibling projects on this machine use the same defaults (5000/5001 for a dev host, 10002 for
 # Azurite). This script only ever stops PoTraffic's own processes; when 5001 belongs to another
@@ -24,10 +24,10 @@ function Get-ListenerProcess([int]$Port) {
 }
 
 function Test-IsPoTrafficHost($Proc) {
-    if ($Proc.Name -eq 'PoTraffic.API') { return $true }
+    if ($Proc.Name -eq 'PoTraffic.Api') { return $true }
     if ($Proc.Name -notlike '*dotnet*') { return $false }
     $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId=$($Proc.Id)").CommandLine
-    return $cmd -like '*PoTraffic.API*'
+    return $cmd -like '*PoTraffic.Api*'
 }
 
 # 1. Stop a stale PoTraffic host on any port it may have used; leave other apps alone.
@@ -83,5 +83,5 @@ for ($i = 1; $i -le $maxRetries; $i++) {
 
 # 5. Launch API (Development, HTTPS). --urls overrides the launch profile's 5001 binding.
 Write-Host "`nLaunching PoTraffic API on https://localhost:$https ..." -ForegroundColor Green
-Set-Location (Join-Path $RepoRoot 'src' 'PoTraffic.API')
+Set-Location (Join-Path $RepoRoot 'src' 'PoTraffic.Api')
 dotnet run --launch-profile https -- --urls "https://localhost:$https;http://localhost:$http"

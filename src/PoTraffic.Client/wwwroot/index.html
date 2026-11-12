@@ -12,13 +12,13 @@
         // Runs in <head>, before first paint, so the page never flashes the wrong
         // theme or the wrong density. Follows the OS preference and re-resolves
         // live when the OS flips; values pinned in localStorage win over the OS.
-        // Changes made later, from Settings, are owned by js/pt-appearance.js.
+        // Changes made later, from Settings, are owned by js/po-appearance.js.
         (function () {
             var root = document.documentElement;
             var pinned = null, density = null;
             try {
-                pinned = localStorage.getItem('pt-theme');
-                density = localStorage.getItem('pt-density');
+                pinned = localStorage.getItem('potraffic:theme');
+                density = localStorage.getItem('potraffic:density');
             } catch (e) { /* private mode */ }
 
             var media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -50,13 +50,13 @@
          which is what lets the app styles drop their !important escapes. -->
     <link rel="stylesheet" href="css/vendor.css" />
 
-    <link rel="stylesheet" href="css/pt-tokens.css" />
-    <link rel="stylesheet" href="css/pt-motion.css" />
+    <link rel="stylesheet" href="css/po-tokens.css" />
+    <link rel="stylesheet" href="css/po-motion.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link href="PoTraffic.Client.bundle.scp.css" rel="stylesheet" />
     <!-- After the scoped bundle, so the .pt-glass utilities win a specificity tie with a
          component's own surface. The text-bearing glass, with its solid fallbacks. -->
-    <link rel="stylesheet" href="css/pt-glass.css" />
+    <link rel="stylesheet" href="css/po-glass.css" />
 
     <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="manifest" href="manifest.json" />

@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 /// <summary>
 /// Conditions at a coordinate at the moment of a poll. Recorded alongside each

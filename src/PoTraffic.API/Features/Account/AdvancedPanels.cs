@@ -1,7 +1,7 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 /// <summary>The advanced panels the user has switched on, by <see cref="AdvancedPanel"/> name.</summary>
 public sealed record GetAdvancedPanelsQuery(UserId UserId);

@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using PoTraffic.API.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Providers;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 public sealed class Route
 {

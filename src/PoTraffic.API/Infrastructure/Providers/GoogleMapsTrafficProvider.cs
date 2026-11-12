@@ -1,13 +1,14 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Logging;
-using PoTraffic.API.Infrastructure.Observability;
+using PoTraffic.Api.Infrastructure.Logging;
+using PoTraffic.Api.Infrastructure.Observability;
 using PoTraffic.Shared.Constants;
 
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 // Strategy pattern — concrete GoogleMaps implementation of ITrafficProvider
 public sealed class GoogleMapsTrafficProvider : ITrafficProvider

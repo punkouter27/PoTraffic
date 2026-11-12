@@ -1,19 +1,20 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
 using Azure;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using PoTraffic.API.Features.Admin;
-using PoTraffic.API.Features.Alerts;
-using PoTraffic.API.Features.Auth;
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Features.MonitoringWindows;
-using PoTraffic.API.Infrastructure.Observability;
+using PoTraffic.Api.Features.Admin;
+using PoTraffic.Api.Features.Alerts;
+using PoTraffic.Api.Features.Auth;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Features.MonitoringWindows;
+using PoTraffic.Api.Infrastructure.Observability;
 
-namespace PoTraffic.API.Infrastructure.Storage;
+namespace PoTraffic.Api.Infrastructure.Storage;
 
 /// <summary>
 /// Table Storage-backed persistence context for PoTraffic entities.

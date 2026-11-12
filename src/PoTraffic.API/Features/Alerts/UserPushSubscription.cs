@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 /// <summary>
 /// A browser Web Push subscription for a user. The endpoint + keys are what the push

@@ -1,7 +1,7 @@
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Admin;
+namespace PoTraffic.Api.Features.Admin;
 
 /// <summary>Sets one user's daily session limit; null returns them to the global default.</summary>
 public sealed record SetUserDailyQuotaCommand(UserId UserId, int? DailySessionQuota);

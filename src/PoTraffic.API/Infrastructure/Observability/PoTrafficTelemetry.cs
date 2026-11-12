@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace PoTraffic.API.Infrastructure.Observability;
+namespace PoTraffic.Api.Infrastructure.Observability;
 
 /// <summary>
 /// The app's own spans: one <see cref="ActivitySource"/> for every background job, paid
@@ -18,7 +18,7 @@ namespace PoTraffic.API.Infrastructure.Observability;
 /// </summary>
 public static class PoTrafficTelemetry
 {
-    public const string SourceName = "PoTraffic.API";
+    public const string SourceName = "PoTraffic.Api";
 
     public static readonly ActivitySource Source = new(SourceName);
 

@@ -1,5 +1,5 @@
 @using PoTraffic.Shared.DTOs.Routes
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 
 @* The dashboard of an account with no commutes: the way to add one, and the sample
@@ -48,10 +48,7 @@
         try
         {
             int offsetMinutes = (int)DateTimeOffset.Now.Offset.TotalMinutes;
-            HttpResponseMessage response = await Http.PostAsJsonAsync(
-                "/api/routes/sample",
-                new CreateSampleRouteRequest(offsetMinutes),
-                AppJsonContext.Default.CreateSampleRouteRequest);
+            HttpResponseMessage response = await Api.CreateSampleRouteAsync(offsetMinutes);
 
             if (!response.IsSuccessStatusCode)
             {

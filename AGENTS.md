@@ -34,10 +34,10 @@ secrets in Azure Key Vault (`KeyVault:Uri`) when one exists.
 1. **Build clean.** `TreatWarningsAsErrors` is on — a compiler warning is a build break, so
    fix warnings rather than suppress them.
 2. **Restart the app and confirm it came back.** After any code change, restart the dev
-   host (`./SCRIPTS/start-dev.ps1`) and check it is serving (`/health/json` returns 200).
+   host (`./scripts/start-dev.ps1`) and check it is serving (`/health/json` returns 200).
 3. **Test only what you touched.** Never run the whole suite. Run the tests covering the
    changed code, or none at all when the change is minor. The full run
-   (`pwsh ./SCRIPTS/run-tests.ps1`) is for the user to invoke deliberately.
+   (`pwsh ./scripts/run-tests.ps1`) is for the user to invoke deliberately.
 4. **UI changes get a before/after comparison**: an annotated HTML page pointing out what
    changed, saved to `SCREENSHOTS/{YYMMDD}-{feature}.html`, plus a single annotated PNG
    showing before and after side by side with notes (`SCREENSHOTS/{YYMMDD}-{feature}.png`).
@@ -59,12 +59,12 @@ fixed in the bottom-right corner. Keep it there when changing the layout.
 ### Running a subset of tests
 
 ```powershell
-dotnet test tests/PoTraffic.UnitTests --filter "FullyQualifiedName~CreateRouteValidator"
-dotnet test tests/PoTraffic.E2ETests --filter "FullyQualifiedName~MonitoringWindowScenarios"
+dotnet test tests/PoTraffic.Unit --filter "FullyQualifiedName~CreateRouteValidator"
+dotnet test tests/PoTraffic.E2EUI --filter "FullyQualifiedName~MonitoringWindowScenarios"
 ```
 
 E2E filters need a Testing host on `E2E_BASE_URL` (default `http://localhost:5150`); start it
-with `dotnet run --project src/PoTraffic.API --launch-profile Testing` and leave it up across
+with `dotnet run --project src/PoTraffic.Api --launch-profile Testing` and leave it up across
 iterations rather than letting the script restart it every time.
 
 When fixing a batch of failures, run only the tests you are working on — never the whole
@@ -96,7 +96,7 @@ not technical jargon — so it reads like a person wrote it, then push without a
 
 - A push to `master` builds, tests, deploys and health-gates (`.github/workflows/deploy.yml`). Nothing is deployed by hand.
 - Azure sign-in is GitHub OIDC (the `gh-<repo>-deploy` app). Its IDs are repo **variables** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`, and the App Service name is `AZURE_WEBAPP_NAME`. Never move them to secrets or write resource names into workflows.
-- Every permission the app and CI need lives in `SCRIPTS/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.
+- Every permission the app and CI need lives in `scripts/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.
 - The app answers `/health/live` (process up, no dependencies) and `/health` (dependencies reachable). The deploy's health gate checks both.
 - Tests pass on any machine: no drive-letter, temp-folder or working-directory assumptions, and no live config value hard-coded as an expected result (read it from the same config the app reads).
 - A red run on the default branch gets an ntfy push from the CI watcher in PoPunkouterSoftware. Fix it, or say why it is red.

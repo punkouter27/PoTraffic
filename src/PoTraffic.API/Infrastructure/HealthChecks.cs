@@ -1,10 +1,10 @@
 using Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using PoTraffic.API.Infrastructure.Scheduling;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Scheduling;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 /// <summary>
 /// Degraded when the context fell back to memory-only mode; Unhealthy when the durable
@@ -23,14 +23,14 @@ public sealed class StorageHealthCheck(
 {
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
 
-    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken ct = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         if (!db.IsDurable)
             return HealthCheckResult.Degraded("MEMORY-ONLY mode — start Azurite (docker compose up -d) to persist data");
 
         try
         {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             cts.CancelAfter(ProbeTimeout);
             await db.ProbeStoreAsync(cts.Token);
             return HealthCheckResult.Healthy("Table Storage reachable");
@@ -67,7 +67,7 @@ public sealed class SchedulerHealthCheck(IServiceProvider services) : IHealthChe
 {
     private static readonly TimeSpan StaleAfter = BackgroundSchedulerService.TickInterval * 2;
 
-    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken ct = default)
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         // Not registered at all (Testing host) or explicitly no-op → nothing to monitor.
         if (services.GetService<IJobScheduler>() is null or NoOpJobScheduler)

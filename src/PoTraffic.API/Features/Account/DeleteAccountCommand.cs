@@ -1,8 +1,8 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 // FR-031: GDPR Art. 17 — hard delete all user data on request
 public sealed record DeleteAccountCommand(UserId UserId);

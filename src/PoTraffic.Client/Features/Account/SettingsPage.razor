@@ -1,10 +1,10 @@
 @page "/account/settings"
 @attribute [Authorize]
 @implements IAsyncDisposable
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject IJSRuntime JS
 
-<PageTitle>Settings — PoTraffic</PageTitle>
+<PageTitle>Settings · PoTraffic</PageTitle>
 
 <PageHeader Title="Account settings" BackHref="/dashboard" BackLabel="Commutes" />
 
@@ -96,8 +96,8 @@
     {
         try
         {
-            _profile = await Http.GetFromJsonAsync("/api/account/profile", AppJsonContext.Default.ProfileDto);
-            _quota = await Http.GetFromJsonAsync("/api/account/quota", AppJsonContext.Default.QuotaDto);
+            _profile = await Api.GetProfileAsync();
+            _quota = await Api.GetQuotaAsync();
         }
         catch { /* handled by null guards */ }
         finally { _loading = false; }
@@ -110,7 +110,7 @@
 
         try
         {
-            _appearance = await JS.InvokeAsync<IJSObjectReference>("import", "./js/pt-appearance.js");
+            _appearance = await JS.InvokeAsync<IJSObjectReference>("import", "./js/po-appearance.js");
             AppearanceState state = await _appearance.InvokeAsync<AppearanceState>("getAppearance");
             _theme = state.Theme;
             _density = state.Density;
@@ -154,7 +154,7 @@
         _prefersReducedMotion ? "reduced motion, so animation stays off whatever Motion is set to" : null,
     }.Where(p => p is not null));
 
-    /// <summary>Shape returned by <c>getAppearance</c> in pt-appearance.js.</summary>
+    /// <summary>Shape returned by <c>getAppearance</c> in po-appearance.js.</summary>
     private sealed record AppearanceState(
         string Theme,
         string Density,

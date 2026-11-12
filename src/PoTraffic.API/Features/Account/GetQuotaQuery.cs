@@ -1,10 +1,10 @@
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.DTOs.Account;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 public sealed record GetQuotaQuery(UserId UserId);
 

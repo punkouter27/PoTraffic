@@ -1,7 +1,7 @@
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Security.KeyVault.Secrets;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 /// <summary>
 /// Strategy pattern — swaps the secret-name-to-config-key mapping strategy so that
@@ -21,8 +21,8 @@ public sealed class PrefixKeyVaultSecretManager : KeyVaultSecretManager
 
     /// <inheritdoc />
     /// <remarks>Only load secrets whose name begins with the app-specific prefix.</remarks>
-    public override bool Load(SecretProperties properties)
-        => properties.Name.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
+    public override bool Load(SecretProperties secret)
+        => secret.Name.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
     /// <remarks>

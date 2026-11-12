@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PoTraffic.Shared.DTOs.Admin;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 /// <summary>
 /// Builds the per-dependency connection status list served at <c>/health/connections</c>

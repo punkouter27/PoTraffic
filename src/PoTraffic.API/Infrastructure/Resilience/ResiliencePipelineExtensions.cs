@@ -1,12 +1,12 @@
-// filepath: src/PoTraffic.API/Infrastructure/Resilience/ResiliencePipelineExtensions.cs
+// filepath: src/PoTraffic.Api/Infrastructure/Resilience/ResiliencePipelineExtensions.cs
 using Microsoft.Extensions.Http.Resilience;
 using Polly;
 
-namespace PoTraffic.API.Infrastructure.Resilience;
+namespace PoTraffic.Api.Infrastructure.Resilience;
 
 /// <summary>
 /// Centralized .NET 10 <c>Microsoft.Extensions.Http.Resilience</c> configuration
-/// for every external HTTP client in <c>PoTraffic.API</c>.
+/// for every external HTTP client in <c>PoTraffic.Api</c>.
 ///
 /// <para>
 /// Replaces the .NET 9-compat blanket <c>AddStandardResilienceHandler()</c> call

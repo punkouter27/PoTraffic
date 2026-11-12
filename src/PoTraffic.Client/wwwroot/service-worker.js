@@ -35,16 +35,16 @@ const SHELL = [
     "/favicon.png",
     "/icon-192.png",
     "/css/app.css",
-    "/css/pt-tokens.css",
-    "/css/pt-motion.css",
+    "/css/po-tokens.css",
+    "/css/po-motion.css",
     "/css/vendor.css",
-    "/css/pt-glass.css",
+    "/css/po-glass.css",
     "/lib/leaflet/leaflet.css",
     "/lib/leaflet/leaflet.js",
     // The motion runtime. Small and loaded on every page — it decides whether the
     // chart draw-in and map pins may animate, so precaching it keeps a cold offline
     // start from opening on a flat page that then lights up a second later.
-    "/js/pt-fx.js",
+    "/js/po-fx.js",
     "/js/pt-viewtransition.js",
 ];
 

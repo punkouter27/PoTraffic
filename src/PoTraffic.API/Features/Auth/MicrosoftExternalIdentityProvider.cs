@@ -1,8 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 public sealed class MicrosoftExternalIdentityProvider : IExternalIdentityProvider
 {

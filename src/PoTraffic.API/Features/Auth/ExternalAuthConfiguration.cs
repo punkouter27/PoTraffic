@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 public sealed class ExternalAuthConfiguration
 {

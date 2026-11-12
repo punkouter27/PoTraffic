@@ -1,4 +1,4 @@
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NotificationService NotificationService
 @inject FxService Fx
 @inject UiPreferences Prefs
@@ -146,7 +146,7 @@
 
     [Parameter] public bool Loading { get; set; }
 
-    /// <summary>The density the page read from pt-appearance.js.</summary>
+    /// <summary>The density the page read from po-appearance.js.</summary>
     [Parameter] public string Density { get; set; } = "normal";
 
     [Parameter] public EventCallback<string> DensityChanged { get; set; }
@@ -209,10 +209,7 @@
         _profileError = null;
         try
         {
-            HttpResponseMessage resp = await Http.PutAsJsonAsync(
-                "/api/account/profile",
-                new UpdateProfileRequest(locale),
-                AppJsonContext.Default.UpdateProfileRequest);
+            HttpResponseMessage resp = await Api.UpdateProfileAsync(new UpdateProfileRequest(locale));
 
             if (resp.IsSuccessStatusCode)
             {

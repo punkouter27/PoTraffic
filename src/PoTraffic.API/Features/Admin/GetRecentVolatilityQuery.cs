@@ -1,4 +1,4 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 using Microsoft.Extensions.Logging;
 
@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using PoTraffic.Shared.DTOs.Admin;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Admin;
+namespace PoTraffic.Api.Features.Admin;
 
 /// <summary>
 /// Last-24h aggregated volatility for the admin chart. The wire shape is a real

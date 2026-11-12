@@ -15,7 +15,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
   AZURE_RESOURCE_GROUP: PoTraffic
-  API_PROJECT_PATH: src/PoTraffic.API/PoTraffic.API.csproj
+  API_PROJECT_PATH: src/PoTraffic.Api/PoTraffic.Api.csproj
   PRODUCTION_URL: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
   DOTNET_NOLOGO: 'true'
   DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   # Build and publish only — no test tier runs here. Every tier (unit, integration, E2E)
-  # runs locally via `pwsh ./SCRIPTS/run-tests.ps1`, whose four-tier HTML report is the
+  # runs locally via `pwsh ./scripts/run-tests.ps1`, whose four-tier HTML report is the
   # gate; the integration and E2E tiers need Docker and a live Testing host anyway.
   build:
     name: Build
@@ -62,7 +62,7 @@ jobs:
       name: production
       url: ${{ env.PRODUCTION_URL }}
     steps:
-      # Only SCRIPTS/ — the deploy job needs the smoke script and nothing else, and a full
+      # Only scripts/ — the deploy job needs the smoke script and nothing else, and a full
       # checkout here would pull the whole repo to run one file.
       - uses: actions/checkout@v7
         with:
@@ -135,7 +135,7 @@ jobs:
 
       - name: Post-deploy smoke
         shell: pwsh
-        run: ./SCRIPTS/post-deploy-smoke.ps1 -BaseUrl "${{ env.PRODUCTION_URL }}"
+        run: ./scripts/post-deploy-smoke.ps1 -BaseUrl "${{ env.PRODUCTION_URL }}"
 
       - name: Roll back to the previous build
         if: failure() && steps.deploy.outcome == 'success' && steps.backup.outputs.ok == 'true'

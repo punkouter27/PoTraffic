@@ -19,13 +19,13 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "Testing": {
+    "Test": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,
       "applicationUrl": "http://localhost:5150",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Testing"
+        "ASPNETCORE_ENVIRONMENT": "Test"
       }
     }
   }

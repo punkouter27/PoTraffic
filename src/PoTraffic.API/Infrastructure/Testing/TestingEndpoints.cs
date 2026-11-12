@@ -1,11 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
-using PoTraffic.API.Features.Auth;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Auth;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Auth;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Infrastructure.Testing;
+namespace PoTraffic.Api.Infrastructure.Testing;
 
 public static class TestingEndpoints
 {
@@ -18,13 +19,14 @@ public static class TestingEndpoints
 
     // Marker nested type used as ILogger<T> category
     private sealed class LogCategory;
+
     public static IEndpointRouteBuilder MapTestingEndpoints(
         this IEndpointRouteBuilder app,
         IWebHostEnvironment env)
     {
         // Guard: only expose in the dedicated Testing environment.
         // Development, Production and Staging must never serve these endpoints.
-        if (!env.IsEnvironment("Testing"))
+        if (!env.IsEnvironment("Test"))
             return app;
 
         RouteGroupBuilder group = app.MapGroup("/e2e").WithTags("E2E");

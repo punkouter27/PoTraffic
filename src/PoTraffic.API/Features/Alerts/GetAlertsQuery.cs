@@ -1,7 +1,7 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Alerts;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 public sealed record GetAlertsQuery(UserId UserId, bool UnreadOnly);
 

@@ -1,6 +1,6 @@
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.Enums
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NotificationService Notifications
 
 @* ──────────────────────────────────────────────────────────────────────
@@ -148,8 +148,7 @@
             {
                 try
                 {
-                    HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{r.Id}/paused",
-                        new SetRoutePausedRequest(paused), AppJsonContext.Default.SetRoutePausedRequest);
+                    HttpResponseMessage resp = await Api.SetRoutePausedAsync(r.Id, paused);
                     return resp.IsSuccessStatusCode;
                 }
                 catch (HttpRequestException) { return false; }
@@ -180,7 +179,7 @@
         {
             bool[] results = await Task.WhenAll(targets.Select(async r =>
             {
-                try { return (await Http.DeleteAsync($"/api/routes/{r.Id}")).IsSuccessStatusCode; }
+                try { return (await Api.DeleteRouteAsync(r.Id)).IsSuccessStatusCode; }
                 catch (HttpRequestException) { return false; }
                 catch (TaskCanceledException) { return false; }
             }));

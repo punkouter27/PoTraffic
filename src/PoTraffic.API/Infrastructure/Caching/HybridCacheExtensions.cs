@@ -1,8 +1,8 @@
-// filepath: src/PoTraffic.API/Infrastructure/Caching/HybridCacheExtensions.cs
+// filepath: src/PoTraffic.Api/Infrastructure/Caching/HybridCacheExtensions.cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Hybrid;
 
-namespace PoTraffic.API.Infrastructure.Caching;
+namespace PoTraffic.Api.Infrastructure.Caching;
 
 /// <summary>
 /// Registers <see cref="HybridCache"/> (in-process L1 + distributed L2) for

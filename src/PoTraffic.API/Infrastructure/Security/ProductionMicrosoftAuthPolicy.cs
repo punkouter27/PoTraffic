@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 
-namespace PoTraffic.API.Infrastructure.Security;
+namespace PoTraffic.Api.Infrastructure.Security;
 
 /// <summary>
 /// Rule 13 — In Production, Microsoft OAuth is the only accepted identity provider.
@@ -22,7 +22,7 @@ internal static class ProductionMicrosoftAuthPolicy
     public static bool Evaluate(string environmentName, AuthorizationHandlerContext ctx)
     {
         // Testing: allow deterministic test principals.
-        if (string.Equals(environmentName, "Testing", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(environmentName, "Test", StringComparison.OrdinalIgnoreCase))
         {
             return ctx.User.Identity?.IsAuthenticated == true;
         }

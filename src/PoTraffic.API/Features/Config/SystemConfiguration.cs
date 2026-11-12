@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Features.Config;
+namespace PoTraffic.Api.Features.Config;
 
 public sealed class SystemConfiguration
 {

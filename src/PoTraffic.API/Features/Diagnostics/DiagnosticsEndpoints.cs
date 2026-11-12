@@ -1,12 +1,13 @@
-// filepath: src/PoTraffic.API/Features/Diagnostics/DiagnosticsEndpoints.cs
+// filepath: src/PoTraffic.Api/Features/Diagnostics/DiagnosticsEndpoints.cs
 // CI/CD rule #9 — Post-deployment smoke validation:
 //   • GET /health (liveness + readiness)
 //   • GET /diag/keyvault (MASKED Key Vault secret retrieval — proves identity wiring
 //     and never returns the raw secret value to the caller)
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
 
-namespace PoTraffic.API.Features.Diagnostics;
+namespace PoTraffic.Api.Features.Diagnostics;
 
 public static class DiagnosticsEndpoints
 {

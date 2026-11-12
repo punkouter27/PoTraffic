@@ -1,7 +1,7 @@
 using System.Globalization;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Config;
+namespace PoTraffic.Api.Features.Config;
 
 /// <summary>
 /// The monthly provider budget. Month-to-date spend is every billed Google call since the

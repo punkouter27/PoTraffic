@@ -1,6 +1,6 @@
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Time;
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 using Microsoft.Extensions.Logging;
@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.MonitoringWindows;
+namespace PoTraffic.Api.Features.MonitoringWindows;
 
 public sealed record CreateWindowCommand(
     RouteId RouteId,

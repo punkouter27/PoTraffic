@@ -1,5 +1,5 @@
 @implements IDisposable
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NotificationService NotificationService
 @inject PwaService Pwa
 
@@ -95,12 +95,11 @@
         _pushBusy = true;
         try
         {
-            PushKeyResponse? key = await Http.GetFromJsonAsync("/api/push/key", AppJsonContext.Default.PushKeyResponse);
+            PushKeyResponse? key = await Api.GetPushKeyAsync();
             string[]? sub = key is null ? null : await Pwa.SubscribePushAsync(key.PublicKey);
             if (sub is [string endpoint, string p256dh, string auth])
             {
-                HttpResponseMessage resp = await Http.PostAsJsonAsync("/api/push/subscriptions",
-                    new PushSubscriptionRequest(endpoint, p256dh, auth), AppJsonContext.Default.PushSubscriptionRequest);
+                HttpResponseMessage resp = await Api.SubscribePushAsync(new PushSubscriptionRequest(endpoint, p256dh, auth));
                 if (!resp.IsSuccessStatusCode)
                 {
                     await Pwa.UnsubscribePushAsync();
@@ -126,8 +125,7 @@
         try
         {
             if (await Pwa.UnsubscribePushAsync() is { } endpoint)
-                await Http.PostAsJsonAsync("/api/push/unsubscribe",
-                    new PushUnsubscribeRequest(endpoint), AppJsonContext.Default.PushUnsubscribeRequest);
+                await Api.UnsubscribePushAsync(new PushUnsubscribeRequest(endpoint));
         }
         catch (Exception ex) when (ex is HttpRequestException or JSException) { /* server prunes it on next send */ }
         finally

@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    PoTraffic.Integration — Integration tier (50% of the test pyramid).
+
+    Spins up a real WebApplicationFactory<Program> in the Testing environment
+    and a Testcontainers-managed Azurite instance for Table Storage.
+
+    Tier ratio (100/50/25/25) enforced by the solution layout:
+      • PoTraffic.Unit        — Unit tier (no I/O, validators, handlers).
+      • PoTraffic.Integration            — Integration tier (this file, WAF + Azurite).
+      • PoTraffic.E2EUI/Api    — E2E API tier (HTTP against a live API).
+      • PoTraffic.E2EUI/Ui     — E2E UI tier (Playwright in real browsers).
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>PoTraffic.Integration</RootNamespace>
+    <AssemblyName>PoTraffic.Integration</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);xUnit1031</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PoTraffic.Shared\PoTraffic.Shared.csproj" />
+    <ProjectReference Include="..\..\src\PoTraffic.Api\PoTraffic.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

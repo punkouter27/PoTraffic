@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 internal static class AlertServiceExtensions
 {

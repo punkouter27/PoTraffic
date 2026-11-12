@@ -1,8 +1,8 @@
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 /// <summary>
 /// Records the zone the user's browser reports. Sent on every app load, so it is a no-op

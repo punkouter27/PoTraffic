@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace PoTraffic.API.Infrastructure.Scheduling;
+namespace PoTraffic.Api.Infrastructure.Scheduling;
 
 /// <summary>
 /// Abstraction for scheduling background jobs.

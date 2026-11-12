@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -6,14 +7,19 @@ using System.Text.Json;
 using Azure;
 using Azure.Data.Tables;
 
-namespace PoTraffic.API.Infrastructure.Scheduling;
+namespace PoTraffic.Api.Infrastructure.Scheduling;
 
 /// <summary>
 /// IJobScheduler implementation backed by Azure Table Storage (Azurite locally).
 /// Persists job state to durable tables so scheduled jobs survive process restarts.
 /// </summary>
-public sealed class TableStorageJobScheduler : IJobScheduler
+public sealed class TableStorageJobScheduler : IJobScheduler, IDisposable
 {
+    private static readonly JsonSerializerOptions InvocationJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     private readonly TableClient _tableClient;
     internal const string TableName = "ScheduledJobs";
     private const string OneShotPartition = "OneShot";
@@ -331,6 +337,7 @@ public sealed class TableStorageJobScheduler : IJobScheduler
             ? ComputeNextFire(at, after)
             : after.AddDays(1);
 
+    [RequiresUnreferencedCode("Calls System.Text.Json.JsonSerializer.Serialize<TValue>(TValue, JsonSerializerOptions)")]
     private static JobInvocationInfo ExtractInvocationInfo(Expression<Func<Task>> job)
     {
         LambdaExpression lambda = job;
@@ -345,10 +352,7 @@ public sealed class TableStorageJobScheduler : IJobScheduler
                 .Select(EvaluateExpression)
                 .ToArray();
 
-            string argsJson = JsonSerializer.Serialize(args, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            string argsJson = JsonSerializer.Serialize(args, InvocationJsonOptions);
 
             return new JobInvocationInfo(typeName, methodName, argsJson);
         }
@@ -386,6 +390,8 @@ public sealed class TableStorageJobScheduler : IJobScheduler
                 Expression.Convert(expression, typeof(object)));
         return lambda.Compile().Invoke();
     }
+
+    public void Dispose() => _scheduleChanged.Dispose();
 
     private sealed record JobInvocationInfo(string TypeName, string MethodName, string ArgsJson);
 }

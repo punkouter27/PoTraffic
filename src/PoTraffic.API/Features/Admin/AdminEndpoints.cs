@@ -1,11 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using PoTraffic.API.Features.Admin;
-using PoTraffic.API.Infrastructure;
+using PoTraffic.Api.Features.Admin;
+using PoTraffic.Api.Infrastructure;
 using PoTraffic.Shared.DTOs.Admin;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Admin;
+namespace PoTraffic.Api.Features.Admin;
 
 public static class AdminEndpoints
 {

@@ -1,10 +1,10 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 /// <summary>
 /// Monday's look back at each commute: the quickest and slowest day, how the week compared

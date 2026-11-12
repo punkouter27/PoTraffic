@@ -3,11 +3,11 @@ using System.Reflection;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using PoTraffic.API.Platform;
+using PoTraffic.Api.Platform;
 using Serilog;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
-namespace PoTraffic.API.Infrastructure.Observability;
+namespace PoTraffic.Api.Infrastructure.Observability;
 
 internal static class ObservabilityExtensions
 {
@@ -16,7 +16,7 @@ internal static class ObservabilityExtensions
     /// </summary>
     internal static WebApplicationBuilder AddObservability(this WebApplicationBuilder builder)
     {
-        string roleName = Assembly.GetExecutingAssembly().GetName().Name ?? "PoTraffic.API";
+        string roleName = Assembly.GetExecutingAssembly().GetName().Name ?? "PoTraffic.Api";
 
         // ── OpenTelemetry logs ────────────────────────────────────────────────
         builder.Logging.AddOpenTelemetry(logging =>

@@ -1,5 +1,5 @@
-using PoTraffic.API.Infrastructure.Scheduling;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Scheduling;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 using Microsoft.Extensions.Logging;
@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.MonitoringWindows;
+namespace PoTraffic.Api.Features.MonitoringWindows;
 
 public sealed record StopWindowCommand(
     SessionId SessionId,

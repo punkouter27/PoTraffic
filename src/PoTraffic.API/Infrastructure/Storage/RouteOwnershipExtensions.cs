@@ -1,6 +1,6 @@
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Infrastructure.Storage;
+namespace PoTraffic.Api.Infrastructure.Storage;
 
 /// <summary>
 /// Route-ownership lookups against <see cref="TableStorageContext"/>.

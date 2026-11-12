@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
-namespace PoTraffic.API.Infrastructure;
+namespace PoTraffic.Api.Infrastructure;
 
 internal static class BlazorClientHostExtensions
 {
@@ -11,6 +12,7 @@ internal static class BlazorClientHostExtensions
     /// gates the UI. Static assets themselves are served by the
     /// <c>UseBlazorFrameworkFiles</c>/<c>UseStaticFiles</c> middleware, not here.
     /// </summary>
+    [RequiresUnreferencedCode("Calls Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.Map(String, Delegate)")]
     internal static WebApplication MapBlazorClientHost(this WebApplication app)
     {
         // Unknown API routes 404 instead of falling through to the SPA shell (which would

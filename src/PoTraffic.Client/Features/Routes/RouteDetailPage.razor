@@ -5,7 +5,7 @@
 @using PoTraffic.Shared.Enums
 @using PoTraffic.Client.Features.MonitoringWindows
 @inherits PollingComponentBase
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NavigationManager Nav
 @inject UiPreferences Prefs
 @inject NotificationService Notifications
@@ -31,7 +31,7 @@
    one-line notice with Retry instead of blanking the page.
    ────────────────────────────────────────────────────────────────────── *@
 
-<PageTitle>@_pageTitle — PoTraffic</PageTitle>
+<PageTitle>@_pageTitle · PoTraffic</PageTitle>
 
 @if (IsFirstLoad)
 {
@@ -383,43 +383,28 @@ else
         if (_notFound)
             return;
 
-        string dayOfWeek = DateTime.Today.DayOfWeek.ToString();
-        string sinceUtc = Uri.EscapeDataString(DateTime.UtcNow.AddHours(-24).ToString("o"));
+        int dayOfWeek = (int)DateTime.Today.DayOfWeek;
+        string sinceUtc = DateTime.UtcNow.AddHours(-24).ToString("o");
 
-        // None of these reads depends on another's result, so they all go out at once.
-        // Awaited one-by-one, a refresh cost the SUM of the round-trips — every 15
-        // seconds, per open tab.
         Task<RouteDto?> routeTask = LoadRouteAsync();
-        Task<List<SessionDto>?> sessionsTask =
-            Http.GetFromJsonAsync($"/api/routes/{RouteId}/sessions", AppJsonContext.Default.ListSessionDto);
-        Task<PagedResult<PollRecordDto>?> historyTask =
-            Http.GetFromJsonAsync($"/api/routes/{RouteId}/poll-history?page=1&pageSize=300&sinceUtc={sinceUtc}", AppJsonContext.Default.PagedResultPollRecordDto);
-        Task<DepartureDto?> planTask = GetOptionalAsync(
-            $"/api/routes/{RouteId}/departure?dayOfWeek={dayOfWeek}", AppJsonContext.Default.DepartureDto);
+        Task<List<SessionDto>?> sessionsTask = Api.GetSessionsAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId));
+        Task<PagedResult<PollRecordDto>?> historyTask = Api.GetPollHistoryAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId), 1, 300, sinceUtc);
+        Task<DepartureDto?> planTask = Api.GetDepartureOptionalAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId), dayOfWeek);
 
-        // The road shape is fetched from the provider once per route and stored, so this
-        // rides the normal refresh cadence: after the first call the server is only
-        // re-deciding the colour, which is exactly what should follow a new sample.
-        // 404 when the route's coordinates can't be parsed — RouteMap has an empty state for that.
-        // The map and the weather are advanced panels: a panel that is switched off is
-        // not fetched at all, so the default page costs five reads, not seven.
         Task<RoutePathDto?> pathTask = ShowMap
-            ? GetOptionalAsync($"/api/routes/{RouteId}/path", AppJsonContext.Default.RoutePathDto)
+            ? Api.GetRoutePathOptionalAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId))
             : Task.FromResult(_path);
 
-        // The weekly grid rides along with the fan-out, but only when the copy in hand
-        // has aged out — see HeatmapMaxAge. It is read from stored samples, never the
-        // provider, so fetching it before its tab is opened costs nothing billed.
         bool refreshHeatmap = _heatmapFetchedAt is not { } fetchedAt
             || DateTimeOffset.UtcNow - fetchedAt > HeatmapMaxAge;
         Task<VolatilityHeatmapDto?> heatmapTask = refreshHeatmap
-            ? Http.GetFromJsonAsync($"/api/routes/{RouteId}/heatmap", AppJsonContext.Default.VolatilityHeatmapDto)
+            ? Api.GetHeatmapAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId))
             : Task.FromResult(_heatmap);
 
         bool refreshWeather = ShowWeather
             && (_weatherFetchedAt is not { } weatherAt || DateTimeOffset.UtcNow - weatherAt > WeatherMaxAge);
         Task<WeatherImpactResponse?> weatherTask = refreshWeather
-            ? Http.GetFromJsonAsync($"/api/routes/{RouteId}/weather-impact", AppJsonContext.Default.WeatherImpactResponse)
+            ? Api.GetWeatherImpactAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId))
             : Task.FromResult(_weatherImpact);
 
         await Task.WhenAll(routeTask, sessionsTask, historyTask, planTask, heatmapTask, pathTask, weatherTask);
@@ -481,8 +466,7 @@ else
     {
         try
         {
-            HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{RouteId}/name",
-                new SetRouteNameRequest(name), AppJsonContext.Default.SetRouteNameRequest);
+            HttpResponseMessage resp = await Api.SetRouteNameAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId), name);
             if (resp.IsSuccessStatusCode)
                 await RefreshAsync();
         }
@@ -506,42 +490,12 @@ else
     /// The dashboard calls the same endpoint inside a try/catch, which is why the
     /// cards were unaffected and the bug only appeared one tap deeper.
     /// </summary>
-    private async Task<T?> GetOptionalAsync<T>(string url, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> typeInfo)
-        where T : class
-    {
-        HttpResponseMessage response = await Http.GetAsync(url);
-
-        if (response.StatusCode is System.Net.HttpStatusCode.NoContent or System.Net.HttpStatusCode.NotFound)
-            return null;
-
-        // Anything else that isn't success SHOULD still propagate — that is the
-        // signal PollingComponentBase turns into backoff.
-        response.EnsureSuccessStatusCode();
-
-        if (response.Content.Headers.ContentLength is 0)
-            return null;
-
-        return await response.Content.ReadFromJsonAsync(typeInfo);
-    }
-
-    /// <summary>
-    /// Loads the route and converts a 404 — "this id doesn't exist, or it isn't
-    /// yours" — into a successful <c>null</c> result so the page can render its
-    /// empty state with the "Route not found" heading instead of going into
-    /// exponential backoff. Any other failure (network, 5xx) still propagates
-    /// to <see cref="PollingComponentBase"/> so the existing retry-with-backoff
-    /// machinery keeps working.
-    /// </summary>
     private async Task<RouteDto?> LoadRouteAsync()
     {
-        HttpResponseMessage response = await Http.GetAsync($"/api/routes/{RouteId}");
-        _notFound = response.StatusCode == System.Net.HttpStatusCode.NotFound;
+        (RouteDto? route, bool notFound) = await Api.GetRouteAsync(PoTraffic.Shared.Ids.RouteId.From(RouteId));
+        _notFound = notFound;
         if (_notFound)
-        {
             _pageTitle = "Commute not found";
-            return null;
-        }
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync(AppJsonContext.Default.RouteDto);
+        return route;
     }
 }

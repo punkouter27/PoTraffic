@@ -1,5 +1,5 @@
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,13 +7,13 @@ using Microsoft.Extensions.Logging;
 
 
 
-using PoTraffic.API.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Providers;
 
 using PoTraffic.Shared.Constants;
 
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 public sealed record ExecutePollCommand(RouteId RouteId);
 

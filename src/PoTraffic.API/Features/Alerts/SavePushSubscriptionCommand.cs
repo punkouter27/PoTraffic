@@ -1,7 +1,7 @@
 using FluentValidation;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 public sealed record SavePushSubscriptionCommand(UserId UserId, string Endpoint, string P256dh, string Auth);
 

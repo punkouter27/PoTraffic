@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 
-namespace PoTraffic.API.Platform;
+namespace PoTraffic.Api.Platform;
 
 /// <summary>
 /// The conventions every Po app shares. Generated from <c>po-shared/src/PoPlatform.cs.tmpl</c> -

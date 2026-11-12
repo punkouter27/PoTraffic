@@ -1,11 +1,11 @@
 using FluentValidation;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Logging;
-using PoTraffic.API.Infrastructure.Providers;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Logging;
+using PoTraffic.Api.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.Constants;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>
 /// Changes a route's origin and/or destination — a typo, or a move across town — without

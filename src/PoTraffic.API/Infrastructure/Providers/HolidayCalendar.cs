@@ -1,8 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 /// <summary>Public holidays, so a Thanksgiving-empty motorway doesn't pass for a normal Thursday.</summary>
 public interface IHolidayCalendar
@@ -32,6 +33,7 @@ public sealed class NagerHolidayCalendar(HttpClient http, HybridCache cache, ILo
         return holidays.GetValueOrDefault(date);
     }
 
+    [RequiresUnreferencedCode("Calls System.Net.Http.Json.HttpClientJsonExtensions.GetFromJsonAsync<TValue>(String, CancellationToken)")]
     private async ValueTask<Dictionary<DateOnly, string>> FetchAsync(string country, int year, CancellationToken ct)
     {
         try
@@ -39,8 +41,8 @@ public sealed class NagerHolidayCalendar(HttpClient http, HybridCache cache, ILo
             NagerHoliday[]? rows = await http.GetFromJsonAsync<NagerHoliday[]>(
                 $"https://date.nager.at/api/v3/PublicHolidays/{year}/{Uri.EscapeDataString(country)}", ct);
             return (rows ?? [])
-                .Where(h => h.Global && DateOnly.TryParse(h.Date, out _))
-                .GroupBy(h => DateOnly.Parse(h.Date))
+                .Where(h => h.Global && DateOnly.TryParse(h.Date, System.Globalization.CultureInfo.InvariantCulture, out _))
+                .GroupBy(h => DateOnly.Parse(h.Date, System.Globalization.CultureInfo.InvariantCulture))
                 .ToDictionary(g => g.Key, g => g.First().Name);
         }
         catch (Exception ex) when (ex is HttpRequestException or System.Text.Json.JsonException or TaskCanceledException)

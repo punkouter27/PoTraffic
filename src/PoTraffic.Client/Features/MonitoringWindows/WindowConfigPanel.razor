@@ -1,7 +1,7 @@
 @using System.Text.Json
 @using PoTraffic.Shared.DTOs.Routes
 @using PoTraffic.Shared.DTOs.History
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 
 @* The route's monitoring schedule as one line of the route page's settings card, and
    the shared editor when it is being changed.
@@ -117,9 +117,8 @@
         _error = null;
         try
         {
-            HttpResponseMessage resp = await Http.PostAsJsonAsync(
-                $"/api/routes/{RouteId}/windows/{Window.Id}/stop",
-                new StopSessionRequest(Session.Id), AppJsonContext.Default.StopSessionRequest);
+            HttpResponseMessage resp = await Api.StopWindowAsync(
+                PoTraffic.Shared.Ids.RouteId.From(RouteId), Window.Id, Session.Id);
 
             if (resp.IsSuccessStatusCode)
                 await OnSaved.InvokeAsync();
@@ -136,21 +135,24 @@
         byte mask = ScheduleFields.ToMask(_days);
         if (mask == 0) { _error = "Select at least one day."; return; }
         if (_startTime is null || _endTime is null || !ScheduleFields.EndDiffersFromStart(_startTime, _endTime))
+        {
+            _error = "End time must be different from start time.";
             return;
+        }
 
         _saving = true;
         try
         {
             // Editing replaces the window. The server swaps it in the same save that adds the
             // new one, so a rejected save leaves the old schedule standing.
-            HttpResponseMessage resp = await Http.PostAsJsonAsync(
-                $"/api/routes/{RouteId}/windows",
+            HttpResponseMessage resp = await Api.SaveWindowAsync(
+                PoTraffic.Shared.Ids.RouteId.From(RouteId),
                 new SaveWindowRequest(
                     ScheduleFields.ToHHmm(_startTime.Value),
                     ScheduleFields.ToHHmm(_endTime.Value),
                     mask,
                     ScheduleFields.LocalZoneId,
-                    _editing ? Window?.Id : null), AppJsonContext.Default.SaveWindowRequest);
+                    _editing ? Window?.Id : null));
 
             if (!resp.IsSuccessStatusCode)
             {
@@ -166,8 +168,8 @@
                 return;
             }
 
-            HttpResponseMessage startResp = await Http.PostAsync(
-                $"/api/routes/{RouteId}/windows/{windowId}/start", null);
+            HttpResponseMessage startResp = await Api.StartWindowAsync(
+                PoTraffic.Shared.Ids.RouteId.From(RouteId), WindowId.From(windowId));
             if (!startResp.IsSuccessStatusCode)
             {
                 _error = startResp.StatusCode == System.Net.HttpStatusCode.TooManyRequests

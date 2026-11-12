@@ -1,12 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
-using PoTraffic.API.Infrastructure.Security;
+using PoTraffic.Api.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.Auth;
 
-namespace PoTraffic.API.Features.Auth;
+namespace PoTraffic.Api.Features.Auth;
 
 public static class AuthEndpoints
 {
@@ -40,7 +41,7 @@ public static class AuthEndpoints
             .Select(p => p.ProviderName)
             .ToList();
         // Rule 4.4 — Dev shows Microsoft + Guest; Testing forces Guest; Prod is Microsoft-only.
-        bool guestEnabled = env.IsDevelopment() || env.IsEnvironment("Testing");
+        bool guestEnabled = env.IsDevelopment() || env.IsEnvironment("Test");
         return Results.Ok(new { providers = available, guestEnabled });
     }
 

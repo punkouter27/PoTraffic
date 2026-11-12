@@ -1,4 +1,4 @@
-# filepath: SCRIPTS/run-tests.ps1
+# filepath: scripts/run-tests.ps1
 <#
 .SYNOPSIS
     Run all four test tiers (Unit, Integration, E2E API, E2E UI)
@@ -6,12 +6,12 @@
 
 .DESCRIPTION
     Tiers:
-      • PoTraffic.UnitTests          (no I/O)
-      • PoTraffic.IntegrationTests   (WAF + Azurite via Testcontainers)
-      • PoTraffic.E2ETests/Api       (live HTTP against a Testing host)
-      • PoTraffic.E2ETests/Ui        (Playwright mobile + desktop landscape)
+      • PoTraffic.Unit          (no I/O)
+      • PoTraffic.Integration   (WAF + Azurite via Testcontainers)
+      • PoTraffic.E2EUI/Api       (live HTTP against a Testing host)
+      • PoTraffic.E2EUI/Ui        (Playwright mobile + desktop landscape)
 
-    Azurite is owned by Testcontainers inside PoTraffic.IntegrationTests — explicitly torn
+    Azurite is owned by Testcontainers inside PoTraffic.Integration — explicitly torn
     down at the end of the run. E2E UI launches Chrome in headed mode by default
     (E2E_HEADED=0 to force headless on CI).
 
@@ -25,7 +25,7 @@
     Skip the initial solution build.
 
 .EXAMPLE
-    pwsh ./SCRIPTS/run-tests.ps1 -Tier all -HtmlReportPath ./TestResults/test-report.html
+    pwsh ./scripts/run-tests.ps1 -Tier all -HtmlReportPath ./TestResults/test-report.html
 #>
 [CmdletBinding()]
 param(
@@ -70,7 +70,7 @@ function Stop-PortProcesses {
     foreach ($p in $pids) {
         try {
             $proc = Get-Process -Id $p -ErrorAction SilentlyContinue
-            if ($proc -and ($proc.ProcessName -in @('dotnet', 'PoTraffic.API'))) {
+            if ($proc -and ($proc.ProcessName -in @('dotnet', 'PoTraffic.Api'))) {
                 Write-Host "  Stopping stale $($proc.ProcessName) PID $p on port $Port" -ForegroundColor Yellow
                 Stop-Process -Id $p -Force -ErrorAction SilentlyContinue
             }
@@ -107,7 +107,7 @@ function Install-PlaywrightChromium {
         Write-Host "  Reusing cached Chromium: $($existing.FullName)" -ForegroundColor Green
         return
     }
-    $script = Join-Path $root 'tests/PoTraffic.E2ETests/bin/Debug/net10.0/playwright.ps1'
+    $script = Join-Path $root 'tests/PoTraffic.E2EUI/bin/Debug/net10.0/playwright.ps1'
     if (Test-Path $script) {
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $script install chromium
     }
@@ -123,7 +123,7 @@ function Start-TestingHost {
     $stderr = Join-Path $hostLogDir 'stderr.log'
     Write-Host "  Starting Testing host at $Url ..." -ForegroundColor Yellow
     return Start-Process -FilePath 'dotnet' `
-        -ArgumentList @('run', '--project', (Join-Path $root 'src/PoTraffic.API/PoTraffic.API.csproj'), '--launch-profile', 'Testing', '--no-build') `
+        -ArgumentList @('run', '--project', (Join-Path $root 'src/PoTraffic.Api/PoTraffic.Api.csproj'), '--launch-profile', 'Test', '--no-build') `
         -WorkingDirectory $root `
         -RedirectStandardOutput $stdout `
         -RedirectStandardError $stderr `
@@ -283,10 +283,10 @@ if (-not $SkipBuild) {
 # [Theory] expands to, so a theory with 30 rows counts as 30. Over a cap fails the run
 # before any tier starts — trim or merge tests rather than raising the number.
 $testCaps = @(
-    @{ Name = 'Unit';        Project = 'tests/PoTraffic.UnitTests';        Match = $null;                       Cap = 100 },
-    @{ Name = 'Integration'; Project = 'tests/PoTraffic.IntegrationTests'; Match = $null;                       Cap = 50 },
-    @{ Name = 'E2E API';     Project = 'tests/PoTraffic.E2ETests';         Match = 'PoTraffic.E2ETests.Api.';   Cap = 25 },
-    @{ Name = 'E2E UI';      Project = 'tests/PoTraffic.E2ETests';         Match = 'PoTraffic.E2ETests.Ui.';    Cap = 25 }
+    @{ Name = 'Unit';        Project = 'tests/PoTraffic.Unit';        Match = $null; Cap = 100 },
+    @{ Name = 'Integration'; Project = 'tests/PoTraffic.Integration'; Match = $null; Cap = 50 },
+    @{ Name = 'E2E API';     Project = 'tests/PoTraffic.E2EAPI';      Match = $null; Cap = 25 },
+    @{ Name = 'E2E UI';      Project = 'tests/PoTraffic.E2EUI';       Match = $null; Cap = 25 }
 )
 
 function Assert-TestCaps {
@@ -314,13 +314,13 @@ Assert-TestCaps
 # ── Tier 1: Unit (no I/O) ───────────────────────────────────────────────────
 if ($runUnit) {
     Invoke-Tier -TierName 'UnitTests' -DisplayName 'Unit (pure, no I/O)' `
-        -Project 'tests/PoTraffic.UnitTests'
+        -Project 'tests/PoTraffic.Unit'
 }
 
 # ── Tier 2: Integration (WAF + Azurite via Testcontainers) ──────────────────
 if ($runIntegration) {
     Invoke-Tier -TierName 'IntegrationTests' -DisplayName 'Integration (WAF + Azurite)' `
-        -Project 'tests/PoTraffic.IntegrationTests'
+        -Project 'tests/PoTraffic.Integration'
     # Explicit teardown — even though Testcontainers' resource reaper handles leftovers,
     # proactively kill the container so nothing lingers on the host.
     try {
@@ -340,14 +340,14 @@ if ($runE2eApi -or $runE2eUi) {
 
         if ($runE2eApi) {
             Invoke-Tier -TierName 'E2EApiTests' -DisplayName 'E2E API (live HTTP)' `
-                -Project 'tests/PoTraffic.E2ETests' -Filter 'FullyQualifiedName~PoTraffic.E2ETests.Api.'
+                -Project 'tests/PoTraffic.E2EAPI'
         }
         if ($runE2eUi) {
             Install-PlaywrightChromium
             # Headed Chrome by default on dev workstations
             if (-not $env:E2E_HEADED) { $env:E2E_HEADED = '1' }
             Invoke-Tier -TierName 'E2EUiTests' -DisplayName 'E2E UI (Playwright mobile + desktop landscape)' `
-                -Project 'tests/PoTraffic.E2ETests' -Filter 'FullyQualifiedName~PoTraffic.E2ETests.Ui.'
+                -Project 'tests/PoTraffic.E2EUI'
         }
     }
     finally {

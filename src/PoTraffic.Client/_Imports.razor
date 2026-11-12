@@ -10,27 +10,17 @@
 @using Microsoft.JSInterop
 @using PoTraffic.Client
 @using PoTraffic.Client.Layout
-@using PoTraffic.Client.Pages
+@using PoTraffic.Shared.DTOs
 @using PoTraffic.Shared.DTOs.Account
 @using PoTraffic.Shared.DTOs.Admin
 @using PoTraffic.Shared.DTOs.Auth
 @using PoTraffic.Shared.DTOs.Routes
 @using Radzen
 @using Radzen.Blazor
-@using PoTraffic.Client.Infrastructure
-@using PoTraffic.Client.Components
-@* Feature components resolve here too: Components/ holds only the shared, generic pieces
-   (PtIcon, PageHeader, UndoBar...), and anything that knows what a route is lives in its
-   own slice. RouteMap, TrendChart and VolatilityHeatmap moved for exactly that reason. *@
+@using PoTraffic.Client.Services
 @using PoTraffic.Client.Features.Routes
 @using PoTraffic.Shared.Constants
 @using PoTraffic.Shared.Enums
-@using PoTraffic.Client.Infrastructure.Http
+@using PoTraffic.Client.Services.Http
 @using PoTraffic.Shared.DTOs.History
-
-@* No global [Authorize]: it would also land on library/layout components (NavMenu,
-   BottomNav) that render auth-conditional UI on purpose. App.razor's
-   <AuthorizeRouteView> sends anonymous users to RedirectToLogin, but only for pages
-   that carry [Authorize] — so every signed-in page declares it (admin pages with
-   Roles="Administrator"), and public pages declare [AllowAnonymous]. *@
 @using PoTraffic.Shared.Ids

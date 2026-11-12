@@ -9,7 +9,7 @@
    ────────────────────────────────────────────────────────────────────── *@
 
 @using PoTraffic.Shared.Enums
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 @inject NotificationService NotificationService
 
 <div class="pt-probe-chips" aria-label="Route probe status">
@@ -83,7 +83,7 @@
         _checking = true;
         try
         {
-            if (await CheckNow.RunAsync(Http, NotificationService, RouteId) is { } result)
+            if (await CheckNow.RunAsync(Api, NotificationService, PoTraffic.Shared.Ids.RouteId.From(RouteId)) is { } result)
             {
                 _manualCheck = (DateTime.Now, TextFormatting.Minutes(result.DurationSeconds));
                 await OnProbeCompleted.InvokeAsync();

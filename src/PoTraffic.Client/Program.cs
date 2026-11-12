@@ -2,27 +2,40 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.JSInterop;
 using PoTraffic.Client;
-using PoTraffic.Client.Infrastructure;
-using PoTraffic.Client.Infrastructure.Auth;
-using PoTraffic.Client.Infrastructure.Http;
+using PoTraffic.Client.Services;
+using PoTraffic.Client.Services.Auth;
+using PoTraffic.Client.Services.Http;
 using Radzen;
 
 WebAssemblyHostBuilder builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Base address for API calls — same origin as the hosting ASP.NET Core app.
-// The BFF session cookie flows automatically on same-origin requests; the
-// client never stores or attaches tokens.
 Uri apiBase = new(builder.HostEnvironment.BaseAddress);
 
-builder.Services.AddScoped(sp => new HttpClient(
-    new UnauthorizedRedirectHandler(sp.GetRequiredService<NavigationManager>())
+builder.Services.AddScoped(sp =>
+{
+    DevFakeUserHandler fakeUserHandler = new(
+        builder.HostEnvironment,
+        sp.GetRequiredService<IJSRuntime>())
     {
         InnerHandler = new HttpClientHandler()
-    })
-{ BaseAddress = apiBase });
+    };
+
+    UnauthorizedRedirectHandler authRedirectHandler = new(sp.GetRequiredService<NavigationManager>())
+    {
+        InnerHandler = fakeUserHandler
+    };
+
+    return new HttpClient(authRedirectHandler)
+    {
+        BaseAddress = apiBase
+    };
+});
+
+builder.Services.AddScoped<PoTrafficApiClient>();
 
 // Authentication — cookie-backed BFF auth state provider (GET /api/auth/me)
 builder.Services.AddScoped<CookieAuthenticationStateProvider>();
@@ -42,9 +55,7 @@ builder.Services.AddScoped<PageActivityMonitor>();
 // Holds deletes for a grace period so "Undo" has something to undo.
 builder.Services.AddScoped<PendingDeletionService>();
 
-// Service-worker registration, offline caching and the install prompt. Scoped rather
-// than transient: the browser's beforeinstallprompt event fires once per page load and
-// this is what holds it until Settings asks.
+// Service-worker registration, offline caching and the install prompt.
 builder.Services.AddScoped<PwaService>();
 
 // The motion setting that governs the chart draw-in and the map pins' pulse.
@@ -53,15 +64,11 @@ builder.Services.AddScoped<FxService>();
 // One once-a-second heartbeat shared by every live countdown, instead of a timer each.
 builder.Services.AddScoped<ClockTicker>();
 
-// Which advanced panels (map, weather, sparklines) the signed-in user has switched on —
-// saved on their account, so the choice follows them to every device.
+// Which advanced panels (map, weather, sparklines) the signed-in user has switched on.
 builder.Services.AddScoped<UiPreferences>();
 
 WebAssemblyHost host = builder.Build();
 
-// The advanced-panel switches are read before the first render, so a page that draws the
-// map knows it should on its first paint instead of popping it in later. One small GET;
-// it never throws, and signed out it simply reads as "all off".
 await host.Services.GetRequiredService<UiPreferences>().LoadAsync();
 
 await host.RunAsync();

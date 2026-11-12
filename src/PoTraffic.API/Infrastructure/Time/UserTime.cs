@@ -1,7 +1,7 @@
 using System.Globalization;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Infrastructure.Time;
+namespace PoTraffic.Api.Infrastructure.Time;
 
 /// <summary>
 /// The user's wall clock. Every per-slot statistic — baseline, best departure, congestion

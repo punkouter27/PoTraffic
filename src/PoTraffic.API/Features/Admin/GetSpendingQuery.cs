@@ -1,8 +1,8 @@
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Infrastructure.Storage;
 using PoTraffic.Shared.DTOs.Admin;
 
-namespace PoTraffic.API.Features.Admin;
+namespace PoTraffic.Api.Features.Admin;
 
 /// <summary>This month's provider spend against the monthly cap, by call kind, for the Admin page.</summary>
 public sealed record GetSpendingQuery;

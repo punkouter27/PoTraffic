@@ -21,10 +21,10 @@
 // MOTION: the first draw of a series draws itself in; every later change MORPHS — each
 // sample glides from where the old line was to where the new one is, and the scale
 // glides with it — so a refresh or a zoom reads as the same line moving rather than a
-// new chart replacing the old one. Both run on the shared ticker (pt-fx.js) and both
+// new chart replacing the old one. Both run on the shared ticker (po-fx.js) and both
 // are skipped below motion "full".
 
-import * as fx from "./pt-fx.js";
+import * as fx from "./po-fx.js";
 
 /** @type {WeakMap<HTMLCanvasElement, object>} */
 const states = new WeakMap();

@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace PoTraffic.API.Infrastructure.Logging;
+namespace PoTraffic.Api.Infrastructure.Logging;
 
 /// <summary>
 /// Produces a stable, non-reversible token for a PII value (e.g. a user-entered home/work

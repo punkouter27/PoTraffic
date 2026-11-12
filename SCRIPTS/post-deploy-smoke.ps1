@@ -1,10 +1,10 @@
-# filepath: SCRIPTS/post-deploy-smoke.ps1
+# filepath: scripts/post-deploy-smoke.ps1
 <#
 .SYNOPSIS
     CI/CD rule #9 — Post-deployment smoke validation.
 
 .DESCRIPTION
-    Runs three browser-style smoke checks against a freshly-deployed PoTraffic.API
+    Runs three browser-style smoke checks against a freshly-deployed PoTraffic.Api
     instance. Exits non-zero if any check fails — the deploy job marks red.
 
     1. /health/json → expect 200 + "Healthy" / "Degraded" JSON body
@@ -30,7 +30,7 @@
     Useful for "the new client bundle is live" verification.
 
 .EXAMPLE
-    pwsh ./SCRIPTS/post-deploy-smoke.ps1 -BaseUrl https://potraffic-api.azurewebsites.net
+    pwsh ./scripts/post-deploy-smoke.ps1 -BaseUrl https://potraffic-api.azurewebsites.net
 #>
 [CmdletBinding()]
 param(

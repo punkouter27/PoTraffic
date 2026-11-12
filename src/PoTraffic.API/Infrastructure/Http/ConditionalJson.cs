@@ -1,10 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Http.Headers;
 using Microsoft.Net.Http.Headers;
 
-namespace PoTraffic.API.Infrastructure.Http;
+namespace PoTraffic.Api.Infrastructure.Http;
 
 /// <summary>
 /// JSON results that carry a content-derived <c>ETag</c> and answer <c>304 Not Modified</c>

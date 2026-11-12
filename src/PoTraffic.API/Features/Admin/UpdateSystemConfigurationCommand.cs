@@ -1,8 +1,8 @@
 using FluentValidation;
-using PoTraffic.API.Features.Config;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Admin;
+namespace PoTraffic.Api.Features.Admin;
 
 /// <summary>
 /// Updates one administrator-editable configuration value. Only the keys catalogued in

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
-namespace PoTraffic.API.Infrastructure.Security;
+namespace PoTraffic.Api.Infrastructure.Security;
 
 /// <summary>
 /// Header-driven authentication for Development and Testing (Rule 3 — Dev/Test Auth).

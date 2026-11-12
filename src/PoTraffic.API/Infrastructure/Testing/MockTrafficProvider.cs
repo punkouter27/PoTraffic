@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
-using PoTraffic.API.Infrastructure.Providers;
+using PoTraffic.Api.Infrastructure.Providers;
 
-namespace PoTraffic.API.Infrastructure.Testing;
+namespace PoTraffic.Api.Infrastructure.Testing;
 
 /// <summary>
 /// Mock implementation of <see cref="ITrafficProvider"/> used for E2E and integration tests.

@@ -1,6 +1,6 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 /// <param name="AlertId">One alert, or null for every unread alert the user has.</param>
 public sealed record MarkAlertsReadCommand(UserId UserId, AlertId? AlertId);

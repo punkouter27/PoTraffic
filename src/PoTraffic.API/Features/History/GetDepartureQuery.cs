@@ -1,8 +1,8 @@
-using PoTraffic.API.Infrastructure.Storage;
-using PoTraffic.API.Infrastructure.Time;
+using PoTraffic.Api.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Time;
 using PoTraffic.Shared.DTOs.History;
 
-namespace PoTraffic.API.Features.History;
+namespace PoTraffic.Api.Features.History;
 
 public sealed record GetDepartureQuery(RouteId RouteId, UserId UserId, string DayOfWeek);
 
@@ -60,7 +60,7 @@ public sealed class GetDepartureQueryHandler(TableStorageContext db)
         DeparturePlanDto? plan = null;
         if (route.ArriveBy is { } arriveBy)
         {
-            string arriveText = arriveBy.ToString("HH:mm");
+            string arriveText = arriveBy.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
             plan = BuildPlan(samples, arriveBy.Hour * 60 + arriveBy.Minute) is { } p
                 ? new DeparturePlanDto(
                     arriveText,

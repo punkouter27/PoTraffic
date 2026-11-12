@@ -1,14 +1,15 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Http;
-using PoTraffic.API.Infrastructure.Security;
+using PoTraffic.Api.Infrastructure.Http;
+using PoTraffic.Api.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.Routes;
 using PoTraffic.Shared.Enums;
 
-namespace PoTraffic.API.Features.Routes;
+namespace PoTraffic.Api.Features.Routes;
 
 /// <summary>
 /// Request DTO for the sample-route endpoint. The offset is the browser's, so the generated
@@ -28,14 +29,14 @@ public static class RoutesEndpoints
 
         group.MapGet("", GetRoutes);
         // Each of these spends paid provider calls (geocoding / directions).
-        group.MapPost("", CreateRoute).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
+        group.MapPost("", CreateRoute).RequireRateLimiting(PoTraffic.Api.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
         // Sample route with synthetic history, for an account that has nothing to show yet (#10)
         group.MapPost("sample", CreateSampleRoute);
         // Single route (drives the return-trip link, #3)
         group.MapGet("{routeId:guid}", GetRouteById);
         group.MapDelete("{routeId:guid}", DeleteRoute);
-        group.MapPost("{routeId:guid}/check-now", CheckNow).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
-        group.MapPost("{routeId:guid}/return-trip", CreateReturnTrip).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
+        group.MapPost("{routeId:guid}/check-now", CheckNow).RequireRateLimiting(PoTraffic.Api.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
+        group.MapPost("{routeId:guid}/return-trip", CreateReturnTrip).RequireRateLimiting(PoTraffic.Api.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
         // Road shape + how today compares, for the map on the route detail page.
         group.MapGet("{routeId:guid}/path", GetRoutePath);
         // Arrive-by target behind the departure plan; null body value clears it.
@@ -64,7 +65,7 @@ public static class RoutesEndpoints
                 RouteErrorCodes.NotFound => Results.NotFound(),
                 _ => Results.UnprocessableEntity(new { error = result.ErrorCode }),
             };
-        }).RequireRateLimiting(PoTraffic.API.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
+        }).RequireRateLimiting(PoTraffic.Api.Infrastructure.Security.RateLimitingExtensions.ProviderCalls);
         // Pause keeps the schedule and history but stops polling; resume re-arms it.
         group.MapPut("{routeId:guid}/paused", async (
             RouteId routeId, HttpContext ctx, SetRoutePausedHandler handler, [FromBody] SetRoutePausedRequest body) =>

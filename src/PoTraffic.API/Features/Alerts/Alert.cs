@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 /// <summary>
 /// A proactive alert raised when a route's live travel time crosses its baseline + σ (#1).

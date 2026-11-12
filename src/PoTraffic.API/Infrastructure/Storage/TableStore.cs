@@ -1,7 +1,7 @@
 using Azure;
 using Azure.Data.Tables;
 
-namespace PoTraffic.API.Infrastructure.Storage;
+namespace PoTraffic.Api.Infrastructure.Storage;
 
 public enum TableOpKind { Upsert, Delete }
 

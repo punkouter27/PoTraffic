@@ -1,0 +1,491 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PoTraffic Design Tokens — single source of truth for color / type / spacing
+   / elevation / motion. Wired to Radzen's CSS variables so third-party
+   components inherit the brand automatically.
+
+   Touch this file alone to reskin the entire app.
+
+   THEMING. Every dual-valued token is declared once with `light-dark()` rather
+   than twice in a light block and a dark override. The pair is resolved from
+   the element's `color-scheme`, which is set three ways below: unpinned follows
+   the OS, and `data-theme` (stamped by the resolver in index.html) pins it. A
+   consequence worth having: with no JavaScript at all the palette still follows
+   the OS, where the old two-block arrangement fell back to light.
+
+   This file holds TOKENS ONLY. Keyframes and motion utilities live in
+   po-motion.css; component rules live in app.css or a scoped stylesheet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Colour-scheme resolution ────────────────────────────────────────────────
+   Bare :root accepts either, so an unpinned visitor follows the OS. The
+   data-theme selectors pin one and are what the in-page resolver writes. */
+:root                     { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"]  { color-scheme: dark; }
+
+:root {
+    /* ── Palette (1 primary + 1 neutral + 4 accents) ─────────────────── */
+    --po-color-brand-50:  #eff6ff;
+    --po-color-brand-100: #dbeafe;
+    --po-color-brand-200: #bfdbfe;
+    --po-color-brand-300: #93c5fd;
+    --po-color-brand-400: #60a5fa;
+    --po-color-brand-500: #3b82f6;   /* primary */
+    --po-color-brand-600: #2563eb;
+    --po-color-brand-700: #1d4ed8;
+    --po-color-brand-800: #1e40af;
+    --po-color-brand-900: #1e3a8a;
+
+    --po-color-neutral-0:   #ffffff;
+    --po-color-neutral-50:  #f8fafc;
+    --po-color-neutral-100: #f1f5f9;
+    --po-color-neutral-200: #e2e8f0;
+    --po-color-neutral-300: #cbd5e1;
+    --po-color-neutral-400: #94a3b8;
+    --po-color-neutral-500: #64748b;
+    --po-color-neutral-600: #475569;
+    --po-color-neutral-700: #334155;
+    --po-color-neutral-800: #1e293b;
+    --po-color-neutral-900: #0f172a;
+
+    /* Accents — semantic. Identical in both themes; the surfaces they sit on
+       are what changes, and each accent clears AA on either. */
+    /* Success and warning are theme-split. As FILLS on a white card the -500 steps
+       measured 2.54:1 and 2.15:1, under the 3:1 that WCAG 1.4.11 asks of a
+       graphical object carrying meaning — these paint status dots and heatmap
+       cells, so they carry it. One step darker clears it on white; dark mode keeps
+       the vivid original, which it needs against a near-black surface.
+       Danger and info clear 3:1 on both themes unchanged. */
+    --po-color-success: light-dark(#059669, #10b981);
+    --po-color-warning: light-dark(#d97706, #f59e0b);
+    --po-color-danger:  #f43f5e;
+    --po-color-info:    #6366f1;
+
+    /* Brand at a weight that clears AA on the current surface. Interactive text
+       needs a darker blue on white and a lighter one on navy; every link and
+       accented label reads this rather than picking a step by hand. */
+    --po-color-brand-on-surface: light-dark(var(--po-color-brand-700), var(--po-color-brand-300));
+
+    /* ── Accents, at TEXT weight ───────────────────────────────────────
+       The four accents above are chosen to work as FILLS — heatmap cells,
+       badges, swipe actions — where a vivid colour is the point. As text they
+       are too light: measured against a white card, success came in at 2.54:1
+       and warning at 2.15:1, where AA asks 4.5:1.
+
+       These are the same four hues pushed to a weight that clears AA on the
+       current surface, exactly as --po-color-brand-on-surface does. Anything
+       that COLOURS TEXT uses these; anything that fills a shape keeps the
+       vivid original. */
+    --po-color-success-on-surface: light-dark(#047857, #6ee7b7);
+    --po-color-warning-on-surface: light-dark(#b45309, #fbbf24);
+    --po-color-danger-on-surface:  light-dark(#be123c, #fda4af);
+
+    /* ── Surfaces ─────────────────────────────────────────────────────
+       Light: page sits lowest, cards are white. Dark: page is darkest and
+       cards lift toward the viewer. */
+    --po-bg-page:    light-dark(var(--po-color-neutral-50), #0b1220);
+    --po-bg-surface: light-dark(var(--po-color-neutral-0),  #131c2e);
+    --po-bg-elev-1:  light-dark(var(--po-color-neutral-0),  #131c2e);
+    --po-bg-elev-2:  light-dark(var(--po-color-neutral-50), #1b2740);
+    --po-bg-sunken:  light-dark(var(--po-color-neutral-100), #070d18);
+
+    /* ── Foreground ramp — primary → faint ────────────────────────────
+       Every text colour in the app resolves through one of these, so no
+       component can hard-code a shade that survives into the other theme. */
+    --po-fg-primary:   light-dark(var(--po-color-neutral-900), var(--po-color-neutral-50));
+    --po-fg-strong:    light-dark(var(--po-color-neutral-800), var(--po-color-neutral-100));
+    --po-fg-body:      light-dark(var(--po-color-neutral-700), var(--po-color-neutral-200));
+    --po-fg-secondary: light-dark(var(--po-color-neutral-600), var(--po-color-neutral-300));
+    /* Not neutral-500: that measured 4.34:1 against the sunken well it is used on
+       (captions inside .pt-bg-sunken), just under AA. Nudged darker until the
+       WORST surface it appears on clears 4.5, rather than only the best one. */
+    --po-fg-muted:     light-dark(#5a6779, var(--po-color-neutral-400));
+    --po-fg-tertiary:  light-dark(var(--po-color-neutral-500), var(--po-color-neutral-400));
+    --po-fg-faint:     light-dark(var(--po-color-neutral-400), var(--po-color-neutral-600));
+    --po-fg-on-brand:  var(--po-color-neutral-0);
+
+    --po-border-subtle: light-dark(var(--po-color-neutral-200), #26334d);
+    --po-border-strong: light-dark(var(--po-color-neutral-300), var(--po-color-neutral-600));
+
+    /* Subtle tint surfaces (chips, sparkline wells) — an alpha wash over the
+       page rather than a fixed grey, washing dark on light and light on dark. */
+    --po-bg-tint:        light-dark(rgb(15 23 42 / 0.07), rgb(255 255 255 / 0.07));
+    --po-bg-tint-strong: light-dark(rgb(15 23 42 / 0.12), rgb(255 255 255 / 0.14));
+
+    /* Semantic danger surface (destructive menu items). */
+    --po-danger-bg: light-dark(#fef2f2, #2a1215);
+
+    /* ── Traffic verdict ramp (route map line) ─────────────────────────
+       Green → blue → amber → red, ordered by how much worse than usual the
+       latest sample is. Blue, not green, is "normal": green must be reserved
+       for the genuinely-better-than-usual case, or a routine commute reads as
+       a win. Each pair is lifted for dark so the line stays legible over the
+       dark grey of a night-mode map tile. */
+    --po-traffic-clear:   light-dark(#15803d, #4ade80);
+    --po-traffic-normal:  light-dark(#2563eb, #60a5fa);
+    --po-traffic-slow:    light-dark(#b45309, #fbbf24);
+    --po-traffic-heavy:   light-dark(#b91c1c, #f87171);
+    --po-traffic-unknown: light-dark(#64748b, #94a3b8);
+
+    /* Shadow base as raw channels so alpha can vary per use. A slate-tinted
+       shadow is invisible on a slate page, so dark goes to pure black.
+       Not a <color>, so this one pair cannot use light-dark(); see below. */
+    --po-shadow-rgb: 15, 23, 42;
+
+    /* ── Surface radius (8px scale, used everywhere) ──────────────────── */
+    --po-radius-xs:  4px;
+    --po-radius-sm:  6px;
+    --po-radius-md:  10px;
+    --po-radius-lg:  14px;
+    --po-radius-full: 9999px;
+
+    /* ── Spacing (8px grid, scaled by density) ─────────────────────────
+       --po-density is 1 by default and re-set by [data-density]; every step
+       below multiplies through it, so one attribute on <html> tightens or
+       relaxes the whole app. */
+    --po-density: 1;
+    --po-space-1: calc(0.25rem * var(--po-density));  /*  4 */
+    --po-space-2: calc(0.5rem  * var(--po-density));  /*  8 */
+    --po-space-3: calc(0.75rem * var(--po-density));  /* 12 */
+    --po-space-4: calc(1rem    * var(--po-density));  /* 16 */
+    --po-space-5: calc(1.25rem * var(--po-density));  /* 20 */
+    --po-space-6: calc(1.5rem  * var(--po-density));  /* 24 */
+    --po-space-8: calc(2rem    * var(--po-density));  /* 32 */
+    --po-space-10: calc(2.5rem * var(--po-density));  /* 40 */
+    --po-space-12: calc(3rem   * var(--po-density));  /* 48 */
+
+    /* ── Type scale (modular 1.250, fluid at the top) ──────────────────
+
+       The small end is FIXED. Body copy and captions are read at the same size
+       on a phone as on a monitor — scaling them with the viewport makes text
+       smaller exactly where the screen is smallest, which is backwards.
+
+       The display sizes are FLUID, via clamp(). A 30px page title that is
+       right on a laptop is oversized on a 375px phone and undersized on a
+       27-inch monitor; interpolating between 22.5rem (360px) and 90rem
+       (1440px) lets one token be correct at both ends.
+
+       No `vw` unit appears outside a clamp() with both bounds set, so the text
+       can always be zoomed and never collapses to nothing (WCAG 1.4.4). */
+    --po-text-xs:   0.75rem;     /* 12 */
+    --po-text-sm:   0.875rem;    /* 14 */
+    --po-text-base: 1rem;        /* 16 */
+    --po-text-lg:   1.125rem;    /* 18 */
+    --po-text-xl:   clamp(1.125rem, 1.03rem + 0.42vw, 1.375rem);   /* 18 → 22 */
+    --po-text-2xl:  clamp(1.3rem,   1.11rem + 0.83vw, 1.75rem);    /* 21 → 28 */
+    --po-text-3xl:  clamp(1.55rem,  1.20rem + 1.55vw, 2.375rem);   /* 25 → 38 */
+
+    --po-leading-tight: 1.25;
+    --po-leading-normal: 1.5;
+
+    /* ── Measure (line length) ─────────────────────────────────────────
+       Prose past about 75 characters is measurably harder to read: the eye
+       loses its place on the return sweep. `ch` is the width of a "0" in the
+       current font, so this tracks the type size instead of being a magic
+       pixel count. */
+    --po-measure: 68ch;
+
+    --po-weight-regular: 400;
+    --po-weight-medium:  500;
+    --po-weight-semibold: 600;
+    --po-weight-bold:    700;
+
+    /* ── Layout constants ──────────────────────────────────────────────
+       The bottom nav's height is read by both the nav itself and the page
+       padding that has to clear it. They were independent numbers and had
+       drifted apart, so the last rows of every page sat under the nav. */
+    --po-bottom-nav-h: 64px;
+    --po-bottom-nav-safe: calc(var(--po-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+
+    /* Minimum hit area for anything tappable (WCAG 2.5.8 asks 24px, Apple and
+       Material both ask 44px; we take the larger). */
+    --po-tap-min: 44px;
+
+    /* ── Breakpoints ───────────────────────────────────────────────────
+       Custom properties cannot be used inside a media query, so there are no
+       tokens here — but 640px (phone) and 1024px (desktop) are the ONLY two
+       widths the app is allowed to break at. Component-level reflow belongs
+       in a @container query. */
+
+    /* ── Elevation ────────────────────────────────────────────────────── */
+    --po-elev-1: 0 1px 2px  light-dark(rgb(15 23 42 / 0.06), rgb(0 0 0 / 0.40));
+    --po-elev-2: 0 2px 8px  light-dark(rgb(15 23 42 / 0.08), rgb(0 0 0 / 0.45));
+    --po-elev-3: 0 8px 24px light-dark(rgb(15 23 42 / 0.12), rgb(0 0 0 / 0.50));
+    --po-elev-4: 0 20px 48px light-dark(rgb(15 23 42 / 0.18), rgb(0 0 0 / 0.60));
+
+    /* ── Motion ───────────────────────────────────────────────────────── */
+    --po-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --po-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --po-dur-fast:    150ms;
+    --po-dur-base:    220ms;
+    --po-dur-slow:    320ms;
+
+    /* ── Z-index scale ─────────────────────────────────────────────────── */
+    --po-z-nav:   100;
+    --po-z-pop:   200;
+    --po-z-toast: 400;
+
+    /* ── Glass surface tokens ──────────────────────────────────────────
+       Dark panes tint from the surface colour rather than from white. */
+    --po-glass-bg:        light-dark(rgb(255 255 255 / 0.72), rgb(19 28 46 / 0.72));
+    --po-glass-bg-strong: light-dark(rgb(255 255 255 / 0.86), rgb(19 28 46 / 0.90));
+    --po-glass-border:    light-dark(rgb(255 255 255 / 0.45), rgb(148 163 184 / 0.18));
+    --po-glass-blur: 16px;
+    --po-glass-saturate: 180%;
+
+    /* Glass for surfaces that hold TEXT — route cards, drawers, panels (po-glass.css).
+       More opaque than the floating-chrome tokens above: body copy over a pane must
+       keep its contrast whatever drifts behind it, so these stay at 0.7+ and the blur
+       does the rest. Every one collapses to the solid surface below when the reader
+       asked for less transparency, more contrast, or the engine has no backdrop-filter. */
+    --po-glass-card-bg:     light-dark(rgb(255 255 255 / 0.74), rgb(19 28 46 / 0.70));
+    --po-glass-panel-bg:    light-dark(rgb(255 255 255 / 0.82), rgb(19 28 46 / 0.84));
+    --po-glass-card-border: light-dark(rgb(255 255 255 / 0.60), rgb(148 163 184 / 0.20));
+    --po-glass-highlight:   light-dark(rgb(255 255 255 / 0.70), rgb(255 255 255 / 0.06));
+    --po-glass-card-blur: 14px;
+
+    /* ── Radzen theme mapping (so Radzen components inherit brand) ────── */
+    --rz-primary:            light-dark(var(--po-color-brand-600), var(--po-color-brand-400));
+    --rz-primary-light:      var(--po-color-brand-300);
+    --rz-primary-lighter:    light-dark(var(--po-color-brand-100), var(--po-color-brand-800));
+    --rz-primary-dark:       light-dark(var(--po-color-brand-700), var(--po-color-brand-500));
+    --rz-primary-darker:     light-dark(var(--po-color-brand-900), var(--po-color-brand-600));
+    /* Radzen's card, panel and dialog surfaces read --rz-base-background-color,
+       NOT --rz-base-100, and it defaults to literal white. Mapping only the base
+       ramp left every RadzenCard white on the dark theme while the text inside it
+       followed the theme — which is why the sign-in card was unreadable in dark
+       mode. These three are the ones that actually paint a surface. */
+    --rz-base-background-color:   var(--po-bg-surface);
+    --rz-panel-background-color:  var(--po-bg-surface);
+    --rz-dialog-background-color: var(--po-bg-surface);
+    --rz-text-title-color:        var(--po-fg-primary);
+
+    /* Radzen's select bar keeps its selected-item colour in its OWN variable, not
+       in the primary ramp — and its default is #ff6d41, a burnt orange that
+       appears nowhere else in this palette. Left unmapped it painted the chosen
+       Theme and Density labels orange on a pale-blue fill. */
+    --rz-selectbar-selected-color: var(--po-fg-on-brand);
+
+    /* The four semantic colours. Only the PRIMARY ramp was mapped above, so every
+       Radzen alert, badge and status button — the danger alert on Settings, the
+       Healthy/Unhealthy badges on Diagnostics, the quota progress bar — was drawn
+       from Radzen's stock palette while the app's own components used --po-color-*.
+       Two greens, two reds and two ambers were in play at once. */
+    --rz-success: var(--po-color-success);
+    --rz-danger:  var(--po-color-danger);
+    --rz-warning: var(--po-color-warning);
+    --rz-info:    var(--po-color-info);
+
+    /* Chart series. The admin line chart is the app's only RadzenChart; pinning the
+       first two series keeps it in step with pt-chart.js, which draws series A in
+       brand and series B in warning-amber. */
+    --rz-series-1: var(--po-color-brand-500);
+    --rz-series-2: var(--po-color-warning);
+    --rz-series-3: var(--po-color-info);
+    --rz-series-4: var(--po-color-success);
+
+    --rz-base-100:           var(--po-bg-surface);
+    --rz-base-200:           var(--po-bg-elev-2);
+    --rz-base-300:           light-dark(var(--po-color-neutral-100), var(--po-color-neutral-700));
+    --rz-base-400:           light-dark(var(--po-color-neutral-200), var(--po-color-neutral-600));
+    --rz-base-500:           light-dark(var(--po-color-neutral-300), var(--po-color-neutral-500));
+    --rz-text-color:         var(--po-fg-primary);
+    --rz-text-secondary-color: var(--po-fg-secondary);
+    --rz-text-disabled-color: var(--po-fg-tertiary);
+    --rz-border-color:       var(--po-border-subtle);
+    --rz-disabled-opacity:   0.5;
+    --rz-corner-radius:      var(--po-radius-md);
+}
+
+/* The one token light-dark() cannot carry: it is a channel list, not a colour.
+   Both selectors are needed so it flips for a pinned theme AND for an unpinned
+   visitor on a dark OS. */
+:root[data-theme="dark"] { --po-shadow-rgb: 0, 0, 0; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --po-shadow-rgb: 0, 0, 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Density — one attribute on <html>, set from Settings and stamped before
+   first paint by the resolver in index.html.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-density="compact"]     { --po-density: 0.75; }
+:root[data-density="comfortable"] { --po-density: 1.15; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   High contrast. The muted end of the ramp is the first thing to fail: at
+   default weights --po-fg-tertiary on a white card is roughly 2.6:1, under AA
+   for the small text it labels. Here the ramp collapses toward the primary end
+   and the glass goes opaque, because a translucent pane over arbitrary content
+   has no contrast guarantee at all.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-contrast: more) {
+    :root {
+        --po-fg-secondary: light-dark(var(--po-color-neutral-900), var(--po-color-neutral-50));
+        --po-fg-muted:     light-dark(var(--po-color-neutral-800), var(--po-color-neutral-100));
+        --po-fg-tertiary:  light-dark(var(--po-color-neutral-800), var(--po-color-neutral-100));
+        --po-fg-faint:     light-dark(var(--po-color-neutral-700), var(--po-color-neutral-200));
+
+        --po-border-subtle: light-dark(var(--po-color-neutral-500), var(--po-color-neutral-400));
+        --po-border-strong: light-dark(var(--po-color-neutral-700), var(--po-color-neutral-200));
+
+        --po-color-brand-on-surface: light-dark(var(--po-color-brand-800), var(--po-color-brand-200));
+
+        --po-bg-tint:        light-dark(rgb(15 23 42 / 0.14), rgb(255 255 255 / 0.16));
+        --po-bg-tint-strong: light-dark(rgb(15 23 42 / 0.22), rgb(255 255 255 / 0.26));
+
+        --po-glass-bg:        var(--po-bg-surface);
+        --po-glass-bg-strong: var(--po-bg-surface);
+        --po-glass-border:    var(--po-border-strong);
+        --po-glass-blur: 0px;
+        --po-glass-saturate: 100%;
+
+        --po-glass-card-bg:     var(--po-bg-surface);
+        --po-glass-panel-bg:    var(--po-bg-surface);
+        --po-glass-card-border: var(--po-border-strong);
+        --po-glass-highlight:   transparent;
+        --po-glass-card-blur: 0px;
+    }
+}
+
+/* Some readers keep full colour but cannot cope with translucency. The app
+   leans on backdrop-filter in the toasts, empty states and nav,
+   so honour it independently of the contrast preference. */
+@media (prefers-reduced-transparency: reduce) {
+    :root {
+        --po-glass-bg:        var(--po-bg-surface);
+        --po-glass-bg-strong: var(--po-bg-surface);
+        --po-glass-blur: 0px;
+        --po-glass-saturate: 100%;
+
+        --po-glass-card-bg:     var(--po-bg-surface);
+        --po-glass-panel-bg:    var(--po-bg-surface);
+        --po-glass-card-border: var(--po-border-subtle);
+        --po-glass-highlight:   transparent;
+        --po-glass-card-blur: 0px;
+    }
+}
+
+/* No backdrop-filter at all: a translucent pane with nothing blurring what is behind
+   it is just low contrast. The text-bearing glass goes solid; the floating chrome
+   keeps its own fallback in app.css. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root {
+        --po-glass-card-bg:     var(--po-bg-surface);
+        --po-glass-panel-bg:    var(--po-bg-surface);
+        --po-glass-card-border: var(--po-border-subtle);
+        --po-glass-card-blur: 0px;
+    }
+}
+
+/* Legacy --pt-* aliases pointing to canonical --po-* tokens */
+:root {
+    --pt-bg-elev-1: var(--po-bg-elev-1);
+    --pt-bg-elev-2: var(--po-bg-elev-2);
+    --pt-bg-page: var(--po-bg-page);
+    --pt-bg-sunken: var(--po-bg-sunken);
+    --pt-bg-surface: var(--po-bg-surface);
+    --pt-bg-tint: var(--po-bg-tint);
+    --pt-bg-tint-strong: var(--po-bg-tint-strong);
+    --pt-border-strong: var(--po-border-strong);
+    --pt-border-subtle: var(--po-border-subtle);
+    --pt-bottom-nav-h: var(--po-bottom-nav-h);
+    --pt-bottom-nav-safe: var(--po-bottom-nav-safe);
+    --pt-color-brand-100: var(--po-color-brand-100);
+    --pt-color-brand-200: var(--po-color-brand-200);
+    --pt-color-brand-300: var(--po-color-brand-300);
+    --pt-color-brand-400: var(--po-color-brand-400);
+    --pt-color-brand-50: var(--po-color-brand-50);
+    --pt-color-brand-500: var(--po-color-brand-500);
+    --pt-color-brand-600: var(--po-color-brand-600);
+    --pt-color-brand-700: var(--po-color-brand-700);
+    --pt-color-brand-800: var(--po-color-brand-800);
+    --pt-color-brand-900: var(--po-color-brand-900);
+    --pt-color-brand-on-surface: var(--po-color-brand-on-surface);
+    --pt-color-danger: var(--po-color-danger);
+    --pt-color-danger-on-surface: var(--po-color-danger-on-surface);
+    --pt-color-info: var(--po-color-info);
+    --pt-color-neutral-0: var(--po-color-neutral-0);
+    --pt-color-neutral-100: var(--po-color-neutral-100);
+    --pt-color-neutral-200: var(--po-color-neutral-200);
+    --pt-color-neutral-300: var(--po-color-neutral-300);
+    --pt-color-neutral-400: var(--po-color-neutral-400);
+    --pt-color-neutral-50: var(--po-color-neutral-50);
+    --pt-color-neutral-500: var(--po-color-neutral-500);
+    --pt-color-neutral-600: var(--po-color-neutral-600);
+    --pt-color-neutral-700: var(--po-color-neutral-700);
+    --pt-color-neutral-800: var(--po-color-neutral-800);
+    --pt-color-neutral-900: var(--po-color-neutral-900);
+    --pt-color-success: var(--po-color-success);
+    --pt-color-success-on-surface: var(--po-color-success-on-surface);
+    --pt-color-warning: var(--po-color-warning);
+    --pt-color-warning-on-surface: var(--po-color-warning-on-surface);
+    --pt-danger-bg: var(--po-danger-bg);
+    --pt-density: var(--po-density);
+    --pt-dur-base: var(--po-dur-base);
+    --pt-dur-fast: var(--po-dur-fast);
+    --pt-dur-slow: var(--po-dur-slow);
+    --pt-ease: var(--po-ease);
+    --pt-ease-out: var(--po-ease-out);
+    --pt-elev-1: var(--po-elev-1);
+    --pt-elev-2: var(--po-elev-2);
+    --pt-elev-3: var(--po-elev-3);
+    --pt-elev-4: var(--po-elev-4);
+    --pt-fg-body: var(--po-fg-body);
+    --pt-fg-faint: var(--po-fg-faint);
+    --pt-fg-muted: var(--po-fg-muted);
+    --pt-fg-on-brand: var(--po-fg-on-brand);
+    --pt-fg-primary: var(--po-fg-primary);
+    --pt-fg-secondary: var(--po-fg-secondary);
+    --pt-fg-strong: var(--po-fg-strong);
+    --pt-fg-tertiary: var(--po-fg-tertiary);
+    --pt-glass-bg: var(--po-glass-bg);
+    --pt-glass-bg-strong: var(--po-glass-bg-strong);
+    --pt-glass-blur: var(--po-glass-blur);
+    --pt-glass-border: var(--po-glass-border);
+    --pt-glass-card-bg: var(--po-glass-card-bg);
+    --pt-glass-card-blur: var(--po-glass-card-blur);
+    --pt-glass-card-border: var(--po-glass-card-border);
+    --pt-glass-highlight: var(--po-glass-highlight);
+    --pt-glass-panel-bg: var(--po-glass-panel-bg);
+    --pt-glass-saturate: var(--po-glass-saturate);
+    --pt-leading-normal: var(--po-leading-normal);
+    --pt-leading-tight: var(--po-leading-tight);
+    --pt-measure: var(--po-measure);
+    --pt-radius-full: var(--po-radius-full);
+    --pt-radius-lg: var(--po-radius-lg);
+    --pt-radius-md: var(--po-radius-md);
+    --pt-radius-sm: var(--po-radius-sm);
+    --pt-radius-xs: var(--po-radius-xs);
+    --pt-shadow-rgb: var(--po-shadow-rgb);
+    --pt-space-1: var(--po-space-1);
+    --pt-space-10: var(--po-space-10);
+    --pt-space-12: var(--po-space-12);
+    --pt-space-2: var(--po-space-2);
+    --pt-space-3: var(--po-space-3);
+    --pt-space-4: var(--po-space-4);
+    --pt-space-5: var(--po-space-5);
+    --pt-space-6: var(--po-space-6);
+    --pt-space-8: var(--po-space-8);
+    --pt-tap-min: var(--po-tap-min);
+    --pt-text-2xl: var(--po-text-2xl);
+    --pt-text-3xl: var(--po-text-3xl);
+    --pt-text-base: var(--po-text-base);
+    --pt-text-lg: var(--po-text-lg);
+    --pt-text-sm: var(--po-text-sm);
+    --pt-text-xl: var(--po-text-xl);
+    --pt-text-xs: var(--po-text-xs);
+    --pt-traffic-clear: var(--po-traffic-clear);
+    --pt-traffic-heavy: var(--po-traffic-heavy);
+    --pt-traffic-normal: var(--po-traffic-normal);
+    --pt-traffic-slow: var(--po-traffic-slow);
+    --pt-traffic-unknown: var(--po-traffic-unknown);
+    --pt-weight-bold: var(--po-weight-bold);
+    --pt-weight-medium: var(--po-weight-medium);
+    --pt-weight-regular: var(--po-weight-regular);
+    --pt-weight-semibold: var(--po-weight-semibold);
+    --pt-z-nav: var(--po-z-nav);
+    --pt-z-pop: var(--po-z-pop);
+    --pt-z-toast: var(--po-z-toast);
+}

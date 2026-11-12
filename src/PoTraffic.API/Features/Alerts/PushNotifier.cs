@@ -1,13 +1,14 @@
 using System.Buffers.Text;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Lib.Net.Http.WebPush;
 using Lib.Net.Http.WebPush.Authentication;
 using Microsoft.Extensions.Logging;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Alerts;
+namespace PoTraffic.Api.Features.Alerts;
 
 /// <summary>What the service worker shows: <c>push</c> handler in service-worker.js.</summary>
 /// <param name="Tag">Notifications with the same tag replace each other instead of stacking.</param>

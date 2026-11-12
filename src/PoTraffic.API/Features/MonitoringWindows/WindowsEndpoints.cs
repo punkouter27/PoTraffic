@@ -1,12 +1,13 @@
 
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
-using PoTraffic.API.Infrastructure.Security;
+using PoTraffic.Api.Infrastructure.Security;
 using PoTraffic.Shared.DTOs.Routes;
 
-namespace PoTraffic.API.Features.MonitoringWindows;
+namespace PoTraffic.Api.Features.MonitoringWindows;
 
 public static class WindowsEndpoints
 {

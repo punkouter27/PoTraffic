@@ -1,7 +1,7 @@
 using System.Globalization;
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Config;
+namespace PoTraffic.Api.Features.Config;
 
 /// <summary>One administrator-editable <see cref="SystemConfiguration"/> row.</summary>
 /// <param name="Key">Row key, e.g. <c>cost.perpoll.googlemaps</c>.</param>

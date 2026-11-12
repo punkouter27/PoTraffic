@@ -1,6 +1,5 @@
-@using System.Net.Http.Json
 @using PoTraffic.Shared.Constants
-@inject HttpClient Http
+@inject PoTrafficApiClient Api
 
 @* The route's two addresses as a settings row, editable in place: a typo or a move across
    town no longer means deleting the commute and losing its schedule. Only an address that
@@ -68,9 +67,9 @@ else
         _saving = true;
         try
         {
-            HttpResponseMessage resp = await Http.PutAsJsonAsync($"/api/routes/{RouteId}/addresses",
-                new SetRouteAddressesRequest(_origin.Trim(), _destination.Trim()),
-                AppJsonContext.Default.SetRouteAddressesRequest);
+            HttpResponseMessage resp = await Api.SetRouteAddressesAsync(
+                PoTraffic.Shared.Ids.RouteId.From(RouteId),
+                new SetRouteAddressesRequest(_origin.Trim(), _destination.Trim()));
             if (resp.IsSuccessStatusCode)
             {
                 _editing = false;

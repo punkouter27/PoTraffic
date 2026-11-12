@@ -1,7 +1,7 @@
 using Azure;
 using Azure.Data.Tables;
 
-namespace PoTraffic.API.Infrastructure.Scheduling;
+namespace PoTraffic.Api.Infrastructure.Scheduling;
 
 /// <summary>
 /// Azure Table Storage entity representing a scheduled background job.
@@ -14,7 +14,7 @@ public sealed class ScheduledJobEntity : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 
-    /// <summary>Fully qualified type name of the job class (e.g. "PoTraffic.API.Features.Routes.PollRouteJob").</summary>
+    /// <summary>Fully qualified type name of the job class (e.g. "PoTraffic.Api.Features.Routes.PollRouteJob").</summary>
     public string TypeName { get; set; } = string.Empty;
 
     /// <summary>Method name to invoke (e.g. "Execute").</summary>

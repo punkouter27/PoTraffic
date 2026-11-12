@@ -1,9 +1,9 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
 
 using PoTraffic.Shared.DTOs.Account;
 
-namespace PoTraffic.API.Features.Account;
+namespace PoTraffic.Api.Features.Account;
 
 public sealed record GetProfileQuery(UserId UserId);
 
@@ -16,7 +16,7 @@ public sealed class GetProfileHandler
     public async Task<ProfileDto?> Handle(GetProfileQuery query, CancellationToken ct)
     {
         User? user = _db.Users
-            
+
             .FirstOrDefault(u => u.Id == query.UserId);
 
         if (user is null) return null;

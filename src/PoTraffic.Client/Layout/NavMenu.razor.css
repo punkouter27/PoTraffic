@@ -1,5 +1,5 @@
 /* ── PoTraffic top app shell (Rule 6 — Left=Brand / Center=Actions / Right=User) ──
-   Tokens come from wwwroot/css/pt-tokens.css so the bar reskins with the theme.
+   Tokens come from wwwroot/css/po-tokens.css so the bar reskins with the theme.
 
    That claim was only half true: the gradient's top stop was a literal #142137
    and every hover, border and chip surface below was a raw rgba(255,255,255,…),

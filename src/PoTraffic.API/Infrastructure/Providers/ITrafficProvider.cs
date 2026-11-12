@@ -1,4 +1,4 @@
-namespace PoTraffic.API.Infrastructure.Providers;
+namespace PoTraffic.Api.Infrastructure.Providers;
 
 // Strategy pattern — swaps traffic data source per route provider setting
 public interface ITrafficProvider

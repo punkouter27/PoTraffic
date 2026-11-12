@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using OpenTelemetry.Trace;
 
-namespace PoTraffic.API.Infrastructure.Observability;
+namespace PoTraffic.Api.Infrastructure.Observability;
 
 /// <summary>
 /// Head sampler implementing the §6.3 telemetry budget:

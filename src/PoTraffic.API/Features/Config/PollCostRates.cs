@@ -1,6 +1,6 @@
-using PoTraffic.API.Infrastructure.Storage;
+using PoTraffic.Api.Infrastructure.Storage;
 
-namespace PoTraffic.API.Features.Config;
+namespace PoTraffic.Api.Features.Config;
 
 /// <summary>
 /// The per-poll provider rate, read from <see cref="SystemConfiguration"/> (admin-editable at
