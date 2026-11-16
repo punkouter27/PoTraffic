@@ -185,8 +185,8 @@ boundary. Do not introduce raw `Guid` parameters for entity identity.
 - CI (`.github/workflows/deploy.yml`) builds, runs the **Unit** tier and deploys to App Service
   on `master` only. Integration and E2E need Docker and a live host, so they stay local:
   the `run-tests.ps1` report is the gate for those.
-- **This repo holds the REFERENCE copy of the shared Po web CI files** (`deploy.yml`, `infra.yml`,
+- **This repo holds the REFERENCE copy of the shared Po web CI files** (`deploy.yml`,
   `dependabot.yml`): every Po .NET web repo has a byte-identical copy. Change them here, then run
   `PoPunkouterSoftware/scripts/sync-ci.ps1` to copy them out; never put PoTraffic-only logic in
   them — use repo variables (`HEALTH_PATH=/health/json` here) or the hook scripts
-  (`scripts/post-deploy-smoke.ps1`). Bicep is applied only by the manual `infra.yml`.
+  (`scripts/post-deploy-smoke.ps1`). Bicep is applied only by a manual `deploy.yml` run with `infra` = what-if, then apply.
