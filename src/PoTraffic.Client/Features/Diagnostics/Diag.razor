@@ -47,8 +47,8 @@
     }
 
     <LoadingErrorCard IsLoading="_loading" SkeletonRows="6">
-        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2">API</RadzenText>
-        <ul class="pt-health-list pt-mb-4" role="list">
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">API</RadzenText>
+        <ul class="pt-health-list" role="list">
             <li class="pt-health-item" data-status="@(_apiReachable ? "healthy" : "unhealthy")" data-testid="diag-api">
                 <span class="pt-health-dot" aria-hidden="true"></span>
                 <div class="pt-health-item-body">
@@ -68,14 +68,14 @@
 
         @if (_report is not null)
         {
-            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2">Database / storage</RadzenText>
+            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">Database / storage</RadzenText>
             @CheckList(Storage, "No storage is checked by this deployment.")
 
-            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2 pt-mt-4">Services</RadzenText>
+            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">Services</RadzenText>
             @CheckList(Services, "No external services are checked by this deployment.")
         }
 
-        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2 pt-mt-4">About this app</RadzenText>
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">About this app</RadzenText>
         <dl class="pt-health-about" data-testid="diag-about">
             <dt>Version</dt>
             <dd>@(BuildVersion ?? "unknown")</dd>
@@ -130,7 +130,7 @@
         List<DiagCheckDto> list = [.. checks];
         if (list.Count == 0)
         {
-            <p class="pt-health-desc pt-mb-4">@empty</p>
+            <p class="pt-health-desc">@empty</p>
             return;
         }
         <ul class="pt-health-list" role="list">

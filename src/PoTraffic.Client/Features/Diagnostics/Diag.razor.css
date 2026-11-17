@@ -153,3 +153,8 @@
     font-weight: 600;
     color: var(--pt-fg-primary);
 }
+
+/* Section headings are rendered by RadzenText (a child component), hence ::deep. */
+.pt-health ::deep .pt-diag-section {
+    margin: var(--pt-space-6, 1.5rem) 0 var(--pt-space-2, 0.5rem);
+}
