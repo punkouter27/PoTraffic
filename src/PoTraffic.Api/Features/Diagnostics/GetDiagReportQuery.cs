@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using PoTraffic.Api.Infrastructure;
 using PoTraffic.Shared.DTOs.Admin;
 
 namespace PoTraffic.Api.Features.Diagnostics;
@@ -29,11 +30,17 @@ public sealed class GetDiagReportHandler(HealthCheckService healthChecks, IHostE
                 Status: e.Value.Status.ToString(),
                 Purpose: purpose,
                 LatencyMs: Math.Round(e.Value.Duration.TotalMilliseconds, 1),
-                Detail: query.IncludeDetail ? e.Value.Description : null);
+                Detail: query.IncludeDetail ? AdminDetail(e.Value) : null);
         })];
 
         return new DiagReportDto(report.Status.ToString(), env.EnvironmentName, DateTimeOffset.UtcNow, checks);
     }
+
+    /// <summary>Operator-only detail a check stashed in its data, else its (anonymous-safe) description.</summary>
+    private static string? AdminDetail(HealthReportEntry entry) =>
+        entry.Data.TryGetValue(StorageHealthCheck.AdminDetailKey, out object? detail) && detail is string s
+            ? s
+            : entry.Description;
 
     internal static (string Name, string Category, string Purpose) Describe(string key) => key switch
     {

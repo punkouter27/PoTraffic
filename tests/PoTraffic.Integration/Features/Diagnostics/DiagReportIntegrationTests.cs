@@ -14,13 +14,23 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
 {
     private const string FakeMapsKey = "AIzaSENTINEL-maps-key-0000";
     private const string FakeClientSecret = "sentinel-oauth-secret-0000";
+    private const string FakeAccountName = "sentinelacct42";
 
     protected override void ConfigureHost(IWebHostBuilder builder) =>
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["GoogleMaps:ApiKey"] = FakeMapsKey,
             ["ExternalAuth:Microsoft:ClientSecret"] = FakeClientSecret,
+            ["AzureTable:AccountName"] = FakeAccountName,
         }));
+
+    private static readonly string[] Forbidden =
+    [
+        FakeMapsKey, FakeClientSecret, FakeAccountName,
+        "AccountKey", "devstoreaccount1", "DefaultEndpointsProtocol", "SharedAccessSignature",
+        "://", "vault.azure.net", "core.windows.net", "/subscriptions/", "tenant",
+        "@", ":\\", "Exception", "   at ", "ClientSecret", "ApiKey",
+    ];
 
     [SkipUnlessAzuriteAvailable]
     public async Task Anonymous_report_lists_every_check_without_secrets_or_internals()
@@ -38,15 +48,23 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
         checks.EnumerateArray().Should().OnlyContain(c => c.GetProperty("detail").ValueKind == JsonValueKind.Null,
             "raw check descriptions are for administrators only");
 
-        string[] forbidden =
-        [
-            FakeMapsKey, FakeClientSecret,
-            "AccountKey", "devstoreaccount1", "DefaultEndpointsProtocol", "SharedAccessSignature",
-            "://", "vault.azure.net", "core.windows.net", "/subscriptions/", "tenant",
-            "@", ":\\", "Exception", "   at ", "ClientSecret", "ApiKey",
-        ];
-        foreach (string s in forbidden)
-            body.Should().NotContainEquivalentOf(s, $"the anonymous diag report must not expose '{s}'");
+        AssertNoSecrets(body, "/api/diag");
+    }
+
+    [SkipUnlessAzuriteAvailable]
+    public async Task Anonymous_health_json_carries_no_secrets_or_internals()
+    {
+        HttpResponseMessage response = await CreateClient().GetAsync("/health/json");
+
+        string body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("\"storage\"");
+        AssertNoSecrets(body, "/health/json");
+    }
+
+    private static void AssertNoSecrets(string body, string route)
+    {
+        foreach (string s in Forbidden)
+            body.Should().NotContainEquivalentOf(s, $"anonymous {route} must not expose '{s}'");
     }
 
     [SkipUnlessAzuriteAvailable]

@@ -23,6 +23,12 @@ public sealed class StorageHealthCheck(
 {
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(3);
 
+    /// <summary>
+    /// <see cref="HealthCheckResult.Data"/> key for operator detail that must never reach an
+    /// anonymous caller; <c>GET /api/diag</c> shows it to administrators in place of the description.
+    /// </summary>
+    public const string AdminDetailKey = "adminDetail";
+
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         if (!db.IsDurable)
@@ -49,7 +55,12 @@ public sealed class StorageHealthCheck(
                 $"to the {credentialSource} managed identity. RBAC propagation can take 3–5 minutes.";
 
             log.LogWarning("StorageHealthCheck: {Description}", description);
-            return HealthCheckResult.Unhealthy(description);
+            // The description is served anonymously (/health/json), so it stays generic; the
+            // account-specific fix-it text goes to the log and, via Data, to administrators
+            // on /api/diag only.
+            return HealthCheckResult.Unhealthy(
+                $"Storage access denied ({rfe.Status}) — the app identity lacks a Table Storage data role; see logs",
+                data: new Dictionary<string, object> { [AdminDetailKey] = description });
         }
         catch (Exception ex)
         {
