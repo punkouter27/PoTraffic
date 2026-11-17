@@ -179,8 +179,10 @@ try {
     $resp = Invoke-WebRequest -Uri $uri -UseBasicParsing -SkipCertificateCheck -TimeoutSec 30 -Headers $diagHeaders
     if ($resp.StatusCode -eq 200) {
         $body = $resp.Content | ConvertFrom-Json
-        if ($body.maskedPreview -and $body.maskedPreview -notmatch '^\*+$' -and $body.maskedPreview.Length -gt 1) {
-            Run-Check 'diag/keyvault' 'Pass' "Masked preview='$($body.maskedPreview)' len=$($body.length) found=$($body.found)"
+        # The endpoint answers { vaultConfigured, vaultUri, requestedSecret, found, masked } where
+        # masked is a length bucket such as '(set, 40 chars)' - never any characters of the secret.
+        if ($body.found -eq $true -and $body.masked -like '(set,*') {
+            Run-Check 'diag/keyvault' 'Pass' "Secret resolved: masked='$($body.masked)' found=$($body.found)"
         }
         else {
             Run-Check 'diag/keyvault' 'Warn' "Secret probe returned no value (found=$($body.found) vaultConfigured=$($body.vaultConfigured))"
