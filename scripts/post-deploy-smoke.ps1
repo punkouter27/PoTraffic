@@ -10,15 +10,15 @@
     1. /health/json → expect 200 + "Healthy" / "Degraded" JSON body
     2. GET /   → render-tree check (the Blazor index.html serves and references the
                  new dotnet.{hash}.js file; the served hash matches a freshly-built one)
-    3. GET /diag/keyvault?secret={name} → masked secret retrieval (admin cookie required
+    3. GET /api/diag/keyvault?secret={name} → masked secret retrieval (admin cookie required
                  to prove Key Vault + Managed Identity wiring; raw secret never logged)
 
 .PARAMETER BaseUrl
     Public URL of the deployment (e.g. https://potraffic-api.azurewebsites.net).
 
 .PARAMETER AdminCookieValue
-    Optional admin .PoTraffic.Auth cookie value for the /diag check.
-    Without this cookie the /diag endpoint returns 401 — the script records
+    Optional admin .PoTraffic.Auth cookie value for the /api/diag/keyvault check.
+    Without this cookie /api/diag/keyvault returns 401 — the script records
     that as a soft-pass with a warning.
 
 .PARAMETER DiagSecretName
@@ -169,13 +169,13 @@ foreach ($asset in $bootAssets) {
     }
 }
 
-# ── Check 3: /diag/keyvault (masked secret retrieval, admin cookie required) ──
+# ── Check 3: /api/diag/keyvault (masked secret retrieval, admin cookie required) ──
 $diagHeaders = @{}
 if ($AdminCookieValue) {
     $diagHeaders['Cookie'] = ".PoTraffic.Auth=$AdminCookieValue"
 }
 try {
-    $uri = "$BaseUrl/diag/keyvault?secret=$([Uri]::EscapeDataString($DiagSecretName))"
+    $uri = "$BaseUrl/api/diag/keyvault?secret=$([Uri]::EscapeDataString($DiagSecretName))"
     $resp = Invoke-WebRequest -Uri $uri -UseBasicParsing -SkipCertificateCheck -TimeoutSec 30 -Headers $diagHeaders
     if ($resp.StatusCode -eq 200) {
         $body = $resp.Content | ConvertFrom-Json

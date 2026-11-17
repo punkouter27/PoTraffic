@@ -1,4 +1,4 @@
-/* Health & Connections page. Status colour is driven entirely by the [data-status]
+/* /diag (System status) page. Status colour is driven entirely by the [data-status]
    attribute so the markup carries no inline styles (Rule 4). */
 
 .pt-health {
@@ -120,18 +120,36 @@
     overflow-wrap: anywhere;
 }
 
-.pt-health-duration {
-    flex: 0 0 auto;
-    font-size: var(--pt-text-sm, 0.875rem);
+/* Latency and "last checked" sit on their own line under the purpose text, so they stay
+   visible at phone width instead of competing with the name for one row. */
+.pt-health-timing {
     font-variant-numeric: tabular-nums;
     color: var(--pt-fg-tertiary);
 }
 
-/* Below this the name, the status and the timing cannot share a row without the
-   name truncating — and the name is the only one of the three that says which
-   dependency you are looking at. */
-@container pt-health-list (width < 30rem) {
-    .pt-health-duration {
-        display: none;
-    }
+.pt-health-detail {
+    font-family: var(--pt-font-mono, ui-monospace, monospace);
+}
+
+/* ── About this app ──────────────────────────────────────────────────────── */
+
+.pt-health-about {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: var(--pt-space-1) var(--pt-space-4, 1rem);
+    margin: 0;
+    padding: var(--pt-space-3, 0.75rem) var(--pt-space-4, 1rem);
+    background: var(--pt-bg-surface);
+    border: 1px solid var(--pt-border-subtle);
+    border-radius: var(--pt-radius-md, 0.5rem);
+}
+
+.pt-health-about dt {
+    color: var(--pt-fg-secondary);
+}
+
+.pt-health-about dd {
+    margin: 0;
+    font-weight: 600;
+    color: var(--pt-fg-primary);
 }

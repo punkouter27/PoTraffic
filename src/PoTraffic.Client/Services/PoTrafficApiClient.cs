@@ -34,8 +34,8 @@ public sealed class PoTrafficApiClient(HttpClient http)
     public Task<FeatureFlags?> GetFeatureFlagsAsync(CancellationToken ct = default) =>
         http.GetFromJsonAsync("/api/system/features", AppJsonContext.Default.FeatureFlags, ct);
 
-    public Task<List<ConnectionHealthDto>?> GetConnectionHealthAsync(CancellationToken ct = default) =>
-        http.GetFromJsonAsync("/health/connections", AppJsonContext.Default.ListConnectionHealthDto, ct);
+    public Task<DiagReportDto?> GetDiagReportAsync(CancellationToken ct = default) =>
+        http.GetFromJsonAsync("/api/diag", AppJsonContext.Default.DiagReportDto, ct);
 
     // ── Account & Push ─────────────────────────────────────────────────────
     public Task<ProfileDto?> GetProfileAsync(CancellationToken ct = default) =>

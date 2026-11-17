@@ -1,11 +1,15 @@
 // filepath: src/PoTraffic.Api/Features/Diagnostics/DiagnosticsEndpoints.cs
-// CI/CD rule #9 — Post-deployment smoke validation:
-//   • GET /health (liveness + readiness)
-//   • GET /diag/keyvault (MASKED Key Vault secret retrieval — proves identity wiring
-//     and never returns the raw secret value to the caller)
+// The /api/diag group (moved from /diag on 2026-11-17 so the browser route /diag belongs to
+// the Blazor diagnostics page):
+//   • GET /api/diag — anonymous, friendly dependency report rendered by the /diag page;
+//     administrators additionally get each check's raw description
+//   • GET /api/diag/keyvault — admin-only MASKED Key Vault secret retrieval (proves identity
+//     wiring and never returns the raw secret value to the caller)
+//   • POST /api/diag/client-error is mapped with the SPA host (BlazorClientHostExtensions).
 
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
+using PoTraffic.Shared.DTOs.Admin;
 
 namespace PoTraffic.Api.Features.Diagnostics;
 
@@ -13,13 +17,24 @@ public static class DiagnosticsEndpoints
 {
     public static void MapDiagnosticsEndpoints(this IEndpointRouteBuilder app)
     {
-        // Every /diag* surface is admin-only and returns JSON. Rendering diagnostics as
-        // JSON rather than hand-built HTML keeps configuration values — which are
-        // attacker-influenceable in principle — out of an HTML sink entirely.
-        RouteGroupBuilder group = app.MapGroup("/diag").WithTags("Diagnostics").RequireAuthorization("AdminOnly");
+        // The summary is anonymous on purpose: the moment you most need it is when sign-in
+        // itself is broken. It carries statuses, timings and fixed text only; the detail
+        // (raw check descriptions) is added for administrators alone.
+        app.MapGet("/api/diag", async (HttpContext http, GetDiagReportHandler handler) =>
+            Results.Ok(await handler.Handle(
+                new GetDiagReportQuery(IncludeDetail: http.User.IsInRole("Administrator")),
+                http.RequestAborted)))
+            .AllowAnonymous()
+            .WithName("GetDiagReport")
+            .WithTags("Diagnostics")
+            .Produces<DiagReportDto>();
 
-        // /diag/keyvault — only when ?secret= is supplied AND caller is admin
-        // (otherwise just lists the secret NAMES the identity can see).
+        // Everything else under /api/diag is admin-only and returns JSON. Rendering
+        // diagnostics as JSON rather than hand-built HTML keeps configuration values — which
+        // are attacker-influenceable in principle — out of an HTML sink entirely.
+        RouteGroupBuilder group = app.MapGroup("/api/diag").WithTags("Diagnostics").RequireAuthorization("AdminOnly");
+
+        // /api/diag/keyvault — reports whether ?secret= resolved, masked; admin only.
         group.MapGet("/keyvault", HandleKeyVaultDiag);
     }
 

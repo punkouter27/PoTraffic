@@ -39,11 +39,17 @@ Azure resources are defined in `infra/main.bicep`; production is
 | URL (dev) | |
 |---|---|
 | `https://localhost:5001` | API + Blazor client |
-| `https://localhost:5001/health` | Blazor health *page* (the SPA route owns `/health`) |
+| `https://localhost:5001/diag` | Blazor *System status* page, anonymous (`/health` is an alias — the server maps nothing at bare `/health`) |
+| `https://localhost:5001/api/diag` | anonymous JSON behind `/diag`: statuses, timings, fixed text; admins also get check detail |
 | `https://localhost:5001/health/json` | machine-readable dependency status |
 | `https://localhost:5001/health/ready` | hydration complete? |
 | `https://localhost:5001/scalar/v1` | Scalar API reference (Development only) |
-| `https://localhost:5001/diag/keyvault` | admin-only JSON: did a vault secret resolve? |
+| `https://localhost:5001/api/diag/keyvault` | admin-only JSON: did a vault secret resolve? |
+
+2026-11-17 decision: the diagnostics page moved from `/health` to the fleet-standard `/diag`, and
+the admin API group moved from `/diag` to `/api/diag` so the browser route belongs to the page.
+`/health/connections` was removed — `GET /api/diag` replaces it and never passes raw check
+descriptions (which can name accounts or config keys) to signed-out callers.
 
 ### Tests
 
@@ -93,7 +99,7 @@ maps a `MapGroup`, plus one file per operation holding the command/query record,
 On the client the split is: `Components/` holds only shared, generic pieces that know
 nothing about the domain (`PtIcon`, `PageHeader`, `UndoBar`); anything that knows what a
 route is belongs to its feature slice; `Pages/` holds the app-shell routes that belong to
-no feature (`/`, `/not-found`, `/access-denied`, `/health`).
+no feature (`/`, `/not-found`, `/access-denied`). The `/diag` page lives in `Features/Diagnostics`.
 
 ### Handlers
 
@@ -128,7 +134,7 @@ derives auth state from `GET /api/auth/me`. Key points in
 
 - **Deny by default**: the authorization `FallbackPolicy` requires an authenticated user, so
   any endpoint without explicit metadata is protected. Genuinely public surfaces (login flow,
-  health, `/diag`, SPA shell) must call `.AllowAnonymous()` explicitly.
+  health, `/api/diag` summary, SPA shell) must call `.AllowAnonymous()` explicitly.
 - Feature endpoints use `.RequireAuthorization("ProductionMicrosoftAuth")` — Microsoft OAuth
   is required in Development/Staging/Production and GUEST sessions are rejected there; the
   policy is a no-op only in `Testing`.

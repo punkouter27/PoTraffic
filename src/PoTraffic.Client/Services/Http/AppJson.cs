@@ -46,7 +46,7 @@ public static class ClientCacheKeys
 [JsonSerializable(typeof(string[]))]
 [JsonSerializable(typeof(List<UserDailyUsageDto>))]
 [JsonSerializable(typeof(List<RecentVolatilityPointDto>))]
-[JsonSerializable(typeof(List<ConnectionHealthDto>))]
+[JsonSerializable(typeof(DiagReportDto))]
 [JsonSerializable(typeof(List<SystemConfigDto>))]
 [JsonSerializable(typeof(SpendingDto))]
 [JsonSerializable(typeof(SetUserDailyQuotaRequest))]

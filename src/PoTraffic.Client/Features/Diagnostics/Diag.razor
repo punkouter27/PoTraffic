@@ -1,0 +1,193 @@
+@page "/diag"
+@page "/health"
+@attribute [AllowAnonymous]
+@using System.Diagnostics
+@using System.Reflection
+@inject PoTrafficApiClient Api
+
+@* /diag — the fleet-standard diagnostics page (2026-11-17; it lived at /health, kept here as
+   an alias because the server maps nothing at /health itself — only /health/live, /ready and
+   /json beneath it). Deliberately anonymous: the moment you most need it is when sign-in is
+   the thing that is broken. Data comes from GET /api/diag, which carries statuses, timings
+   and fixed plain-English text only — never a connection string, URI or exception message.
+   Administrators additionally see each check's raw description. *@
+
+<PageTitle>System status · PoTraffic</PageTitle>
+
+<div class="pt-health">
+    <PageHeader Title="System status"
+                Subtitle="Is PoTraffic working right now? Live status of everything it depends on."
+                BackHref="/dashboard" BackLabel="Commutes">
+        <Actions>
+            <RadzenButton Text="Refresh" Icon="refresh" ButtonStyle="ButtonStyle.Light"
+                          Disabled="@(_loading || _refreshing)" IsBusy="_refreshing" BusyText="Checking…"
+                          Click="RefreshAsync" data-testid="diag-refresh" />
+        </Actions>
+    </PageHeader>
+
+    <SectionErrorBoundary Label="the system status">
+    @if (!_loading)
+    {
+        <div class="pt-health-summary" data-status="@OverallStatus" role="status" data-testid="diag-banner">
+            <span class="pt-health-dot" aria-hidden="true"></span>
+            <div>
+                <strong>@OverallLabel</strong>
+                <span class="pt-health-meta">
+                    @if (_report is not null)
+                    {
+                        <text>@_healthy of @_report.Checks.Count dependencies healthy · checked @_checkedAt.ToLocalTime().ToString("h:mm:ss tt")</text>
+                    }
+                    else
+                    {
+                        <text>Checked @_checkedAt.ToLocalTime().ToString("h:mm:ss tt")</text>
+                    }
+                </span>
+            </div>
+        </div>
+    }
+
+    <LoadingErrorCard IsLoading="_loading" SkeletonRows="6">
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2">API</RadzenText>
+        <ul class="pt-health-list pt-mb-4" role="list">
+            <li class="pt-health-item" data-status="@(_apiReachable ? "healthy" : "unhealthy")" data-testid="diag-api">
+                <span class="pt-health-dot" aria-hidden="true"></span>
+                <div class="pt-health-item-body">
+                    <div class="pt-health-item-head">
+                        <span class="pt-health-name">PoTraffic API</span>
+                        <span class="pt-health-status">@(_apiReachable ? "Reachable" : "Unreachable")</span>
+                    </div>
+                    <p class="pt-health-desc">
+                        @(_apiReachable
+                            ? "The server that answers this app's requests."
+                            : _error ?? "The server did not answer.")
+                    </p>
+                    <p class="pt-health-desc pt-health-timing">Response time @_apiMs.ToString("F0") ms</p>
+                </div>
+            </li>
+        </ul>
+
+        @if (_report is not null)
+        {
+            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2">Database / storage</RadzenText>
+            @CheckList(Storage, "No storage is checked by this deployment.")
+
+            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2 pt-mt-4">Services</RadzenText>
+            @CheckList(Services, "No external services are checked by this deployment.")
+        }
+
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-mb-2 pt-mt-4">About this app</RadzenText>
+        <dl class="pt-health-about" data-testid="diag-about">
+            <dt>Version</dt>
+            <dd>@(BuildVersion ?? "unknown")</dd>
+            <dt>Environment</dt>
+            <dd>@(_report?.Environment ?? "unknown")</dd>
+        </dl>
+    </LoadingErrorCard>
+    </SectionErrorBoundary>
+</div>
+
+@code {
+    private DiagReportDto? _report;
+    private bool _loading = true;
+    private bool _refreshing;
+    private bool _apiReachable;
+    private double _apiMs;
+    private string? _error;
+    private DateTimeOffset _checkedAt;
+    private int _healthy;
+
+    /// <summary>The client build stamp (YYMMDD), the same value the corner badge shows.</summary>
+    private static readonly string? BuildVersion = typeof(Diag).Assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .FirstOrDefault(a => a.Key == "BuildVersion")?.Value;
+
+    private IEnumerable<DiagCheckDto> Storage => _report?.Checks.Where(c => c.Category == "storage") ?? [];
+    private IEnumerable<DiagCheckDto> Services => _report?.Checks.Where(c => c.Category != "storage") ?? [];
+
+    /// <summary>Worst status across the API and every dependency — drives the banner.</summary>
+    private string OverallStatus =>
+        !_apiReachable ? "unhealthy"
+        : _report is null || _report.Checks.Count == 0 ? "unknown"
+        : _report.Checks.Any(c => Normalise(c.Status) == "unhealthy") ? "unhealthy"
+        : _report.Checks.Any(c => Normalise(c.Status) == "degraded") ? "degraded"
+        : "healthy";
+
+    private string OverallLabel => !_apiReachable
+        ? "PoTraffic can't reach its server"
+        : OverallStatus switch
+        {
+            "healthy" => "All systems operational",
+            "degraded" => "Working, but something is running in a reduced mode",
+            "unhealthy" => "Something PoTraffic depends on is down",
+            _ => "No dependency data",
+        };
+
+    /// <summary>Health-check statuses arrive PascalCase; the CSS selectors key off lowercase.</summary>
+    private static string Normalise(string status) => status.ToLowerInvariant();
+
+    private RenderFragment CheckList(IEnumerable<DiagCheckDto> checks, string empty) => __builder =>
+    {
+        List<DiagCheckDto> list = [.. checks];
+        if (list.Count == 0)
+        {
+            <p class="pt-health-desc pt-mb-4">@empty</p>
+            return;
+        }
+        <ul class="pt-health-list" role="list">
+            @foreach (DiagCheckDto c in list)
+            {
+                <li class="pt-health-item" data-status="@Normalise(c.Status)" data-testid="diag-check-@c.Key">
+                    <span class="pt-health-dot" aria-hidden="true"></span>
+                    <div class="pt-health-item-body">
+                        <div class="pt-health-item-head">
+                            <span class="pt-health-name">@c.Name</span>
+                            <span class="pt-health-status">@c.Status</span>
+                        </div>
+                        <p class="pt-health-desc">@c.Purpose</p>
+                        @if (!string.IsNullOrWhiteSpace(c.Detail))
+                        {
+                            <p class="pt-health-desc pt-health-detail">@c.Detail</p>
+                        }
+                        <p class="pt-health-desc pt-health-timing">
+                            @c.LatencyMs.ToString("F0") ms · last checked @_report!.CheckedAtUtc.ToLocalTime().ToString("h:mm:ss tt")
+                        </p>
+                    </div>
+                </li>
+            }
+        </ul>
+    };
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task RefreshAsync()
+    {
+        if (_refreshing) return;
+        _refreshing = true;
+        try { await LoadAsync(); }
+        finally { _refreshing = false; }
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        Stopwatch sw = Stopwatch.StartNew();
+        try
+        {
+            _report = await Api.GetDiagReportAsync();
+            _apiReachable = true;
+            _healthy = _report?.Checks.Count(c => Normalise(c.Status) == "healthy") ?? 0;
+        }
+        catch (Exception)
+        {
+            _report = null;
+            _apiReachable = false;
+            _error = "The server did not answer. Check your connection, then press Refresh.";
+        }
+        finally
+        {
+            _apiMs = sw.Elapsed.TotalMilliseconds;
+            _checkedAt = DateTimeOffset.UtcNow;
+            _loading = false;
+        }
+    }
+}

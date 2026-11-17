@@ -53,8 +53,10 @@ public sealed class StorageHealthCheck(
         }
         catch (Exception ex)
         {
-            return HealthCheckResult.Unhealthy(
-                $"Table Storage probe failed: {ex.GetType().Name}: {ex.Message.Split('\n')[0]}");
+            // Exception TYPE only: this description is served anonymously (/health/json), and
+            // an exception message can carry the account URI. The full exception is logged.
+            log.LogWarning(ex, "StorageHealthCheck: Table Storage probe failed");
+            return HealthCheckResult.Unhealthy($"Table Storage probe failed: {ex.GetType().Name}");
         }
     }
 }

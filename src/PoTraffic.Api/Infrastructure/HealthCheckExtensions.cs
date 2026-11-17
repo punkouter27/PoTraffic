@@ -1,4 +1,3 @@
-using PoTraffic.Shared.DTOs.Admin;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PoTraffic.Api.Features.Config;
@@ -56,13 +55,13 @@ internal static class HealthCheckExtensions
     /// during host bind.</item>
     /// <item><c>/health/json</c> — per-dependency JSON status for DB and external APIs. This is
     /// the machine-readable feed used by post-deploy smoke and triage scripts.</item>
-    /// <item><c>/health/connections</c> — the same checks as a list with durations, rendered by
-    /// the <c>/health</c> page.</item>
     /// </list>
     /// <para>
-    /// Note that <c>/health</c> itself is deliberately NOT mapped here: it falls through to the
-    /// SPA so the Blazor health page owns that route (Rule 3 — "/health (blazor page that shows
-    /// all connection status)"). Machine consumers use <c>/health/json</c>.
+    /// <c>/health</c> itself is deliberately NOT mapped here: it falls through to the SPA, where
+    /// it is an alias of the Blazor <c>/diag</c> page. The page reads <c>GET /api/diag</c>
+    /// (Features/Diagnostics), which replaced <c>/health/connections</c> on 2026-11-17 because
+    /// that feed passed raw check descriptions to anonymous callers. Machine consumers (the
+    /// deploy gate via <c>HEALTH_PATH</c>, smoke scripts) use <c>/health/json</c>.
     /// </para>
     /// </summary>
     [RequiresUnreferencedCode("Calls Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(String, Delegate)")]
@@ -72,14 +71,6 @@ internal static class HealthCheckExtensions
             ctx.IsHydrated
                 ? Results.Ok(new { status = "ready", durable = ctx.IsDurable })
                 : Results.Json(new { status = "hydrating", durable = ctx.IsDurable }, statusCode: 503))
-            .AllowAnonymous();
-
-        app.MapGet("/health/connections", async (
-            HealthCheckService healthCheckService,
-            CancellationToken ct) =>
-            Results.Ok(await ConnectionHealthReporter.BuildAsync(healthCheckService, ct)))
-            .WithName("GetHealthConnections")
-            .Produces<IEnumerable<ConnectionHealthDto>>()
             .AllowAnonymous();
 
         app.MapHealthChecks("/health/json", new HealthCheckOptions

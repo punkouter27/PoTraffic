@@ -32,7 +32,7 @@ public sealed class ScreenshotRunner : PlaywrightTestBase
             ("dashboard", "/dashboard"),
             ("routes-create", "/routes/create"),
             ("admin", "/admin"),
-            ("health", "/health"),
+            ("diag", "/diag"),
         ];
 
         foreach ((string name, string path) in routes)

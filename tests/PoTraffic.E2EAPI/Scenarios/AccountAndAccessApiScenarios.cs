@@ -82,13 +82,13 @@ public sealed class AccountAndAccessApiScenarios
         using HttpClient anonymous = ApiSessionFactory.CreateAnonymous();
         foreach (string url in new[] { "/api/routes", "/api/account/profile", "/api/alerts", "/api/admin/users" })
             Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(url)).StatusCode);
-        foreach (string url in new[] { "/api/system/features", "/health/live", "/health/ready", "/api/auth/providers" })
+        foreach (string url in new[] { "/api/system/features", "/health/live", "/health/ready", "/api/auth/providers", "/api/diag" })
             Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync(url)).StatusCode);
 
         (HttpClient commuter, _) = await ApiSessionFactory.CreateGuestSessionAsync();
         using (commuter)
         {
-            foreach (string url in new[] { "/api/admin/users", "/api/admin/configuration", "/api/admin/spending", "/diag/keyvault" })
+            foreach (string url in new[] { "/api/admin/users", "/api/admin/configuration", "/api/admin/spending", "/api/diag/keyvault" })
                 Assert.Equal(HttpStatusCode.Forbidden, (await commuter.GetAsync(url)).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden,
                 (await commuter.PutAsJsonAsync("/api/admin/configuration/feature.weather.enabled", new UpdateSystemConfigRequest("false"))).StatusCode);

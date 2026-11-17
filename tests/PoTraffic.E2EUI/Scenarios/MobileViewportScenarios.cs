@@ -107,4 +107,32 @@ public sealed class MobileViewportScenarios : PlaywrightTestBase
             await mobileContext.CloseAsync();
         }
     }
+
+    /// <summary>
+    /// /diag is the anonymous system-status page: a signed-out visitor gets the banner, the
+    /// API / storage / services sections and the version, at phone and desktop widths, with no
+    /// console or network errors (the base class fails the test on any).
+    /// </summary>
+    [SkipUnlessE2EReady]
+    public async Task DiagPage_RendersForSignedOutVisitor_AtPhoneAndDesktop()
+    {
+        foreach ((int width, int height) in new[] { (1366, 900), (MobileWidth, MobileHeight) })
+        {
+            await Page.SetViewportSizeAsync(width, height);
+            await Page.GotoAsync($"{BaseUrl}/diag");
+
+            await Page.GetByTestId("diag-banner").WaitForAsync(new() { Timeout = 30_000 });
+            Assert.Contains("/diag", Page.Url, StringComparison.OrdinalIgnoreCase);
+            Assert.True(await Page.GetByTestId("diag-api").IsVisibleAsync(), "API section missing");
+            Assert.True(await Page.GetByTestId("diag-check-storage").IsVisibleAsync(), "storage row missing");
+            Assert.True(await Page.GetByTestId("diag-check-trafficProvider").IsVisibleAsync(), "services rows missing");
+            Assert.True(await Page.GetByTestId("diag-about").IsVisibleAsync(), "version/environment missing");
+
+            await Page.GetByTestId("diag-refresh").ClickAsync();
+            await Page.GetByTestId("diag-banner").WaitForAsync();
+
+            int scrollWidth = await Page.EvaluateAsync<int>("document.documentElement.scrollWidth");
+            Assert.True(scrollWidth <= width, $"/diag overflows horizontally at {width}px (scrollWidth={scrollWidth}).");
+        }
+    }
 }

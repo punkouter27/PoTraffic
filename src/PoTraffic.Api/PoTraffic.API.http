@@ -21,7 +21,7 @@ GET {{host}}/health/ready
 GET {{host}}/health/json
 
 ###
-GET {{host}}/health/connections
+GET {{host}}/api/diag
 
 ### ── Auth ─────────────────────────────────────────────────────────────────────
 GET {{host}}/api/auth/providers
@@ -234,6 +234,6 @@ X-Fake-User: {{user}}
 X-Fake-Roles: Administrator
 
 ### ── Diagnostics (Administrator role) ─────────────────────────────────────────
-GET {{host}}/diag/keyvault?secret=GoogleMaps:ApiKey
+GET {{host}}/api/diag/keyvault?secret=GoogleMaps:ApiKey
 X-Fake-User: {{user}}
 X-Fake-Roles: Administrator

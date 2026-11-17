@@ -107,7 +107,9 @@ public sealed class BackgroundSchedulerService : BackgroundService
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    LastTick = new SchedulerTickStatus(DateTimeOffset.UtcNow, Succeeded: false, Error: ex.Message);
+                    // Type name only — LastTick is surfaced by the anonymous health feeds; the
+                    // full exception goes to the log below.
+                    LastTick = new SchedulerTickStatus(DateTimeOffset.UtcNow, Succeeded: false, Error: ex.GetType().Name);
                     _logger.LogWarning(ex, "BackgroundSchedulerService tick failed — will retry next tick");
                 }
                 finally
