@@ -87,7 +87,7 @@
     /// </summary>
     private async Task ConfirmDeleteAsync()
     {
-        if (_confirmDeletePhrase != "DELETE")
+        if (_confirmDeletePhrase != "DELETE" || _deleting)
             return;
 
         _deleting = true;

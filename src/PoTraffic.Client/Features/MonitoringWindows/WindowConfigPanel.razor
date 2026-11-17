@@ -39,7 +39,7 @@
                 @(_editing ? "Saving replaces the current schedule and restarts today's session." : "Schedule")
             </div>
 
-            <ScheduleFields @bind-Start="_startTime" @bind-End="_endTime" @bind-Days="_days" />
+            <ScheduleFields @bind-Start="_startTime" @bind-End="_endTime" @bind-Days="_days" DaysError="@_daysError" />
 
             @if (_error is not null)
             {
@@ -48,11 +48,11 @@
 
             <div class="pt-flex pt-gap-2">
                 <RadzenButton ButtonType="ButtonType.Submit" Text="Save schedule" ButtonStyle="ButtonStyle.Primary"
-                              Size="ButtonSize.Small" IsBusy="_saving" />
+                              Size="ButtonSize.Small" IsBusy="_saving" Disabled="_saving" />
                 @if (_editing)
                 {
-                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
-                                  Click="@(() => { _editing = false; _error = null; })" />
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Disabled="_saving"
+                                  Click="@(() => { _editing = false; _error = null; _daysError = null; })" />
                 }
             </div>
         </RadzenTemplateForm>
@@ -77,6 +77,9 @@
     private bool _saving;
     private bool _editing;
     private string? _error;
+
+    /// <summary>"Select at least one day" — shown under the day toggles, not in the form-level error.</summary>
+    private string? _daysError;
 
     // A new window starts from the same default New Route uses: 00:00 → 23:59.
     // This used to be "now → +2h", so a route got a different schedule depending on
@@ -131,9 +134,13 @@
 
     private async Task SaveWindowAsync()
     {
+        // Enter in a field can resubmit while a save is in flight; the button alone cannot stop that.
+        if (_saving) return;
+
         _error = null;
+        _daysError = null;
         byte mask = ScheduleFields.ToMask(_days);
-        if (mask == 0) { _error = "Select at least one day."; return; }
+        if (mask == 0) { _daysError = "Select at least one day."; return; }
         if (_startTime is null || _endTime is null || !ScheduleFields.EndDiffersFromStart(_startTime, _endTime))
         {
             _error = "End time must be different from start time.";
