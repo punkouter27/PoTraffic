@@ -74,13 +74,13 @@
          do not remove it as an "unused" package. -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Override transitive Microsoft.OpenApi 2.0.0 (GHSA-v5pm-xwqc-g5wc); 2.12.2 also satisfies Microsoft.AspNetCore.OpenApi 10.0.14. -->
-    <PackageVersion Include="Microsoft.OpenApi" Version="2.12.2" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
     <!-- System.Security.Cryptography.Xml was pinned here too; on net10.0 it is part of the
          ASP.NET Core shared framework and pruned from every project's package graph, so the pin
          resolved nothing and was removed. NuGetAudit (Directory.Build.props) flags it if a
          future dependency brings the package back. -->
     <!-- W1 patch: override transitive Azure.Monitor.OpenTelemetry.Exporter 1.8.0 → 1.8.2. -->
-    <PackageVersion Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.8.2" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.8.3" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">
