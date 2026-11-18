@@ -64,6 +64,15 @@ public sealed class ExternalAuthService(
             return new ExternalAuthCompletionResult(false, payload.ReturnPath, null, "EXTERNAL_IDENTITY_UNAVAILABLE");
 
         string normalizedEmail = identity.Email.Trim().ToLowerInvariant();
+        User user = await UpsertUserAsync(normalizedEmail, authProvider.ProviderName.ToLowerInvariant(), identity.IsEmailVerified, ct);
+        logger.LogInformation("External login succeeded for {Email} via {Provider}", normalizedEmail, authProvider.ProviderName);
+
+        return new ExternalAuthCompletionResult(true, payload.ReturnPath, user, null);
+    }
+
+    public async Task<User> UpsertUserAsync(string email, string providerName, bool isEmailVerified, CancellationToken ct)
+    {
+        string normalizedEmail = email.Trim().ToLowerInvariant();
         User? user = db.Users.FirstOrDefault(u => u.Email == normalizedEmail);
 
         // Admin email promotion — configured in Auth:AdminEmail (non-sensitive, stored in appsettings)
@@ -79,8 +88,8 @@ public sealed class ExternalAuthService(
                 Email = normalizedEmail,
                 Locale = "en-US",
                 Role = isAdmin ? "Administrator" : "Commuter",
-                AuthProvider = authProvider.ProviderName.ToLowerInvariant(),
-                IsEmailVerified = identity.IsEmailVerified,
+                AuthProvider = providerName,
+                IsEmailVerified = isEmailVerified,
                 CreatedAt = DateTimeOffset.UtcNow,
                 LastLoginAt = DateTimeOffset.UtcNow
             };
@@ -89,24 +98,15 @@ public sealed class ExternalAuthService(
         else
         {
             user.LastLoginAt = DateTimeOffset.UtcNow;
-            if (identity.IsEmailVerified)
+            if (isEmailVerified)
                 user.IsEmailVerified = true;
-            // Refresh the auth provider on every login. Accounts created under the previous
-            // JWT/password stack (removed in the BFF migration) — or any pre-BFF record — carry
-            // a stale or empty AuthProvider. The Production authorization policy requires the
-            // auth_provider claim to equal "microsoft", so without this refresh such a user is
-            // issued a valid session cookie (and appears signed in) yet is 403'd on every
-            // protected endpoint, surfacing as unexplained "operation failed" errors.
-            user.AuthProvider = authProvider.ProviderName.ToLowerInvariant();
-            // Ensure admin role is always set correctly — guards against DB records created before this rule
+            user.AuthProvider = providerName;
             if (isAdmin && user.Role != "Administrator")
                 user.Role = "Administrator";
         }
 
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("External login succeeded for {Email} via {Provider}", normalizedEmail, authProvider.ProviderName);
-
-        return new ExternalAuthCompletionResult(true, payload.ReturnPath, user, null);
+        return user;
     }
 
     private IExternalIdentityProvider ResolveProvider(string provider)

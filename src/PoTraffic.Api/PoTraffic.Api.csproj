@@ -27,6 +27,8 @@
   <ItemGroup>
     <!-- Blazor WASM server hosting (composition root) -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <!-- Bearer JWT auth for native mobile clients -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <!-- OpenAPI document + Scalar UI -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Scalar.AspNetCore" />

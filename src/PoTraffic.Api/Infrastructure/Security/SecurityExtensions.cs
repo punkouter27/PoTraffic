@@ -1,8 +1,11 @@
 using PoTraffic.Api.Platform;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Tokens;
 using PoTraffic.Api.Features.Auth;
 using PoTraffic.Api.Infrastructure.Resilience;
 using System.Diagnostics.CodeAnalysis;
@@ -36,7 +39,11 @@ internal static class SecurityExtensions
         // FakeAuthHandler only when that header is present, so cookie sessions (the
         // real sign-in path) behave identically whether or not fake auth is registered.
         bool fakeAuthEnabled = !environment.IsProduction();
-        string defaultScheme = fakeAuthEnabled ? SmartScheme : CookieAuthenticationDefaults.AuthenticationScheme;
+        string? microsoftClientId = configuration["ExternalAuth:Microsoft:ClientId"];
+        bool jwtEnabled = !string.IsNullOrWhiteSpace(microsoftClientId);
+        string defaultScheme = (fakeAuthEnabled || jwtEnabled)
+            ? SmartScheme
+            : CookieAuthenticationDefaults.AuthenticationScheme;
 
         AuthenticationBuilder authentication = services.AddAuthentication(options =>
         {
@@ -51,12 +58,74 @@ internal static class SecurityExtensions
             FakeAuthHandler.GuardNotProduction(environment);
             authentication.AddScheme<AuthenticationSchemeOptions, FakeAuthHandler>(
                 FakeAuthHandler.SchemeName, displayName: "Fake (Dev/Test only)", configureOptions: null);
-            authentication.AddPolicyScheme(SmartScheme, "Cookie, or Fake when X-Fake-User is present", options =>
+        }
+
+        if (jwtEnabled)
+        {
+            string[] allowedTenants = configuration.GetSection("ExternalAuth:Microsoft:AllowedTenantIds").Get<string[]>() ?? [];
+            authentication.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.Authority = "https://login.microsoftonline.com/common/v2.0";
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateAudience = true,
+                    ValidAudiences = [microsoftClientId!, $"api://{microsoftClientId}"],
+                    ValidateIssuer = true,
+                    IssuerValidator = (issuer, _, _) =>
+                    {
+                        if (allowedTenants.Length == 0)
+                            return issuer;
+                        string? tid = Uri.TryCreate(issuer, UriKind.Absolute, out Uri? uri) && uri.Segments.Length > 1
+                            ? uri.Segments[1].Trim('/')
+                            : null;
+                        if (allowedTenants.Contains(tid, StringComparer.OrdinalIgnoreCase))
+                            return issuer;
+                        throw new SecurityTokenInvalidIssuerException($"Issuer '{issuer}' is not in AllowedTenantIds.");
+                    }
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async ctx =>
+                    {
+                        string? email = ctx.Principal?.FindFirstValue("preferred_username")
+                            ?? ctx.Principal?.FindFirstValue(ClaimTypes.Email)
+                            ?? ctx.Principal?.FindFirstValue("email")
+                            ?? ctx.Principal?.FindFirstValue("upn");
+                        if (string.IsNullOrWhiteSpace(email))
+                        {
+                            ctx.Fail("Bearer token missing email claim.");
+                            return;
+                        }
+
+                        ExternalAuthService authSvc = ctx.HttpContext.RequestServices.GetRequiredService<ExternalAuthService>();
+                        User user = await authSvc.UpsertUserAsync(email, "microsoft", true, ctx.HttpContext.RequestAborted);
+                        ClaimsIdentity identity = new(
+                        [
+                            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                            new Claim(ClaimTypes.Name, user.Email),
+                            new Claim(ClaimTypes.Email, user.Email),
+                            new Claim("email", user.Email),
+                            new Claim(ClaimTypes.Role, user.Role),
+                            new Claim("auth_provider", "microsoft"),
+                        ], JwtBearerDefaults.AuthenticationScheme);
+                        ctx.Principal = new ClaimsPrincipal(identity);
+                    }
+                };
+            });
+        }
+
+        if (fakeAuthEnabled || jwtEnabled)
+        {
+            authentication.AddPolicyScheme(SmartScheme, "Cookie, Bearer, or Fake", options =>
             {
                 options.ForwardDefaultSelector = ctx =>
-                    ctx.Request.Headers.ContainsKey(FakeAuthHandler.UserHeader)
-                        ? FakeAuthHandler.SchemeName
-                        : CookieAuthenticationDefaults.AuthenticationScheme;
+                {
+                    if (fakeAuthEnabled && ctx.Request.Headers.ContainsKey(FakeAuthHandler.UserHeader))
+                        return FakeAuthHandler.SchemeName;
+                    if (jwtEnabled && ctx.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                        return JwtBearerDefaults.AuthenticationScheme;
+                    return CookieAuthenticationDefaults.AuthenticationScheme;
+                };
             });
         }
 

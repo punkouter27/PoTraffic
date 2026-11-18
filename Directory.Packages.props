@@ -44,6 +44,7 @@
          Pinned to the family version already in the graph (via Azure.Identity) to avoid drift. -->
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
   </ItemGroup>
 
   <ItemGroup Label="OpenTelemetry">
