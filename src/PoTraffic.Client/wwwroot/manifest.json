@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0b1220",
-  "theme_color": "#3b82f6",
+  "theme_color": "#4f46e5",
   "categories": ["travel", "navigation", "productivity"],
   "icons": [
     {

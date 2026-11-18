@@ -8,6 +8,9 @@
         @ChildContent
     </ChildContent>
     <ErrorContent>
+        @* The whole app failed, so no layout is rendering: keep the Po shell on screen anyway. *@
+        <PoHeader />
+        <BuildVersion />
         <div class="error-container">
             <div class="error-card">
                 <PtIcon Name="error" Size="xl" Class="error-icon" />

@@ -7,10 +7,8 @@
     position: relative;
     background: transparent;
     border: none;
-    /* The bell sits on the dark app shell, where the inherited body foreground is
-       the page's — near-black on light. It was an emoji before and carried its own
-       colour; now it needs telling. */
-    color: var(--pt-color-neutral-200);
+    /* The bell sits in the Po header, which follows the page theme. */
+    color: var(--pt-fg-primary);
     --pt-icon-size: 1.35rem;
     line-height: 1;
     cursor: pointer;
@@ -20,7 +18,7 @@
 }
 
 .pt-bell-btn:hover {
-    background: var(--pt-bg-elev-1);
+    background: var(--pt-bg-tint);
 }
 
 .pt-bell-badge {

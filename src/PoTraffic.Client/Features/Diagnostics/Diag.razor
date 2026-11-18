@@ -2,7 +2,6 @@
 @page "/health"
 @attribute [AllowAnonymous]
 @using System.Diagnostics
-@using System.Reflection
 @inject PoTrafficApiClient Api
 
 @* /diag — the fleet-standard diagnostics page (2026-11-17; it lived at /health, kept here as
@@ -48,13 +47,13 @@
 
     <LoadingErrorCard IsLoading="_loading" SkeletonRows="6">
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">API</RadzenText>
-        <ul class="pt-health-list" role="list">
-            <li class="pt-health-item" data-status="@(_apiReachable ? "healthy" : "unhealthy")" data-testid="diag-api">
+        <ul class="pt-health-list po-diag__group" role="list">
+            <li class="pt-health-item po-diag__card" data-status="@(_apiReachable ? "healthy" : "unhealthy")" data-testid="diag-api">
                 <span class="pt-health-dot" aria-hidden="true"></span>
                 <div class="pt-health-item-body">
                     <div class="pt-health-item-head">
                         <span class="pt-health-name">PoTraffic API</span>
-                        <span class="pt-health-status">@(_apiReachable ? "Reachable" : "Unreachable")</span>
+                        <span class="pt-health-status po-badge po-badge--@(_apiReachable ? "ok" : "bad")">@(_apiReachable ? "Reachable" : "Unreachable")</span>
                     </div>
                     <p class="pt-health-desc">
                         @(_apiReachable
@@ -68,7 +67,7 @@
 
         @if (_report is not null)
         {
-            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">Database / storage</RadzenText>
+            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">Data</RadzenText>
             @CheckList(Storage, "No storage is checked by this deployment.")
 
             <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">Services</RadzenText>
@@ -78,7 +77,7 @@
         <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H2" class="pt-diag-section">About this app</RadzenText>
         <dl class="pt-health-about" data-testid="diag-about">
             <dt>Version</dt>
-            <dd>@(BuildVersion ?? "unknown")</dd>
+            <dd>@(BuildVersion.Stamp ?? "unknown")</dd>
             <dt>Environment</dt>
             <dd>@(_report?.Environment ?? "unknown")</dd>
         </dl>
@@ -95,11 +94,6 @@
     private string? _error;
     private DateTimeOffset _checkedAt;
     private int _healthy;
-
-    /// <summary>The client build stamp (YYMMDD), the same value the corner badge shows.</summary>
-    private static readonly string? BuildVersion = typeof(Diag).Assembly
-        .GetCustomAttributes<AssemblyMetadataAttribute>()
-        .FirstOrDefault(a => a.Key == "BuildVersion")?.Value;
 
     private IEnumerable<DiagCheckDto> Storage => _report?.Checks.Where(c => c.Category == "storage") ?? [];
     private IEnumerable<DiagCheckDto> Services => _report?.Checks.Where(c => c.Category != "storage") ?? [];
@@ -122,6 +116,14 @@
             _ => "No dependency data",
         };
 
+    /// <summary>The Po badge modifier (po-tokens.css) for a health-check status.</summary>
+    private static string Badge(string status) => Normalise(status) switch
+    {
+        "healthy" => "ok",
+        "degraded" => "warn",
+        _ => "bad",
+    };
+
     /// <summary>Health-check statuses arrive PascalCase; the CSS selectors key off lowercase.</summary>
     private static string Normalise(string status) => status.ToLowerInvariant();
 
@@ -133,15 +135,15 @@
             <p class="pt-health-desc">@empty</p>
             return;
         }
-        <ul class="pt-health-list" role="list">
+        <ul class="pt-health-list po-diag__group" role="list">
             @foreach (DiagCheckDto c in list)
             {
-                <li class="pt-health-item" data-status="@Normalise(c.Status)" data-testid="diag-check-@c.Key">
+                <li class="pt-health-item po-diag__card" data-status="@Normalise(c.Status)" data-testid="diag-check-@c.Key">
                     <span class="pt-health-dot" aria-hidden="true"></span>
                     <div class="pt-health-item-body">
                         <div class="pt-health-item-head">
                             <span class="pt-health-name">@c.Name</span>
-                            <span class="pt-health-status">@c.Status</span>
+                            <span class="pt-health-status po-badge po-badge--@Badge(c.Status)">@c.Status</span>
                         </div>
                         <p class="pt-health-desc">@c.Purpose</p>
                         @if (!string.IsNullOrWhiteSpace(c.Detail))

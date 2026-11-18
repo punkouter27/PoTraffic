@@ -1,8 +1,11 @@
-// po-appearance.js — theme, density and their persistence.
+// po-appearance.js — density and its persistence.
 //
-// The <head> resolver in index.html stamps data-theme and data-density before
-// first paint so the page never flashes the wrong one. This module owns the
-// changes made afterwards, from Settings.
+// The colour theme is not the app's to set: it follows the device
+// (prefers-color-scheme) through po-tokens.css, with no in-app switch.
+//
+// The <head> resolver in index.html stamps data-density before first paint so
+// the page never flashes the wrong one. This module owns the changes made
+// afterwards, from Settings.
 //
 // Switching wraps the attribute write in a view transition where the browser
 // has one. That is a safe place to use it: the app fully controls this DOM
@@ -10,7 +13,6 @@
 // cross-fades. Route changes deliberately do NOT get this treatment — Blazor
 // owns that render, and wrapping it would mean guessing when it lands.
 
-const THEME_KEY = "potraffic:theme";
 const DENSITY_KEY = "potraffic:density";
 
 function store(key, value) {
@@ -37,23 +39,6 @@ function transition(mutate) {
 }
 
 /**
- * @param {"light"|"dark"|"system"} value
- */
-export function setTheme(value) {
-    const root = document.documentElement;
-
-    if (value === "system") {
-        store(THEME_KEY, null);
-        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        transition(() => root.setAttribute("data-theme", dark ? "dark" : "light"));
-        return;
-    }
-
-    store(THEME_KEY, value);
-    transition(() => root.setAttribute("data-theme", value));
-}
-
-/**
  * @param {"compact"|"normal"|"comfortable"} value
  */
 export function setDensity(value) {
@@ -72,10 +57,10 @@ export function setDensity(value) {
 /** Current selections, for a settings page that has to render them as chosen. */
 export function getAppearance() {
     return {
-        theme: read(THEME_KEY) ?? "system",
         density: read(DENSITY_KEY) ?? "normal",
         // Reported so the UI can say the OS is already asking for these rather
         // than leaving the user wondering why the app looks different.
+        prefersDark: window.matchMedia("(prefers-color-scheme: dark)").matches,
         prefersContrast: window.matchMedia("(prefers-contrast: more)").matches,
         prefersReducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches
     };

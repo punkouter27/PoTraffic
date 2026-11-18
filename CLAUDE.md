@@ -188,11 +188,36 @@ boundary. Do not introduce raw `Guid` parameters for entity identity.
 - Integration test methods use `[SkipUnlessAzuriteAvailable]`, not `[Fact]`, so the suite
   skips rather than hard-fails without Docker. E2E tests use `[ApiSkipUnlessReady]` /
   `[SkipUnlessE2EReady]`.
-- CI (`.github/workflows/deploy.yml`) builds, runs the **Unit** tier and deploys to App Service
-  on `master` only. Integration and E2E need Docker and a live host, so they stay local:
-  the `run-tests.ps1` report is the gate for those.
-- **This repo holds the REFERENCE copy of the shared Po web CI files** (`deploy.yml`,
-  `dependabot.yml`): every Po .NET web repo has a byte-identical copy. Change them here, then run
-  `PoPunkouterSoftware/scripts/sync-ci.ps1` to copy them out; never put PoTraffic-only logic in
-  them — use repo variables (`HEALTH_PATH=/health/json` here) or the hook scripts
-  (`scripts/post-deploy-smoke.ps1`). Bicep is applied only by a manual `deploy.yml` run with `infra` = what-if, then apply.
+- CI (`.github/workflows/deploy.yml`) only builds, publishes and deploys `master` to App Service,
+  then waits until `/health/live` answers with this commit's `X-Commit`. It runs no tests, no
+  format check, no Bicep, no rollback and no pull-request builds: every test tier runs locally
+  (`run-tests.ps1` is the gate). Repo variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+  `AZURE_SUBSCRIPTION_ID`, `AZURE_WEBAPP_NAME`, `AZURE_RESOURCE_GROUP`. Bicep is applied by hand
+  (`infra/README.md`); `scripts/post-deploy-smoke.ps1` is run by hand after a deploy.
+- `deploy.yml` is the Po web standard workflow: the file is identical in every Po .NET web repo
+  and each repo owns its own copy (no shared repo, no sync script). Never put PoTraffic-only
+  logic in it; use its optional hooks (`scripts/ci-package.ps1`, `scripts/pre-deploy.ps1`).
+
+## Po shell (Po web standard)
+
+Every page, signed in and out, carries the same shell, styled by `wwwroot/css/po-tokens.css`
+(identical in every Po web app; never edit it here: change all copies together):
+
+- **Header** `Layout/PoHeader.razor` (`.po-header`), rendered by `MainLayout`, `AuthLayout`,
+  `BareLayout` and the root error boundary: the app name top-left (links to `/`); top-right the
+  signed-in email (`.po-header__email`) or the Sign in link, then the one settings gear
+  (`.po-header__settings`, `/settings`). The bell and the mock-data chip sit in the same cluster.
+- **Settings** `/settings` (`/account/settings` is an alias) is anonymous: theme note and build
+  stamp for anyone; email, Admin, Sign out, dev personas and the account settings when signed in.
+- **Theme** follows the device (`prefers-color-scheme`) only: no switch, no `data-theme`. App
+  tokens (`--pt-*`, `wwwroot/css/pt-tokens.css`) alias the `--po-*` estate tokens: indigo
+  accent, Inter body text, Space Grotesk headings (self-hosted in `wwwroot/fonts/`).
+  Material Symbols is the only Google Fonts load (icon font).
+- **Build stamp** `<span class="po-version">vYYMMDD</span>` (`Layout/BuildVersion.razor`), the
+  UTC date of the HEAD commit, generated once by the `PoBuildStamp` target in
+  `Directory.Build.props` for every assembly. Lifted above the phone bottom nav via `--po-stamp-lift`.
+- **/diag** groups API / Data / Services as `.po-diag__card`s with `.po-badge--ok|warn|bad`.
+- **Tab window**: Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`,
+  `js/po-dev.js`): `/health/live` + `X-Commit`, and the checks from `GET /api/diag/status` (an
+  anonymous alias of `/api/diag`). `App.razor` only moves focus to the h1 after the user has
+  followed a link, so a fresh page has nothing focused.

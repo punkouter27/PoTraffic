@@ -1,6 +1,6 @@
 .po-bare-shell {
-    min-height: 100dvh;
+    min-height: calc(100dvh - var(--po-header-h));
     width: 100%;
-    background: var(--po-bg-page);
-    color: var(--po-fg-primary);
+    background: var(--pt-bg-page);
+    color: var(--pt-fg-primary);
 }

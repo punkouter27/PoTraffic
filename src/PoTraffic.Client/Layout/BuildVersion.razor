@@ -1,19 +1,19 @@
 @using System.Reflection
 
-@* The build stamp, YYMMDD, pinned to the bottom-right corner of every page (AGENTS.md
-   standing requirement). Generated at build time into the client assembly's metadata —
-   see the AssemblyAttribute in PoTraffic.Client.csproj — so it names the build of the
-   code actually running in this tab, which after a service-worker update can differ from
-   what the server is serving. Decoration only: aria-hidden, and pointer-events: none so
-   it can never sit on top of a tap target. *@
-@if (Version is not null)
+@* The Po build stamp, vYYMMDD (UTC date of the HEAD commit), fixed to the bottom-right corner
+   of every page by po-tokens.css (AGENTS.md standing requirement). Generated once, in
+   Directory.Build.props (PoBuildStamp), into every assembly's [AssemblyMetadata("BuildVersion")],
+   so server and client carry the same value. It names the build of the code actually running
+   in this tab, which after a service-worker update can differ from what the server is serving.
+   Decoration only: aria-hidden, and po-tokens.css makes it pointer-events: none. *@
+@if (Stamp is not null)
 {
-    <span class="pt-build-version" aria-hidden="true" title="Build @Version">@Version</span>
+    <span class="po-version" aria-hidden="true" title="Build @Stamp">@Stamp</span>
 }
 
 @code {
-    /// <summary>Read once per app load; the assembly cannot change under a running tab.</summary>
-    private static readonly string? Version = typeof(BuildVersion).Assembly
+    /// <summary>"v261118"; null only if the build somehow skipped the stamp.</summary>
+    public static string? Stamp { get; } = typeof(BuildVersion).Assembly
         .GetCustomAttributes<AssemblyMetadataAttribute>()
-        .FirstOrDefault(a => a.Key == "BuildVersion")?.Value;
+        .FirstOrDefault(a => a.Key == "BuildVersion")?.Value is { Length: > 0 } v ? "v" + v : null;
 }

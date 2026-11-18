@@ -1,6 +1,8 @@
 @inherits LayoutComponentBase
 
-<div class="auth-shell">
+@* The Po shell header stays on the sign-in page too; the sign-in card is page body under it. *@
+<PoHeader />
+<main class="auth-shell" id="main-content" tabindex="-1">
     <div class="auth-brand-panel">
         <div class="auth-brand-content">
             <div class="auth-logo">PoTraffic</div>
@@ -40,7 +42,7 @@
             </SectionErrorBoundary>
         </div>
     </div>
-</div>
+</main>
 <RadzenNotification />
 <RadzenDialog />
 <RadzenTooltip />

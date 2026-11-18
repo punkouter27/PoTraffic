@@ -28,8 +28,7 @@
 
 /* ── Bottom-sheet action menu (mobile only) ──────────────────────── */
 
-/* Tap-outside catcher. NavMenu's .pt-overlay rule is scoped to NavMenu, so without
-   this one the div rendered at zero size and only the Account tab closed the sheet. */
+/* Tap-outside catcher, so a tap anywhere outside the sheet closes it. */
 .pt-overlay {
     position: fixed;
     inset: 0;

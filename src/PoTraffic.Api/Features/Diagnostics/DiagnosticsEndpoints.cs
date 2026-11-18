@@ -3,6 +3,7 @@
 // the Blazor diagnostics page):
 //   • GET /api/diag — anonymous, friendly dependency report rendered by the /diag page;
 //     administrators additionally get each check's raw description
+//   • GET /api/diag/status — the same report, where the Po developer window (Tab) looks first
 //   • GET /api/diag/keyvault — admin-only MASKED Key Vault secret retrieval (proves identity
 //     wiring and never returns the raw secret value to the caller)
 //   • POST /api/diag/client-error is mapped with the SPA host (BlazorClientHostExtensions).
@@ -20,12 +21,18 @@ public static class DiagnosticsEndpoints
         // The summary is anonymous on purpose: the moment you most need it is when sign-in
         // itself is broken. It carries statuses, timings and fixed text only; the detail
         // (raw check descriptions) is added for administrators alone.
-        app.MapGet("/api/diag", async (HttpContext http, GetDiagReportHandler handler) =>
-            Results.Ok(await handler.Handle(
-                new GetDiagReportQuery(IncludeDetail: http.User.IsInRole("Administrator")),
-                http.RequestAborted)))
+        app.MapGet("/api/diag", GetReport)
             .AllowAnonymous()
             .WithName("GetDiagReport")
+            .WithTags("Diagnostics")
+            .Produces<DiagReportDto>();
+
+        // The same report at /api/diag/status: the first address the Po developer window
+        // (wwwroot/po-dev.html, opened by Tab) probes. Without it that probe hit the
+        // /api catch-all and read its 404 problem+json as "no named checks".
+        app.MapGet("/api/diag/status", GetReport)
+            .AllowAnonymous()
+            .WithName("GetDiagStatus")
             .WithTags("Diagnostics")
             .Produces<DiagReportDto>();
 
@@ -37,6 +44,11 @@ public static class DiagnosticsEndpoints
         // /api/diag/keyvault — reports whether ?secret= resolved, masked; admin only.
         group.MapGet("/keyvault", HandleKeyVaultDiag);
     }
+
+    private static async Task<IResult> GetReport(HttpContext http, GetDiagReportHandler handler) =>
+        Results.Ok(await handler.Handle(
+            new GetDiagReportQuery(IncludeDetail: http.User.IsInRole("Administrator")),
+            http.RequestAborted));
 
     /// <summary>
     /// Reveals only the length bucket of a secret — never any of its characters. Showing

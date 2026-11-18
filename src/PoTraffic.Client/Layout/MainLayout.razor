@@ -11,9 +11,8 @@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
 <div class="page">
-    <header class="app-header">
-        <NavMenu />
-    </header>
+    @* Po shell header: app name, email or Sign in, settings gear (Po web standard). *@
+    <PoHeader />
 
     <main id="main-content" tabindex="-1">
         <article class="content">
@@ -43,7 +42,7 @@
 @* "/", "n", "c" and "?" — see KeyboardShortcuts for how pages opt in. *@
 <KeyboardShortcuts />
 
-@* Build stamp, bottom-right — a standing layout requirement (AGENTS.md). Keep it here. *@
+@* Build stamp vYYMMDD, bottom-right — a standing layout requirement (AGENTS.md). Keep it here. *@
 <BuildVersion />
 
 

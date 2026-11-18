@@ -141,8 +141,8 @@ function readTheme(canvas) {
         muted: resolve("var(--pt-fg-muted)", "#64748b"),
         baseline: resolve("var(--pt-fg-tertiary)", "#94a3b8"),
         surface: resolve("var(--pt-bg-elev-1)", "#ffffff"),
-        line: resolve("var(--pt-color-brand-500)", "#3b82f6"),
-        lineStrong: resolve("var(--pt-color-brand-600)", "#2563eb"),
+        line: resolve("var(--pt-color-brand-500)", "#4f46e5"),
+        lineStrong: resolve("var(--pt-color-brand-600)", "#4f46e5"),
         danger: resolve("var(--pt-color-danger)", "#f43f5e"),
         // Second series in compare mode (#8). Warning-amber rather than another blue:
         // the two lines have to be told apart at a glance, including in greyscale.

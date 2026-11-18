@@ -59,7 +59,8 @@ prints the URL.
 | `https://localhost:5001` | Hosted API + Blazor client |
 | `https://localhost:5001/scalar/v1` | Scalar API reference in Development |
 | `https://localhost:5001/diag` | System status page, no sign-in needed (`/health` is an alias); data from `GET /api/diag` |
-| `https://localhost:5001/health/json` | Machine-readable dependency status (deploy health gate) |
+| `https://localhost:5001/health/json` | Machine-readable dependency status |
+| `https://localhost:5001/api/diag/status` | Same JSON as `/api/diag`; read by the Tab developer window (`/po-dev.html`) |
 | `https://localhost:5001/api/diag/keyvault` | Admin-only Key Vault diagnostics API |
 
 ## Running Tests

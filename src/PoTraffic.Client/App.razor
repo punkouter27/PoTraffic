@@ -1,5 +1,8 @@
 @using PoTraffic.Client.Layout
 @using PoTraffic.Client.Features.Auth
+@using Microsoft.AspNetCore.Components.Routing
+@implements IDisposable
+@inject NavigationManager Nav
 
 <CascadingAuthenticationState>
     <AppErrorBoundary>
@@ -18,8 +21,30 @@
                         }
                     </NotAuthorized>
                 </AuthorizeRouteView>
-                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+                @* Focus moves to the new page's h1 only once the user has followed a link. On a
+                   fresh load (and the app's own redirects, such as / to /login) nothing is
+                   focused, so Tab opens the Po developer window (js/po-devwindow.js). *@
+                @if (_userNavigated)
+                {
+                    <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+                }
             </Found>
         </Router>
     </AppErrorBoundary>
 </CascadingAuthenticationState>
+
+@code {
+    private bool _userNavigated;
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (_userNavigated || !e.IsNavigationIntercepted)
+            return;
+        _userNavigated = true;
+        StateHasChanged();
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

@@ -159,3 +159,29 @@
 .pt-settings ::deep .pt-settings-button-reserve {
     min-height: 2rem;
 }
+
+/* Account actions (Admin, Sign out, dev personas): plain pill links in a row. */
+.pt-settings-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--pt-space-2);
+}
+
+.pt-settings-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pt-space-2);
+    min-height: 36px;
+    padding: 0 var(--pt-space-3);
+    border: 1px solid var(--pt-border-subtle);
+    border-radius: var(--pt-radius-full);
+    background: var(--pt-bg-surface);
+    color: var(--pt-fg-primary);
+    font-size: var(--pt-text-sm);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.pt-settings-link:hover { border-color: var(--po-accent); color: var(--po-accent); }
+.pt-settings-link-danger { color: var(--pt-color-danger-on-surface); }

@@ -48,7 +48,7 @@ img, svg, video {
 }
 
 html, body {
-    font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: var(--po-font);
     font-size: var(--pt-text-base, 16px);
     -webkit-font-smoothing: antialiased;
     background: var(--pt-bg-page);
@@ -1022,18 +1022,7 @@ code {
    this style. The tokens already collapse to solid under forced-colors and
    prefers-contrast, so those users get flat surfaces automatically. */
 
-.app-header {
-    /* backdrop-filter makes this a stacking context, trapping the bar's z-index and
-       the account dropdown inside it — any later glass surface (the empty dashboard)
-       painted over the menu and swallowed its clicks. The layer lives here instead. */
-    position: sticky;
-    top: 0;
-    z-index: var(--pt-z-nav);
-    background: var(--pt-glass-bg-strong);
-    backdrop-filter: blur(var(--pt-glass-blur)) saturate(var(--pt-glass-saturate));
-    -webkit-backdrop-filter: blur(var(--pt-glass-blur)) saturate(var(--pt-glass-saturate));
-    border-bottom: 1px solid var(--pt-glass-border);
-}
+/* The header is the Po shell's .po-header (po-tokens.css): a solid surface, no glass. */
 
 /* Cards get a whisper of the same treatment: still fully opaque behind text, but
    with the saturation lift and the hairline that make the set read as glass rather
@@ -1044,13 +1033,6 @@ code {
     box-shadow: var(--pt-elev-2), inset 0 1px 0 light-dark(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.04));
 }
 
-/* No backdrop-filter support: the tokens are already translucent, which over a
-   moving gradient would be unreadable. Fall back to the solid surface. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .app-header {
-        background: var(--pt-bg-surface);
-    }
-}
 
 /* ═══════════════════════════════════════════════
    Loading shimmer
@@ -1615,7 +1597,7 @@ html:has(.pt-dialog[open]) {
     border-radius: var(--pt-radius-sm);
     color: var(--pt-fg-primary);
     display: inline-block;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: var(--po-font-mono);
     font-size: var(--pt-text-sm);
     min-width: 1.75rem;
     padding: 0.1rem 0.45rem;
@@ -1626,4 +1608,63 @@ html:has(.pt-dialog[open]) {
     color: var(--pt-fg-tertiary);
     font-size: var(--pt-text-xs);
     margin-top: var(--pt-space-4);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Po shell (Po web standard). The header, gear, build stamp and /diag
+   cards are styled by po-tokens.css; only PoTraffic's adjustments live here.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* The phone bottom nav (BottomNav, ≤640px) owns the bottom edge: lift the
+   .po-version stamp above it. Only on pages that actually show the nav. */
+@media (max-width: 640px) {
+    :root:has(.pt-bottom-nav) { --po-stamp-lift: var(--pt-bottom-nav-safe); }
+}
+
+/* The mock-data chip rides in the header's action cluster. */
+.po-header__actions .pt-mock-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pt-space-1);
+    background: var(--pt-color-warning);
+    color: var(--po-on-accent);
+    padding: var(--pt-space-1) var(--pt-space-3);
+    border-radius: var(--pt-radius-full);
+    font-weight: var(--pt-weight-bold);
+    font-size: var(--pt-text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* On a phone the chip shrinks to its icon so the app name and email keep their room. */
+@media (max-width: 640px) {
+    .po-header__actions .pt-mock-banner { padding: var(--pt-space-1); }
+    .po-header__actions .pt-mock-banner-text { display: none; }
+}
+
+/* Signed out, the header's action is the app's existing "Sign in" link. */
+.po-header__signin {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 var(--pt-space-3);
+    border-radius: var(--po-radius-pill);
+    background: var(--po-accent);
+    color: var(--po-on-accent);
+    font-weight: var(--pt-weight-semibold);
+    font-size: var(--pt-text-sm);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.po-header__signin:hover { background: var(--po-accent-hover); }
+
+/* The logo mark that sits before the app name in the header title. */
+.po-header__mark {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: var(--pt-radius-xs);
+    background: var(--po-accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--po-accent) 18%, transparent);
+    flex-shrink: 0;
 }

@@ -7,21 +7,22 @@ using PoTraffic.Shared.Constants;
 namespace PoTraffic.Client.Layout;
 
 /// <summary>
-/// What "Account" means, once. The desktop dropdown (NavMenu) and the phone's bottom
-/// sheet (BottomNav) each carried their own copy of the items, of the guest-label rule
-/// and of sign-out — and had drifted: the sheet had no Admin entry at all.
+/// What "Account" means, once. The Po header (PoHeader), the Settings page and the phone's
+/// bottom sheet (BottomNav) all read the items, the guest-label rule and sign-out from here.
 /// </summary>
 public static class AccountMenu
 {
     public sealed record Link(string Href, string Icon, string Label);
 
-    public sealed record Identity(bool IsAuthenticated, bool IsAdmin, bool IsGuest, string Label, string Initials);
+    /// <param name="Email">The raw sign-in address — what the Po header shows.</param>
+    /// <param name="Label">The friendly label (guest addresses read GUEST12345678).</param>
+    public sealed record Identity(bool IsAuthenticated, bool IsAdmin, bool IsGuest, string Email, string Label, string Initials);
 
     public static IReadOnlyList<Link> Links(bool isAdmin)
     {
         List<Link> links =
         [
-            new("/account/settings", "settings", "Account settings"),
+            new("/settings", "settings", "Settings"),
         ];
         if (isAdmin)
             links.Add(new("/admin", "admin_panel_settings", "Admin"));
@@ -31,7 +32,7 @@ public static class AccountMenu
     public static Identity Describe(ClaimsPrincipal user)
     {
         if (user.Identity?.IsAuthenticated != true)
-            return new Identity(false, false, false, string.Empty, "?");
+            return new Identity(false, false, false, string.Empty, string.Empty, "?");
 
         bool isAdmin = HasRole(user, "Administrator");
         bool isGuest = HasRole(user, "Guest");
@@ -44,8 +45,8 @@ public static class AccountMenu
         // Guest accounts are minted as guest12345678@potraffic.dev; the raw address is noise,
         // so they render as GUEST12345678. The address shape is GuestAccountConstants'.
         return isGuest && GuestAccountConstants.IsGuestEmail(email)
-            ? new Identity(true, isAdmin, true, GuestAccountConstants.ToDisplayLabel(email), "G")
-            : new Identity(true, isAdmin, false, email, email[0].ToString().ToUpperInvariant());
+            ? new Identity(true, isAdmin, true, email, GuestAccountConstants.ToDisplayLabel(email), "G")
+            : new Identity(true, isAdmin, false, email, email, email[0].ToString().ToUpperInvariant());
     }
 
     public static async Task SignOutAsync(AuthenticationStateProvider auth, NavigationManager nav)

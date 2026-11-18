@@ -1,6 +1,7 @@
+/* Fills the viewport under the Po header (--po-header-h, po-tokens.css). */
 .auth-shell {
     display: flex;
-    min-height: 100vh;
+    min-height: calc(100dvh - var(--po-header-h));
 }
 
 /* The brand panel is a marketing hero that is always dark, in both themes — its

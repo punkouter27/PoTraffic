@@ -1,0 +1,346 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PoTraffic app tokens (--pt-*). The estate look lives in po-tokens.css (the Po
+   web standard: identical file in every Po web app, loaded first). Every colour,
+   font and radius here is an ALIAS of a --po-* token, so PoTraffic wears the
+   shared indigo accent and the device-following light/dark palette. What stays
+   app-specific: the traffic verdict ramp, glass, density-scaled spacing, the
+   bottom-nav height, motion and z-index.
+
+   THEMING. The theme follows the device only (prefers-color-scheme). There is
+   no in-app theme switch and no data-theme attribute. Values that need an
+   app-specific pair use light-dark(), resolved from po-tokens.css's
+   `color-scheme: light dark`.
+
+   This file holds TOKENS ONLY. Keyframes and motion utilities live in
+   po-motion.css; component rules live in app.css or a scoped stylesheet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    /* ── Accent ramp, derived from the one --po-accent ───────────────── */
+    --pt-color-brand-50:  color-mix(in oklab, var(--po-accent) 8%,  var(--po-surface));
+    --pt-color-brand-100: var(--po-accent-soft);
+    --pt-color-brand-200: color-mix(in oklab, var(--po-accent) 30%, var(--po-surface));
+    --pt-color-brand-300: color-mix(in oklab, var(--po-accent) 55%, var(--po-surface));
+    --pt-color-brand-400: color-mix(in oklab, var(--po-accent) 80%, var(--po-surface));
+    --pt-color-brand-500: var(--po-accent);   /* primary */
+    --pt-color-brand-600: var(--po-accent);
+    --pt-color-brand-700: var(--po-accent-hover);
+    --pt-color-brand-800: color-mix(in oklab, var(--po-accent-hover) 80%, var(--po-text));
+    --pt-color-brand-900: color-mix(in oklab, var(--po-accent-hover) 60%, var(--po-text));
+
+    /* Neutral ramp: fixed greys (not theme-dependent), mixed from the estate's
+       light page and dark ink so they sit in the same family. */
+    --pt-color-neutral-0:   #ffffff;
+    --pt-color-neutral-50:  #f6f7fb;
+    --pt-color-neutral-100: #eef0f6;
+    --pt-color-neutral-200: #dcdfe8;
+    --pt-color-neutral-300: #c3c8d6;
+    --pt-color-neutral-400: #969db2;
+    --pt-color-neutral-500: #6b7288;
+    --pt-color-neutral-600: #596075;
+    --pt-color-neutral-700: #3a4052;
+    --pt-color-neutral-800: #1f2330;
+    --pt-color-neutral-900: #141826;
+
+    /* Semantic colours: the estate's, used both as fills and as text. */
+    --pt-color-success: var(--po-success);
+    --pt-color-warning: var(--po-warning);
+    --pt-color-danger:  var(--po-danger);
+    --pt-color-info:    var(--po-info);
+
+    --pt-color-brand-on-surface:   var(--po-accent);
+    --pt-color-success-on-surface: var(--po-success);
+    --pt-color-warning-on-surface: var(--po-warning);
+    --pt-color-danger-on-surface:  var(--po-danger);
+
+    /* ── Surfaces ───────────────────────────────────────────────────── */
+    --pt-bg-page:    var(--po-bg);
+    --pt-bg-surface: var(--po-surface);
+    --pt-bg-elev-1:  var(--po-surface);
+    --pt-bg-elev-2:  var(--po-surface-2);
+    --pt-bg-sunken:  var(--po-surface-2);
+
+    /* ── Foreground ramp — primary → faint ────────────────────────────── */
+    --pt-fg-primary:   var(--po-text);
+    --pt-fg-strong:    var(--po-text);
+    --pt-fg-body:      color-mix(in oklab, var(--po-text) 88%, var(--po-text-muted));
+    --pt-fg-secondary: var(--po-text-muted);
+    --pt-fg-muted:     var(--po-text-muted);
+    --pt-fg-tertiary:  var(--po-text-muted);
+    --pt-fg-faint:     color-mix(in oklab, var(--po-text-muted) 70%, var(--po-bg));
+    --pt-fg-on-brand:  var(--po-on-accent);
+
+    --pt-border-subtle: var(--po-border);
+    --pt-border-strong: color-mix(in oklab, var(--po-border) 70%, var(--po-text-muted));
+
+    /* Subtle tint surfaces (chips, sparkline wells) — an alpha wash of the ink. */
+    --pt-bg-tint:        color-mix(in oklab, var(--po-text) 7%, transparent);
+    --pt-bg-tint-strong: color-mix(in oklab, var(--po-text) 13%, transparent);
+
+    /* Semantic danger surface (destructive menu items). */
+    --pt-danger-bg: color-mix(in oklab, var(--po-danger) 12%, var(--po-surface));
+
+    /* ── Traffic verdict ramp (route map line) ─────────────────────────
+       Green → indigo → amber → red, ordered by how much worse than usual the
+       latest sample is. The accent, not green, is "normal": green is reserved
+       for the genuinely-better-than-usual case. */
+    --pt-traffic-clear:   var(--po-success);
+    --pt-traffic-normal:  var(--po-accent);
+    --pt-traffic-slow:    var(--po-warning);
+    --pt-traffic-heavy:   var(--po-danger);
+    --pt-traffic-unknown: var(--po-text-muted);
+
+    /* Shadow base as raw channels so alpha can vary per use. Not a <color>, so it
+       flips in the prefers-color-scheme block below. */
+    --pt-shadow-rgb: 16, 20, 38;
+
+    /* ── Fonts (estate) ─────────────────────────────────────────────── */
+    --pt-font: var(--po-font);
+    --pt-font-display: var(--po-font-display);
+    --pt-font-mono: var(--po-font-mono);
+
+    /* ── Surface radius (8px scale, used everywhere) ──────────────────── */
+    --pt-radius-xs:  4px;
+    --pt-radius-sm:  var(--po-radius-sm);
+    --pt-radius-md:  var(--po-radius);
+    --pt-radius-lg:  14px;
+    --pt-radius-full: var(--po-radius-pill);
+
+    /* ── Spacing (8px grid, scaled by density) ─────────────────────────
+       --pt-density is 1 by default and re-set by [data-density]; every step
+       below multiplies through it, so one attribute on <html> tightens or
+       relaxes the whole app. */
+    --pt-density: 1;
+    --pt-space-1: calc(0.25rem * var(--pt-density));  /*  4 */
+    --pt-space-2: calc(0.5rem  * var(--pt-density));  /*  8 */
+    --pt-space-3: calc(0.75rem * var(--pt-density));  /* 12 */
+    --pt-space-4: calc(1rem    * var(--pt-density));  /* 16 */
+    --pt-space-5: calc(1.25rem * var(--pt-density));  /* 20 */
+    --pt-space-6: calc(1.5rem  * var(--pt-density));  /* 24 */
+    --pt-space-8: calc(2rem    * var(--pt-density));  /* 32 */
+    --pt-space-10: calc(2.5rem * var(--pt-density));  /* 40 */
+    --pt-space-12: calc(3rem   * var(--pt-density));  /* 48 */
+
+    /* ── Type scale (modular 1.250, fluid at the top) ──────────────────
+
+       The small end is FIXED. Body copy and captions are read at the same size
+       on a phone as on a monitor — scaling them with the viewport makes text
+       smaller exactly where the screen is smallest, which is backwards.
+
+       The display sizes are FLUID, via clamp(). A 30px page title that is
+       right on a laptop is oversized on a 375px phone and undersized on a
+       27-inch monitor; interpolating between 22.5rem (360px) and 90rem
+       (1440px) lets one token be correct at both ends.
+
+       No `vw` unit appears outside a clamp() with both bounds set, so the text
+       can always be zoomed and never collapses to nothing (WCAG 1.4.4). */
+    --pt-text-xs:   0.75rem;     /* 12 */
+    --pt-text-sm:   0.875rem;    /* 14 */
+    --pt-text-base: 1rem;        /* 16 */
+    --pt-text-lg:   1.125rem;    /* 18 */
+    --pt-text-xl:   clamp(1.125rem, 1.03rem + 0.42vw, 1.375rem);   /* 18 → 22 */
+    --pt-text-2xl:  clamp(1.3rem,   1.11rem + 0.83vw, 1.75rem);    /* 21 → 28 */
+    --pt-text-3xl:  clamp(1.55rem,  1.20rem + 1.55vw, 2.375rem);   /* 25 → 38 */
+
+    --pt-leading-tight: 1.25;
+    --pt-leading-normal: 1.5;
+
+    /* ── Measure (line length) ─────────────────────────────────────────
+       Prose past about 75 characters is measurably harder to read: the eye
+       loses its place on the return sweep. `ch` is the width of a "0" in the
+       current font, so this tracks the type size instead of being a magic
+       pixel count. */
+    --pt-measure: 68ch;
+
+    --pt-weight-regular: 400;
+    --pt-weight-medium:  500;
+    --pt-weight-semibold: 600;
+    --pt-weight-bold:    700;
+
+    /* ── Layout constants ──────────────────────────────────────────────
+       The bottom nav's height is read by both the nav itself and the page
+       padding that has to clear it. They were independent numbers and had
+       drifted apart, so the last rows of every page sat under the nav. */
+    --pt-bottom-nav-h: 64px;
+    --pt-bottom-nav-safe: calc(var(--pt-bottom-nav-h) + env(safe-area-inset-bottom, 0px));
+
+    /* Minimum hit area for anything tappable (WCAG 2.5.8 asks 24px, Apple and
+       Material both ask 44px; we take the larger). */
+    --pt-tap-min: 44px;
+
+    /* ── Breakpoints ───────────────────────────────────────────────────
+       Custom properties cannot be used inside a media query, so there are no
+       tokens here — but 640px (phone) and 1024px (desktop) are the ONLY two
+       widths the app is allowed to break at. Component-level reflow belongs
+       in a @container query. */
+
+    /* ── Elevation ────────────────────────────────────────────────────── */
+    --pt-elev-1: 0 1px 2px  light-dark(rgb(15 23 42 / 0.06), rgb(0 0 0 / 0.40));
+    --pt-elev-2: 0 2px 8px  light-dark(rgb(15 23 42 / 0.08), rgb(0 0 0 / 0.45));
+    --pt-elev-3: 0 8px 24px light-dark(rgb(15 23 42 / 0.12), rgb(0 0 0 / 0.50));
+    --pt-elev-4: 0 20px 48px light-dark(rgb(15 23 42 / 0.18), rgb(0 0 0 / 0.60));
+
+    /* ── Motion ───────────────────────────────────────────────────────── */
+    --pt-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --pt-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --pt-dur-fast:    150ms;
+    --pt-dur-base:    220ms;
+    --pt-dur-slow:    320ms;
+
+    /* ── Z-index scale ─────────────────────────────────────────────────── */
+    --pt-z-nav:   100;
+    --pt-z-pop:   200;
+    --pt-z-toast: 400;
+
+    /* ── Glass surface tokens ──────────────────────────────────────────
+       Dark panes tint from the surface colour rather than from white. */
+    --pt-glass-bg:        light-dark(rgb(255 255 255 / 0.72), rgb(19 28 46 / 0.72));
+    --pt-glass-bg-strong: light-dark(rgb(255 255 255 / 0.86), rgb(19 28 46 / 0.90));
+    --pt-glass-border:    light-dark(rgb(255 255 255 / 0.45), rgb(148 163 184 / 0.18));
+    --pt-glass-blur: 16px;
+    --pt-glass-saturate: 180%;
+
+    /* Glass for surfaces that hold TEXT — route cards, drawers, panels (po-glass.css).
+       More opaque than the floating-chrome tokens above: body copy over a pane must
+       keep its contrast whatever drifts behind it, so these stay at 0.7+ and the blur
+       does the rest. Every one collapses to the solid surface below when the reader
+       asked for less transparency, more contrast, or the engine has no backdrop-filter. */
+    --pt-glass-card-bg:     light-dark(rgb(255 255 255 / 0.74), rgb(19 28 46 / 0.70));
+    --pt-glass-panel-bg:    light-dark(rgb(255 255 255 / 0.82), rgb(19 28 46 / 0.84));
+    --pt-glass-card-border: light-dark(rgb(255 255 255 / 0.60), rgb(148 163 184 / 0.20));
+    --pt-glass-highlight:   light-dark(rgb(255 255 255 / 0.70), rgb(255 255 255 / 0.06));
+    --pt-glass-card-blur: 14px;
+
+    /* ── Radzen theme mapping (so Radzen components inherit brand) ────── */
+    --rz-primary:            var(--po-accent);
+    --rz-primary-light:      var(--pt-color-brand-300);
+    --rz-primary-lighter:    var(--po-accent-soft);
+    --rz-primary-dark:       var(--po-accent-hover);
+    --rz-primary-darker:     var(--pt-color-brand-900);
+    --rz-on-primary:         var(--po-on-accent);
+    --rz-text-font-family:   var(--po-font);
+    /* Radzen's card, panel and dialog surfaces read --rz-base-background-color,
+       NOT --rz-base-100, and it defaults to literal white. Mapping only the base
+       ramp left every RadzenCard white on the dark theme while the text inside it
+       followed the theme — which is why the sign-in card was unreadable in dark
+       mode. These three are the ones that actually paint a surface. */
+    --rz-base-background-color:   var(--pt-bg-surface);
+    --rz-panel-background-color:  var(--pt-bg-surface);
+    --rz-dialog-background-color: var(--pt-bg-surface);
+    --rz-text-title-color:        var(--pt-fg-primary);
+
+    /* Radzen's select bar keeps its selected-item colour in its OWN variable, not
+       in the primary ramp — and its default is #ff6d41, a burnt orange that
+       appears nowhere else in this palette. Left unmapped it painted the chosen
+       Theme and Density labels orange on a pale-blue fill. */
+    --rz-selectbar-selected-color: var(--pt-fg-on-brand);
+
+    /* The four semantic colours. Only the PRIMARY ramp was mapped above, so every
+       Radzen alert, badge and status button — the danger alert on Settings, the
+       Healthy/Unhealthy badges on Diagnostics, the quota progress bar — was drawn
+       from Radzen's stock palette while the app's own components used --pt-color-*.
+       Two greens, two reds and two ambers were in play at once. */
+    --rz-success: var(--pt-color-success);
+    --rz-danger:  var(--pt-color-danger);
+    --rz-warning: var(--pt-color-warning);
+    --rz-info:    var(--pt-color-info);
+
+    /* Chart series. The admin line chart is the app's only RadzenChart; pinning the
+       first two series keeps it in step with pt-chart.js, which draws series A in
+       brand and series B in warning-amber. */
+    --rz-series-1: var(--pt-color-brand-500);
+    --rz-series-2: var(--pt-color-warning);
+    --rz-series-3: var(--pt-color-info);
+    --rz-series-4: var(--pt-color-success);
+
+    --rz-base-100:           var(--pt-bg-surface);
+    --rz-base-200:           var(--pt-bg-elev-2);
+    --rz-base-300:           light-dark(var(--pt-color-neutral-100), var(--pt-color-neutral-700));
+    --rz-base-400:           light-dark(var(--pt-color-neutral-200), var(--pt-color-neutral-600));
+    --rz-base-500:           light-dark(var(--pt-color-neutral-300), var(--pt-color-neutral-500));
+    --rz-text-color:         var(--pt-fg-primary);
+    --rz-text-secondary-color: var(--pt-fg-secondary);
+    --rz-text-disabled-color: var(--pt-fg-tertiary);
+    --rz-border-color:       var(--pt-border-subtle);
+    --rz-disabled-opacity:   0.5;
+    --rz-corner-radius:      var(--pt-radius-md);
+}
+
+/* The one token light-dark() cannot carry: it is a channel list, not a colour. */
+@media (prefers-color-scheme: dark) {
+    :root { --pt-shadow-rgb: 0, 0, 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Density — one attribute on <html>, set from Settings and stamped before
+   first paint by the resolver in index.html.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root[data-density="compact"]     { --pt-density: 0.75; }
+:root[data-density="comfortable"] { --pt-density: 1.15; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   High contrast. The muted end of the ramp is the first thing to fail: at
+   default weights --pt-fg-tertiary on a white card is roughly 2.6:1, under AA
+   for the small text it labels. Here the ramp collapses toward the primary end
+   and the glass goes opaque, because a translucent pane over arbitrary content
+   has no contrast guarantee at all.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-contrast: more) {
+    :root {
+        --pt-fg-secondary: light-dark(var(--pt-color-neutral-900), var(--pt-color-neutral-50));
+        --pt-fg-muted:     light-dark(var(--pt-color-neutral-800), var(--pt-color-neutral-100));
+        --pt-fg-tertiary:  light-dark(var(--pt-color-neutral-800), var(--pt-color-neutral-100));
+        --pt-fg-faint:     light-dark(var(--pt-color-neutral-700), var(--pt-color-neutral-200));
+
+        --pt-border-subtle: light-dark(var(--pt-color-neutral-500), var(--pt-color-neutral-400));
+        --pt-border-strong: light-dark(var(--pt-color-neutral-700), var(--pt-color-neutral-200));
+
+        --pt-color-brand-on-surface: light-dark(var(--pt-color-brand-800), var(--pt-color-brand-200));
+
+        --pt-bg-tint:        light-dark(rgb(15 23 42 / 0.14), rgb(255 255 255 / 0.16));
+        --pt-bg-tint-strong: light-dark(rgb(15 23 42 / 0.22), rgb(255 255 255 / 0.26));
+
+        --pt-glass-bg:        var(--pt-bg-surface);
+        --pt-glass-bg-strong: var(--pt-bg-surface);
+        --pt-glass-border:    var(--pt-border-strong);
+        --pt-glass-blur: 0px;
+        --pt-glass-saturate: 100%;
+
+        --pt-glass-card-bg:     var(--pt-bg-surface);
+        --pt-glass-panel-bg:    var(--pt-bg-surface);
+        --pt-glass-card-border: var(--pt-border-strong);
+        --pt-glass-highlight:   transparent;
+        --pt-glass-card-blur: 0px;
+    }
+}
+
+/* Some readers keep full colour but cannot cope with translucency. The app
+   leans on backdrop-filter in the toasts, empty states and nav,
+   so honour it independently of the contrast preference. */
+@media (prefers-reduced-transparency: reduce) {
+    :root {
+        --pt-glass-bg:        var(--pt-bg-surface);
+        --pt-glass-bg-strong: var(--pt-bg-surface);
+        --pt-glass-blur: 0px;
+        --pt-glass-saturate: 100%;
+
+        --pt-glass-card-bg:     var(--pt-bg-surface);
+        --pt-glass-panel-bg:    var(--pt-bg-surface);
+        --pt-glass-card-border: var(--pt-border-subtle);
+        --pt-glass-highlight:   transparent;
+        --pt-glass-card-blur: 0px;
+    }
+}
+
+/* No backdrop-filter at all: a translucent pane with nothing blurring what is behind
+   it is just low contrast. The text-bearing glass goes solid; the floating chrome
+   keeps its own fallback in app.css. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root {
+        --pt-glass-card-bg:     var(--pt-bg-surface);
+        --pt-glass-panel-bg:    var(--pt-bg-surface);
+        --pt-glass-card-border: var(--pt-border-subtle);
+        --pt-glass-card-blur: 0px;
+    }
+}
+

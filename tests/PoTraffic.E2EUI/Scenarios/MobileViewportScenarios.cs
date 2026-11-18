@@ -127,6 +127,9 @@ public sealed class MobileViewportScenarios : PlaywrightTestBase
             Assert.True(await Page.GetByTestId("diag-check-storage").IsVisibleAsync(), "storage row missing");
             Assert.True(await Page.GetByTestId("diag-check-trafficProvider").IsVisibleAsync(), "services rows missing");
             Assert.True(await Page.GetByTestId("diag-about").IsVisibleAsync(), "version/environment missing");
+            // Po web standard: one .po-diag__card per dependency, each with a .po-badge status.
+            int badgedCards = await Page.Locator(".po-diag__card .po-badge").CountAsync();
+            Assert.True(badgedCards >= 3, $"expected a badged .po-diag__card per dependency, found {badgedCards}");
 
             await Page.GetByTestId("diag-refresh").ClickAsync();
             await Page.GetByTestId("diag-banner").WaitForAsync();

@@ -1,20 +1,24 @@
+@page "/settings"
 @page "/account/settings"
-@attribute [Authorize]
+@attribute [AllowAnonymous]
 @implements IAsyncDisposable
+@using Microsoft.AspNetCore.Components.WebAssembly.Hosting
 @inject PoTrafficApiClient Api
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject IWebAssemblyHostEnvironment HostEnvironment
 
 <PageTitle>Settings · PoTraffic</PageTitle>
 
-<PageHeader Title="Account settings" BackHref="/dashboard" BackLabel="Commutes" />
+<PageHeader Title="Settings" BackHref="/dashboard" BackLabel="Commutes" />
 
-@*  Common settings first, everything niche behind one "Advanced" disclosure.
+@*  /settings — where the Po header's gear points, signed in or out (/account/settings is the
+    old address, kept as an alias). Anonymous on purpose: it states that the theme follows the
+    device and shows the build stamp to anyone. Signed in, it is also the account menu (email,
+    Admin, sign out) and the home of every per-account setting.
 
-    The page used to give every control the same billing: density, motion, locale and
-    the quota meter sat at the same level as the theme and notifications, which are
-    what nearly everyone comes here for. Up top now: the theme, this device
-    (notifications, install) and who you are signed in as. Folded under Advanced:
-    density, motion, locale, today's usage and the extra panels. Your data stays
+    Common settings first, everything niche behind one "Advanced" disclosure. Your data stays
     last and always visible — export and delete are rare, but must never be hidden.
 
     Each section is its own component and error boundary, so one that throws (a bad
@@ -25,36 +29,18 @@
     <SectionErrorBoundary Label="the appearance settings">
     <section class="pt-settings-section">
         <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Appearance</RadzenText>
-        @* RadzenSelectBar owns the roving-tabindex keyboard model, the selected state
-           and the theming. *@
         <div class="pt-settings-grid">
             <div>
                 <span class="pt-settings-field-label">Theme</span>
-                <RadzenSelectBar TValue="string" Value="@_theme" Change="@OnThemeChanged"
-                                 Size="ButtonSize.Small" aria-label="Theme">
-                    <Items>
-                        <RadzenSelectBarItem Value="@("system")" Text="System" Icon="computer" />
-                        <RadzenSelectBarItem Value="@("light")" Text="Light" Icon="light_mode" />
-                        <RadzenSelectBarItem Value="@("dark")" Text="Dark" Icon="dark_mode" />
-                    </Items>
-                </RadzenSelectBar>
+                @* No switch: every Po app follows the device's light/dark setting. *@
+                <p class="pt-settings-value" data-testid="settings-theme">
+                    Follows your device (@(_prefersDark ? "dark" : "light") right now).
+                </p>
             </div>
-            @if (_profile is not null)
-            {
-                <div>
-                    @* The sign-in address can't be changed here, so it is text, not a
-                       read-only box that looks editable. *@
-                    <span class="pt-settings-field-label">Signed in as</span>
-                    <p class="pt-settings-value">@_profile.Email</p>
-                </div>
-            }
-            else if (_loading)
-            {
-                <div class="pt-settings-reserve" aria-hidden="true">
-                    <div class="pt-skeleton-line w-30"></div>
-                    <div class="pt-skeleton-line w-70 pt-mt-2"></div>
-                </div>
-            }
+            <div>
+                <span class="pt-settings-field-label">Build</span>
+                <p class="pt-settings-value" data-testid="settings-build">@(BuildVersion.Stamp ?? "unknown")</p>
+            </div>
         </div>
 
         @* Neither of these is ours to set — the OS owns them. Reporting them explains
@@ -67,17 +53,58 @@
     </section>
     </SectionErrorBoundary>
 
-    <SectionErrorBoundary Label="this device's settings">
-        <DeviceSettingsSection />
-    </SectionErrorBoundary>
+    <section class="pt-settings-section" data-testid="settings-account">
+        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Account</RadzenText>
+        @if (_id.IsAuthenticated)
+        {
+            <div class="pt-settings-grid">
+                <div>
+                    @* The sign-in address can't be changed here, so it is text, not a
+                       read-only box that looks editable. *@
+                    <span class="pt-settings-field-label">Signed in as</span>
+                    <p class="pt-settings-value">@_id.Email</p>
+                </div>
+                <div class="pt-settings-links">
+                    @if (_id.IsAdmin)
+                    {
+                        <a class="pt-settings-link" href="/admin"><PtIcon Name="admin_panel_settings" Size="sm" />Admin</a>
+                    }
+                    <a class="pt-settings-link pt-settings-link-danger" href="/login" @onclick="SignOutAsync" @onclick:preventDefault="true"
+                       data-testid="settings-signout"><PtIcon Name="logout" Size="sm" />Sign out</a>
+                </div>
+            </div>
+            @if (!HostEnvironment.IsProduction())
+            {
+                @* Dev-only fake personas (X-Fake-User). They used to sit in the header's
+                   account dropdown; the Po header carries only the email and the gear. *@
+                <div class="pt-settings-links pt-mt-3">
+                    <button class="pt-settings-link" type="button" @onclick='() => SwitchFakeUserAsync("dev-commuter@potraffic.dev", "Commuter")'><PtIcon Name="person" Size="sm" />Dev: Commuter</button>
+                    <button class="pt-settings-link" type="button" @onclick='() => SwitchFakeUserAsync("dev-admin@potraffic.dev", "Administrator")'><PtIcon Name="admin_panel_settings" Size="sm" />Dev: Admin</button>
+                    <button class="pt-settings-link" type="button" @onclick="() => SwitchFakeUserAsync(null, null)"><PtIcon Name="person_off" Size="sm" />Clear dev user</button>
+                </div>
+            }
+        }
+        else if (_authResolved)
+        {
+            <p class="pt-settings-meta">You're not signed in.</p>
+            <a class="pt-settings-link" href="/login"><PtIcon Name="login" Size="sm" />Sign in</a>
+        }
+    </section>
 
-    <AdvancedSettingsSection Profile="_profile" Quota="_quota" Loading="_loading"
-                             Density="@_density" DensityChanged="OnDensityChanged"
-                             ProfileChanged="@(p => _profile = p)" />
+    @if (_id.IsAuthenticated)
+    {
+        <SectionErrorBoundary Label="this device's settings">
+            <DeviceSettingsSection />
+        </SectionErrorBoundary>
 
-    <SectionErrorBoundary Label="your data controls">
-        <AccountDataSection />
-    </SectionErrorBoundary>
+        <AdvancedSettingsSection Profile="_profile" Quota="_quota" Loading="_loading"
+                                 Density="@_density" DensityChanged="OnDensityChanged"
+                                 ProfileChanged="@(p => _profile = p)" />
+
+        <SectionErrorBoundary Label="your data controls">
+            <AccountDataSection />
+        </SectionErrorBoundary>
+    }
 </RadzenCard>
 </div>
 
@@ -85,15 +112,25 @@
     private ProfileDto? _profile;
     private QuotaDto? _quota;
     private bool _loading = true;
+    private bool _authResolved;
+    private AccountMenu.Identity _id = AccountMenu.Describe(new System.Security.Claims.ClaimsPrincipal());
 
-    private string _theme = "system";
     private string _density = "normal";
+    private bool _prefersDark;
     private bool _prefersContrast;
     private bool _prefersReducedMotion;
     private IJSObjectReference? _appearance;
 
     protected override async Task OnInitializedAsync()
     {
+        _id = AccountMenu.Describe((await AuthStateProvider.GetAuthenticationStateAsync()).User);
+        _authResolved = true;
+        if (!_id.IsAuthenticated)
+        {
+            _loading = false;
+            return;
+        }
+
         try
         {
             _profile = await Api.GetProfileAsync();
@@ -112,8 +149,8 @@
         {
             _appearance = await JS.InvokeAsync<IJSObjectReference>("import", "./js/po-appearance.js");
             AppearanceState state = await _appearance.InvokeAsync<AppearanceState>("getAppearance");
-            _theme = state.Theme;
             _density = state.Density;
+            _prefersDark = state.PrefersDark;
             _prefersContrast = state.PrefersContrast;
             _prefersReducedMotion = state.PrefersReducedMotion;
             StateHasChanged();
@@ -125,26 +162,39 @@
         }
     }
 
-    /// <summary>
-    /// RadzenSelectBar's Change hands back the item's Value boxed as object. A null can
-    /// only mean a deselect, which this bar does not offer — guard anyway rather than
-    /// stamping "" onto &lt;html data-theme&gt; and losing the theme entirely.
-    /// </summary>
-    private async Task OnThemeChanged(object? value)
-    {
-        if (value?.ToString() is not { Length: > 0 } theme)
-            return;
-
-        _theme = theme;
-        if (_appearance is not null)
-            await _appearance.InvokeVoidAsync("setTheme", theme);
-    }
-
     private async Task OnDensityChanged(string density)
     {
         _density = density;
         if (_appearance is not null)
             await _appearance.InvokeVoidAsync("setDensity", density);
+    }
+
+    private Task SignOutAsync() => AccountMenu.SignOutAsync(AuthStateProvider, Nav);
+
+    /// <summary>Dev only: pins (or clears) the X-Fake-User persona the API client sends.</summary>
+    private async Task SwitchFakeUserAsync(string? email, string? roles)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                await JS.InvokeVoidAsync("localStorage.removeItem", DevFakeUserHandler.FakeUserStorageKey);
+                await JS.InvokeVoidAsync("localStorage.removeItem", DevFakeUserHandler.FakeRolesStorageKey);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", DevFakeUserHandler.FakeUserStorageKey, email);
+                await JS.InvokeVoidAsync("localStorage.setItem", DevFakeUserHandler.FakeRolesStorageKey, roles ?? "Commuter");
+            }
+        }
+        catch (JSException)
+        {
+            // Private mode: the persona simply doesn't stick.
+        }
+
+        if (AuthStateProvider is Services.Auth.CookieAuthenticationStateProvider cookie)
+            cookie.Refresh();
+        _id = AccountMenu.Describe((await AuthStateProvider.GetAuthenticationStateAsync()).User);
     }
 
     /// <summary>"higher contrast and reduced motion (…)" — whichever the OS is asking for.</summary>
@@ -156,8 +206,8 @@
 
     /// <summary>Shape returned by <c>getAppearance</c> in po-appearance.js.</summary>
     private sealed record AppearanceState(
-        string Theme,
         string Density,
+        bool PrefersDark,
         bool PrefersContrast,
         bool PrefersReducedMotion);
 

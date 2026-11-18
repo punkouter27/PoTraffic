@@ -14,7 +14,7 @@
 // network is not there. It is filled as a side effect of normal browsing, so an
 // install always has real content behind it.
 
-const VERSION = "v5";
+const VERSION = "v6";
 const SHELL_CACHE = `potraffic-shell-${VERSION}`;
 const ASSET_CACHE = `potraffic-assets-${VERSION}`;
 const TILE_CACHE = `potraffic-tiles-${VERSION}`;
@@ -36,6 +36,9 @@ const SHELL = [
     "/icon-192.png",
     "/css/app.css",
     "/css/po-tokens.css",
+    "/css/pt-tokens.css",
+    "/fonts/inter-latin.woff2",
+    "/fonts/space-grotesk-latin.woff2",
     "/css/po-motion.css",
     "/css/vendor.css",
     "/css/po-glass.css",

@@ -107,11 +107,7 @@
     overflow-wrap: anywhere;
 }
 
-.pt-health-status {
-    font-size: var(--pt-text-sm, 0.875rem);
-    font-weight: 600;
-    color: var(--status-colour);
-}
+/* The status itself is a Po badge (.po-badge--ok|warn|bad in po-tokens.css). */
 
 .pt-health-desc {
     margin: 0.25rem 0 0;

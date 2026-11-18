@@ -1,0 +1,83 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@implements IDisposable
+@inject AuthenticationStateProvider AuthStateProvider
+@inject PoTrafficApiClient Api
+
+@* The Po shell header (Po web standard), rendered by every layout, signed in AND signed out:
+   the app name top-left; top-right the signed-in email (or the Sign in link), then the one
+   settings gear. Styled by .po-header* in po-tokens.css. Account actions (admin, sign-out,
+   dev personas) live on the Settings page the gear opens, and in the phone bottom sheet. *@
+<header class="po-header">
+    <a class="po-header__title" href="/">
+        <span class="po-header__mark" aria-hidden="true"></span>PoTraffic
+    </a>
+    <div class="po-header__actions">
+        @* Mock mode rides the bar as a chip: it must be obvious the numbers are not real. *@
+        @if (_useMockProviders)
+        {
+            <span class="pt-mock-banner" role="status"
+                  title="Mock data: API responses are deterministic; do not use for production routing.">
+                <PtIcon Name="science" Size="sm" /><span class="pt-mock-banner-text">Mock data</span>
+            </span>
+        }
+        @if (_id.IsAuthenticated)
+        {
+            <PoTraffic.Client.Features.Alerts.NotificationBell />
+            <span class="po-header__email" title="@_id.Email">@_id.Email</span>
+        }
+        else if (_authResolved)
+        {
+            <a class="po-header__signin" href="login">Sign in</a>
+        }
+        <a class="po-header__settings" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></a>
+    </div>
+</header>
+
+@code {
+    private bool _authResolved;   // false until the first auth state arrives — no "Sign in" flash for a signed-in user
+    private AccountMenu.Identity _id = AccountMenu.Describe(new System.Security.Claims.ClaimsPrincipal());
+    private bool _useMockProviders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthStateProvider.AuthenticationStateChanged += HandleAuthStateChanged;
+        await LoadFeatureFlagsAsync();
+        UpdateUserState(await AuthStateProvider.GetAuthenticationStateAsync());
+    }
+
+    private async Task LoadFeatureFlagsAsync()
+    {
+        try
+        {
+            FeatureFlags? flags = await Api.GetFeatureFlagsAsync();
+            _useMockProviders = flags?.UseMockProviders == true;
+        }
+        catch
+        {
+            _useMockProviders = false;
+        }
+    }
+
+    /// <summary>
+    /// async void because the event is an Action; everything is caught so a sign-out that
+    /// lands while this component is being torn down cannot crash the renderer.
+    /// </summary>
+    private async void HandleAuthStateChanged(Task<AuthenticationState> stateTask)
+    {
+        try
+        {
+            UpdateUserState(await stateTask);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { /* layout torn down mid-change */ }
+        catch (InvalidOperationException) { /* renderer gone */ }
+    }
+
+    private void UpdateUserState(AuthenticationState authState)
+    {
+        _authResolved = true;
+        _id = AccountMenu.Describe(authState.User);
+    }
+
+    public void Dispose() => AuthStateProvider.AuthenticationStateChanged -= HandleAuthStateChanged;
+}

@@ -84,7 +84,7 @@ function resolveColour(host, expr, fallback) {
 /** Traffic verdict → the token that paints it. Falls back to a literal so a missing token still draws. */
 const LEVEL_TOKENS = {
     clear: ["var(--pt-traffic-clear)", "#15803d"],
-    normal: ["var(--pt-traffic-normal)", "#2563eb"],
+    normal: ["var(--pt-traffic-normal)", "#4f46e5"],
     slow: ["var(--pt-traffic-slow)", "#b45309"],
     heavy: ["var(--pt-traffic-heavy)", "#b91c1c"],
     unknown: ["var(--pt-traffic-unknown)", "#64748b"],

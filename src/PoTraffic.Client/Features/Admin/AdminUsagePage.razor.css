@@ -124,7 +124,7 @@
 .pt-admin-cards ::deep .pt-admin-card-value {
     display: block;
     color: var(--pt-fg-body);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-family: var(--po-font-mono);
     font-size: var(--pt-text-sm);
     overflow-wrap: anywhere;
 }

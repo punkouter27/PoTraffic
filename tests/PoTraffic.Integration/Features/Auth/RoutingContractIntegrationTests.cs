@@ -22,6 +22,7 @@ public sealed class RoutingContractIntegrationTests : BaseIntegrationTest
         "/api/auth/providers",
         "/api/diag",
         "/api/diag/client-error",
+        "/api/diag/status",
         "/api/system/features",
         "/api/{**rest}",
         "/e2e/dev-login",

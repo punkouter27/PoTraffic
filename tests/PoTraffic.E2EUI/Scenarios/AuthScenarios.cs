@@ -67,7 +67,7 @@ public sealed class AuthScenarios : PlaywrightTestBase
         string headingText = await heading.InnerTextAsync();
         Assert.Contains("commutes", headingText, StringComparison.OrdinalIgnoreCase);
 
-        // The mock indicator is a "Mock data" chip in the NavMenu bar (.pt-mock-banner) —
+        // The mock indicator is a "Mock data" chip in the Po header (.pt-mock-banner) —
         // Testing always runs on mock providers, so it must be present and say so.
         Microsoft.Playwright.ILocator mockBanner = Page.Locator(".pt-mock-banner");
         await mockBanner.WaitForAsync(new() { Timeout = 15_000 });
@@ -75,7 +75,7 @@ public sealed class AuthScenarios : PlaywrightTestBase
     }
 
     [SkipUnlessE2EReady]
-    public async Task GuestLogin_BypassesOAuth_EstablishesCookieSession_AndDisplaysGuestId()
+    public async Task GuestLogin_BypassesOAuth_EstablishesCookieSession_AndHeaderShowsGuestEmail()
     {
         // Guest login must happen inside the browser so the HttpOnly session
         // cookie lands in the Playwright context.
@@ -88,13 +88,13 @@ public sealed class AuthScenarios : PlaywrightTestBase
 
         await Page.GotoAsync($"{BaseUrl}/dashboard");
 
-        // The chip is a <button class="pt-user-chip-btn"> — the bare .pt-user-chip class
-        // this used to match no longer exists on any element.
-        Microsoft.Playwright.ILocator userChip = Page.Locator(".pt-user-chip-btn");
-        await userChip.WaitForAsync(new() { Timeout = 30_000 });
-        string chipText = await userChip.InnerTextAsync();
+        // The Po shell header shows the signed-in EMAIL (.po-header__email) top-right; a guest
+        // session's address is guest12345678@potraffic.dev.
+        Microsoft.Playwright.ILocator email = Page.Locator(".po-header .po-header__email");
+        await email.WaitForAsync(new() { Timeout = 30_000 });
+        string emailText = await email.InnerTextAsync();
 
-        Assert.Matches(new Regex(@"GUEST\d{8}\s+LOGGED IN", RegexOptions.IgnoreCase), chipText);
+        Assert.Matches(new Regex(@"^guest\d{8}@potraffic\.dev$", RegexOptions.IgnoreCase), emailText.Trim());
     }
 
     [SkipUnlessE2EReady]
