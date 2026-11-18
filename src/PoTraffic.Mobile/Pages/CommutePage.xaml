@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PoTraffic.Mobile.Pages.CommutePage"
+             Title="Commute">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="12">
+            <Label Text="PoTraffic Commute Companion" FontSize="24" FontAttributes="Bold" />
+            <Label x:Name="StatusLabel" Text="Loading routes..." FontSize="13" />
+            <HorizontalStackLayout Spacing="10">
+                <Button Text="Refresh Routes" Clicked="OnRefreshClicked" />
+                <Button Text="Check Proximity (GPS)" Clicked="OnCheckGpsClicked" />
+            </HorizontalStackLayout>
+            <Label x:Name="GpsLabel" Text="GPS: idle" FontSize="12" Opacity="0.8" />
+            <VerticalStackLayout x:Name="RoutesList" Spacing="10" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
