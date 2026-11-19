@@ -188,9 +188,9 @@ boundary. Do not introduce raw `Guid` parameters for entity identity.
 - Integration test methods use `[SkipUnlessAzuriteAvailable]`, not `[Fact]`, so the suite
   skips rather than hard-fails without Docker. E2E tests use `[ApiSkipUnlessReady]` /
   `[SkipUnlessE2EReady]`.
-- CI (`.github/workflows/deploy.yml`) only builds, publishes and deploys `master` to App Service,
-  then waits until `/health/live` answers with this commit's `X-Commit`. It runs no tests, no
-  format check, no Bicep, no rollback and no pull-request builds: every test tier runs locally
+- CI (`.github/workflows/deploy.yml`) checks formatting, builds, runs the Unit tier, then publishes and
+  deploys `master` to App Service and waits until `/health/live` answers with this commit's `X-Commit`;
+  a red check stops the deploy. It runs no other tests, no Bicep, no rollback and no pull-request builds: the other tiers run locally
   (`run-tests.ps1` is the gate). Repo variables: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
   `AZURE_SUBSCRIPTION_ID`, `AZURE_WEBAPP_NAME`, `AZURE_RESOURCE_GROUP`. Bicep is applied by hand
   (`infra/README.md`); `scripts/post-deploy-smoke.ps1` is run by hand after a deploy.

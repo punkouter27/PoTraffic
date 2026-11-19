@@ -96,7 +96,7 @@ not technical jargon — so it reads like a person wrote it, then push without a
 
 ## CI/CD and Azure (same section in every Po repo)
 
-- A push to `master` builds, publishes, deploys and confirms the new commit is live (`.github/workflows/deploy.yml`). Nothing is deployed by hand. The workflow runs no tests, no infra job, no rollback and no PR builds: tests run locally. The file is identical in every Po web repo; each repo owns its copy.
+- A push to `master` checks formatting (`dotnet format --verify-no-changes`), builds, runs the Unit tier, then deploys (`.github/workflows/deploy.yml`, identical in every Po web repo; each repo owns its copy) and waits for `/health/live` to report the pushed commit in `X-Commit`. A red check stops the deploy and the live site keeps its last good build. Integration, E2E, Bicep and other checks run locally; there is no infra job, rollback or PR build. Nothing is deployed by hand.
 - Azure sign-in is GitHub OIDC (the `gh-<repo>-deploy` app). Its IDs are repo **variables** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_SUBSCRIPTION_ID`, and the App Service name is `AZURE_WEBAPP_NAME`. Never move them to secrets or write resource names into workflows.
 - Every permission the app and CI need lives in `scripts/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.
 - The app answers `/health/live` (process up, no dependencies, `X-Commit` header) and `/health/json` + `/api/diag` (dependencies reachable). The deploy waits for `/health/live` to report the pushed commit.
