@@ -29,6 +29,7 @@ src/
   PoTraffic.Api/             # ASP.NET Core host, Features/ slices, Infrastructure/
   PoTraffic.Client/          # Blazor WASM front-end
   PoTraffic.Shared/          # DTOs shared by API and client
+  PoTraffic.Mobile/          # .NET MAUI phone app (Android/iOS) — not in the .slnx, not built by CI
 tests/
   PoTraffic.Unit/
   PoTraffic.Integration/
@@ -131,6 +132,44 @@ when running the app normally.
 - **Keyboard:** `/` search, `n` new commute, `c` Check now, `?` shortcut help, `Esc` closes.
 - **Settings:** common options on top; density, motion, locale, quota and extra panels sit
   in a collapsible Advanced section.
+
+## Phone app (`src/PoTraffic.Mobile`)
+
+A native .NET MAUI client (XAML-free C# pages) for Android and iOS that calls the same API —
+every web screen: commutes dashboard (search/filter/sort, select → pause/resume/delete, swipe
+for Check now / Delete, sample commute), new commute (autocomplete, **Use my location** via
+GPS + reverse geocoding, arrive-by, schedule), commute page (answer, latest sample, today's
+trend, map with route line and incident, rename / arrive-by / addresses / pause / return trip /
+delete, schedule edit and stop, heatmap, weather), alerts, settings (usage, locale, time zone,
+extra panels, export via the share sheet, delete account), admin, and system status. The
+dashboard snapshot and alerts are kept on the phone for offline starts.
+
+Phone-only features:
+
+- **Leave-by alerts.** Per commute (needs an arrive-by time): a local notification at
+  `LeaveBy − lead` (lead set in Settings, default 10 min) for each scheduled day of the next
+  week, from the same `/departure` plan the dashboard shows. Armed with the OS so they fire with
+  the app closed — Android `AlarmManager` (exact when the user allows exact alarms, else
+  inexact; re-armed after reboot), iOS Time Sensitive notifications (entitlement
+  `com.apple.developer.usernotifications.time-sensitive`). Re-armed on every dashboard refresh.
+  Not server push: the API's push is Web Push (VAPID), which native apps can't receive.
+- **Leaving-home detection.** Per commute: leaving a 150 m circle round the start point calls
+  `POST /windows/{id}/start` and one `check-now`, then notifies with the live time; optionally
+  reaching the end point stops the day's session. Android uses the platform `LocationManager`
+  proximity alerts (no Play Services; in the background Android checks a few times an hour),
+  iOS uses CoreLocation region monitoring. Needs location "Allow all the time".
+
+Sign-in: Microsoft (Entra PKCE in the system browser → bearer token, validated by the API's
+`AddJwtBearer`; the Entra app registration needs the public-client redirect `potraffic://auth`
+and the client id entered under Settings → Server) or, in Debug builds against a
+Development/Test API, the guest session cookie. Release builds call
+`https://potraffic-api-win2.azurewebsites.net`. The Android route map needs a Google Maps key at
+build time (`POTRAFFIC_ANDROID_MAPS_KEY`); without one the map panel is hidden on Android.
+
+Dev loop: start an API (e.g. `dotnet run --project src/PoTraffic.Api --launch-profile Test` —
+mock traffic, guest sign-in, port 5150), then `pwsh scripts/mobile-dev.ps1 -ApiPort 5150 -Run`
+(USB phone or emulator: `adb reverse` maps the device's `localhost:5000` to that port, then
+build, install, launch).
 
 ## Development Guidelines
 

@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework />
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios</TargetFrameworks>
+
+    <OutputType>Exe</OutputType>
+    <RootNamespace>PoTraffic.Mobile</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
+    <ApplicationTitle>PoTraffic</ApplicationTitle>
+    <ApplicationId>com.punkouter.potraffic</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <NoWarn>$(NoWarn);CA1515;CA1812;CA1031</NoWarn>
+
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">23.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <!-- Google Maps SDK key for Android, from the POTRAFFIC_ANDROID_MAPS_KEY environment variable at
+       build time (never in git). Without it the route map is hidden on Android (an empty key
+       crashes the Maps SDK); iOS uses Apple Maps and needs no key. -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <_PoMapsKey>$(POTRAFFIC_ANDROID_MAPS_KEY)</_PoMapsKey>
+    <_PoMapsKey Condition="'$(_PoMapsKey)' == ''">unset</_PoMapsKey>
+    <AndroidManifestPlaceholders>mapsApiKey=$(_PoMapsKey)</AndroidManifestPlaceholders>
+    <DefineConstants Condition="'$(POTRAFFIC_ANDROID_MAPS_KEY)' != ''">$(DefineConstants);HAS_MAPS_KEY</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#0F766E" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#0F766E" BaseSize="128,128" />
+    <MauiFont Include="Resources\Fonts\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="Microsoft.Maui.Controls.Maps" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PoTraffic.Shared\PoTraffic.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
