@@ -42,11 +42,12 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
 
         using JsonDocument doc = JsonDocument.Parse(body);
         doc.RootElement.GetProperty("environment").GetString().Should().NotBeNullOrEmpty();
+        doc.RootElement.GetProperty("version").GetString().Should().MatchRegex("^[0-9]{6}$");
         JsonElement checks = doc.RootElement.GetProperty("checks");
-        checks.EnumerateArray().Select(c => c.GetProperty("key").GetString())
-            .Should().Contain(["storage", "keyvault", "trafficProvider", "scheduler"]);
-        checks.EnumerateArray().Should().OnlyContain(c => c.GetProperty("detail").ValueKind == JsonValueKind.Null,
-            "raw check descriptions are for administrators only");
+        checks.EnumerateArray().Select(c => c.GetProperty("name").GetString())
+            .Should().Contain(["api", "storage", "keyvault", "trafficProvider", "scheduler"]);
+        checks.EnumerateArray().Select(c => c.GetProperty("group").GetString())
+            .Should().OnlyContain(g => g == "api" || g == "data" || g == "service");
 
         AssertNoSecrets(body, "/api/diag");
     }
@@ -68,7 +69,7 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
     }
 
     [SkipUnlessAzuriteAvailable]
-    public async Task Admin_gets_check_detail_but_keyvault_probe_stays_admin_only()
+    public async Task Admin_gets_the_same_report_and_the_keyvault_probe_stays_admin_only()
     {
         HttpClient anonymous = CreateClient();
         (await anonymous.GetAsync("/api/diag/keyvault")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -79,7 +80,7 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
 
         using JsonDocument doc = JsonDocument.Parse(await admin.GetStringAsync("/api/diag"));
         doc.RootElement.GetProperty("checks").EnumerateArray()
-            .Should().Contain(c => c.GetProperty("detail").ValueKind == JsonValueKind.String);
+            .Should().OnlyContain(c => c.GetProperty("detail").ValueKind == JsonValueKind.String);
         (await admin.GetAsync("/api/diag/keyvault")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

@@ -16,11 +16,15 @@ internal static class DockerAvailability
 {
     private static readonly Lazy<bool> Probe = new(ProbeDockerDaemon, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    /// <summary>True when <c>docker info</c> succeeds, i.e. Testcontainers can start Azurite.</summary>
-    public static bool IsAvailable => Probe.Value;
+    /// <summary>
+    /// True when <c>docker info</c> succeeds, i.e. Testcontainers can start Azurite. Always true in
+    /// CI (<c>CI=true</c>): there the tier must run, so a missing Docker is a failure, not a skip.
+    /// </summary>
+    public static bool IsAvailable =>
+        string.Equals(Environment.GetEnvironmentVariable("CI"), "true", StringComparison.OrdinalIgnoreCase) || Probe.Value;
 
     /// <summary>Reason shown on skipped tests when the daemon is unreachable.</summary>
-    public const string SkipReason = "Docker daemon not reachable — start Docker Desktop and re-run.";
+    public const string SkipReason = "Docker is not running, so the Integration tier is skipped (it needs Docker for Testcontainers). Start Docker Desktop and run the tests again.";
 
     private static bool ProbeDockerDaemon()
     {
@@ -31,7 +35,7 @@ internal static class DockerAvailability
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = "info",
+                    Arguments = "info --format {{.ServerVersion}}",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -39,7 +43,7 @@ internal static class DockerAvailability
                 }
             };
             process.Start();
-            return process.WaitForExit(5_000) && process.ExitCode == 0;
+            return process.WaitForExit(20_000) && process.ExitCode == 0;
         }
         catch
         {

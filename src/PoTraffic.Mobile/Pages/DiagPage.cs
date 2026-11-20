@@ -42,19 +42,19 @@ public sealed class DiagPage : ContentPage
             }
 
             _body.Add(Ui.Colored($"{report.Status} · {report.Environment} · API answered in {ms:F0} ms", Badge(report.Status), 16));
-            foreach (IGrouping<string, DiagCheckDto> group in report.Checks.GroupBy(c => c.Category))
+            foreach ((string group, string title) in new[] { (DiagGroups.Api, "API"), (DiagGroups.Data, "Data"), (DiagGroups.Service, "Services") })
             {
-                _body.Add(Ui.H2(group.Key));
-                foreach (DiagCheckDto check in group)
+                _body.Add(Ui.H2(title));
+                foreach (DiagCheckDto check in report.Checks.Where(c => c.Group == group))
                 {
                     _body.Add(Ui.Card(Ui.Stack(3,
-                        Ui.Field(check.Name, Ui.Colored(check.Status, Badge(check.Status), 14)),
+                        Ui.Field(check.Label, Ui.Colored(check.Status, Badge(check.Status), 14)),
                         Ui.Muted($"{check.Purpose} · {check.LatencyMs:F0} ms"),
-                        Ui.Muted(check.Detail))));
+                        Ui.Muted(check.Problem ?? check.Detail))));
                 }
             }
 
-            _body.Add(Ui.Muted($"Checked {report.CheckedAtUtc.LocalDateTime:T} · app {AppInfo.Current.VersionString}"));
+            _body.Add(Ui.Muted($"Checked {report.CheckedAt.LocalDateTime:T} · server v{report.Version} · app {AppInfo.Current.VersionString}"));
         }
         catch (HttpRequestException ex)
         {

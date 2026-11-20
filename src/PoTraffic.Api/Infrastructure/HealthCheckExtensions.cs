@@ -48,25 +48,24 @@ internal static class HealthCheckExtensions
     }
 
     /// <summary>
-    /// Maps the anonymous diagnostics endpoints:
+    /// Maps the anonymous health endpoints (the /diag contract in AGENTS.md):
     /// <list type="bullet">
+    /// <item><c>/health</c> — readiness: 200 while every dependency is Healthy or Degraded, 503
+    /// when one is Unhealthy. Plain text, no detail.</item>
     /// <item><c>/health/ready</c> — 503 while <see cref="TableStorageContext.HydrateAsync"/> is in
     /// flight, 200 once hydrated. Lets App Service gate traffic without depending on hydration
     /// during host bind.</item>
     /// <item><c>/health/json</c> — per-dependency JSON status for DB and external APIs. This is
     /// the machine-readable feed used by post-deploy smoke and triage scripts.</item>
     /// </list>
-    /// <para>
-    /// <c>/health</c> itself is deliberately NOT mapped here: it falls through to the SPA, where
-    /// it is an alias of the Blazor <c>/diag</c> page. The page reads <c>GET /api/diag</c>
-    /// (Features/Diagnostics), which replaced <c>/health/connections</c> on 2026-11-17 because
-    /// that feed passed raw check descriptions to anonymous callers. Machine consumers (the
-    /// deploy gate via <c>HEALTH_PATH</c>, smoke scripts) use <c>/health/json</c>.
-    /// </para>
+    /// <c>/health/live</c> (liveness, with the <c>X-Commit</c> header) is PoPlatform.MapPoLiveness;
+    /// the friendly report is <c>GET /api/diag</c> (Features/Diagnostics), shown by the <c>/diag</c> page.
     /// </summary>
     [RequiresUnreferencedCode("Calls Microsoft.AspNetCore.Builder.EndpointRouteBuilderExtensions.MapGet(String, Delegate)")]
     internal static WebApplication MapPoTrafficHealthChecks(this WebApplication app)
     {
+        app.MapHealthChecks("/health").AllowAnonymous();
+
         app.MapGet("/health/ready", (TableStorageContext ctx) =>
             ctx.IsHydrated
                 ? Results.Ok(new { status = "ready", durable = ctx.IsDurable })

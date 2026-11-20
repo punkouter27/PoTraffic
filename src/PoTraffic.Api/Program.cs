@@ -156,7 +156,7 @@ try
     app.MapAccountEndpoints();
     app.MapAdminEndpoints();
     app.MapAuthEndpoints();
-    app.MapDiagnosticsEndpoints();
+    app.MapDiagEndpoints();
     // GUEST login bypass: Development (Rule 4.4 split view) + Testing. Production registers
     // Microsoft OAuth only; MapGuestEndpoints throws if wired into a Production host.
     if (app.Environment.IsEnvironment("Test") || app.Environment.IsDevelopment())

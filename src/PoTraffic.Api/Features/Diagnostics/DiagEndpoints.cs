@@ -1,9 +1,7 @@
-// filepath: src/PoTraffic.Api/Features/Diagnostics/DiagnosticsEndpoints.cs
-// The /api/diag group (moved from /diag on 2026-11-17 so the browser route /diag belongs to
-// the Blazor diagnostics page):
-//   • GET /api/diag — anonymous, friendly dependency report rendered by the /diag page;
-//     administrators additionally get each check's raw description
-//   • GET /api/diag/status — the same report, where the Po developer window (Tab) looks first
+// filepath: src/PoTraffic.Api/Features/Diagnostics/DiagEndpoints.cs
+// The /api/diag group:
+//   • GET /api/diag — anonymous DiagReportDto (the /diag contract in AGENTS.md), rendered by
+//     the /diag page and the mobile app
 //   • GET /api/diag/keyvault — admin-only MASKED Key Vault secret retrieval (proves identity
 //     wiring and never returns the raw secret value to the caller)
 //   • POST /api/diag/client-error is mapped with the SPA host (BlazorClientHostExtensions).
@@ -14,25 +12,20 @@ using PoTraffic.Shared.DTOs.Admin;
 
 namespace PoTraffic.Api.Features.Diagnostics;
 
-public static class DiagnosticsEndpoints
+public static class DiagEndpoints
 {
-    public static void MapDiagnosticsEndpoints(this IEndpointRouteBuilder app)
+    public static void MapDiagEndpoints(this IEndpointRouteBuilder app)
     {
-        // The summary is anonymous on purpose: the moment you most need it is when sign-in
-        // itself is broken. It carries statuses, timings and fixed text only; the detail
-        // (raw check descriptions) is added for administrators alone.
-        app.MapGet("/api/diag", GetReport)
+        // Anonymous on purpose: the moment you most need it is when sign-in itself is broken.
+        // It carries statuses, timings and fixed text only.
+        app.MapGet("/api/diag", async (HttpContext http, DiagReportHandler handler) =>
+            {
+                // A cached report would show a stale status on Refresh.
+                http.Response.Headers.CacheControl = "no-store";
+                return Results.Ok(await handler.Handle(http.RequestAborted));
+            })
             .AllowAnonymous()
             .WithName("GetDiagReport")
-            .WithTags("Diagnostics")
-            .Produces<DiagReportDto>();
-
-        // The same report at /api/diag/status: the first address the Po developer window
-        // (wwwroot/po-dev.html, opened by Tab) probes. Without it that probe hit the
-        // /api catch-all and read its 404 problem+json as "no named checks".
-        app.MapGet("/api/diag/status", GetReport)
-            .AllowAnonymous()
-            .WithName("GetDiagStatus")
             .WithTags("Diagnostics")
             .Produces<DiagReportDto>();
 
@@ -44,11 +37,6 @@ public static class DiagnosticsEndpoints
         // /api/diag/keyvault — reports whether ?secret= resolved, masked; admin only.
         group.MapGet("/keyvault", HandleKeyVaultDiag);
     }
-
-    private static async Task<IResult> GetReport(HttpContext http, GetDiagReportHandler handler) =>
-        Results.Ok(await handler.Handle(
-            new GetDiagReportQuery(IncludeDetail: http.User.IsInRole("Administrator")),
-            http.RequestAborted));
 
     /// <summary>
     /// Reveals only the length bucket of a secret — never any of its characters. Showing

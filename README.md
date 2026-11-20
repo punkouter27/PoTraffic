@@ -29,7 +29,7 @@ src/
   PoTraffic.Api/             # ASP.NET Core host, Features/ slices, Infrastructure/
   PoTraffic.Client/          # Blazor WASM front-end
   PoTraffic.Shared/          # DTOs shared by API and client
-  PoTraffic.Mobile/          # .NET MAUI phone app (Android/iOS) — not in the .slnx, not built by CI
+  PoTraffic.Mobile/          # .NET MAUI phone app (Android/iOS) — not in the .slnx; CI's `mobile` job builds Android
 tests/
   PoTraffic.Unit/
   PoTraffic.Integration/
@@ -59,9 +59,10 @@ prints the URL.
 |---|---|
 | `https://localhost:5001` | Hosted API + Blazor client |
 | `https://localhost:5001/scalar/v1` | Scalar API reference in Development |
-| `https://localhost:5001/diag` | System status page, no sign-in needed (`/health` is an alias); data from `GET /api/diag` |
+| `https://localhost:5001/diag` | System status page, no sign-in needed; data from `GET /api/diag` |
+| `https://localhost:5001/health` | Readiness (503 when a dependency is Unhealthy) |
+| `https://localhost:5001/health/live` | Liveness, with the deployed commit in `X-Commit` |
 | `https://localhost:5001/health/json` | Machine-readable dependency status |
-| `https://localhost:5001/api/diag/status` | Same JSON as `/api/diag`; read by the Tab developer window (`/po-dev.html`) |
 | `https://localhost:5001/api/diag/keyvault` | Admin-only Key Vault diagnostics API |
 
 ## Running Tests
@@ -72,7 +73,9 @@ prints the URL.
 
 The script fails fast if a tier holds more test cases than its cap — 100 unit, 50
 integration, 25 E2E API, 25 E2E UI (theory rows count individually). Merge or trim tests
-rather than raising a cap.
+rather than raising a cap. Real counts (2026-11-20): Unit 87, Integration 35, E2E API 13,
+E2E UI 14. CI runs Unit and Integration; the E2E tiers skip with one clear message when no
+app is running.
 
 Or run individual suites:
 
@@ -180,3 +183,9 @@ build, install, launch).
 - Remove dead code and stale docs before merge.
 
 See [AGENTS.md](AGENTS.md) for the full coding-agent contract.
+
+## Documentation
+
+- [AGENTS.md](AGENTS.md) — the Po web app standard this repo follows, plus the working rules.
+- [docs/development.md](docs/development.md) — commands, test tiers, architecture and conventions.
+- [infra/README.md](infra/README.md) — Azure resources and how they are applied.

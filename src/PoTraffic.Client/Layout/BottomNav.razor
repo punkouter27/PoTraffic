@@ -25,11 +25,15 @@
         <PtIcon Name="dashboard" Class="pt-bottom-nav-icon" />
         <span class="pt-bottom-nav-label">Commutes</span>
     </NavLink>
-    <a class="pt-bottom-nav-link pt-bottom-nav-fab" href="routes/create" aria-label="Add route">
-        <span class="pt-bottom-nav-fab-inner">
-            <PtIcon Name="add" />
-        </span>
-    </a>
+    @* Adding a route needs an account, so a signed-out visitor never sees the button. *@
+    @if (_id.IsAuthenticated)
+    {
+        <a class="pt-bottom-nav-link pt-bottom-nav-fab" href="routes/create" aria-label="Add route">
+            <span class="pt-bottom-nav-fab-inner">
+                <PtIcon Name="add" />
+            </span>
+        </a>
+    }
     <button class="pt-bottom-nav-link" type="button" aria-haspopup="menu"
             aria-expanded="@_sheetOpen" aria-label="Account menu"
             @onclick="ToggleSheet" @onclick:stopPropagation="true">

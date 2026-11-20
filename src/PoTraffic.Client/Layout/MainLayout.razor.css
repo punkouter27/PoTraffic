@@ -9,7 +9,8 @@
 
 main {
     flex: 1;
-    padding: 0;
+    /* Room under the last row for the fixed version badge (AGENTS.md, Page shell). */
+    padding: 0 0 calc(var(--po-space-6) + env(safe-area-inset-bottom, 0px));
 }
 
 /* .content is styled entirely in app.css.

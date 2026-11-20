@@ -13,8 +13,8 @@ Always preview first — `appSettings` in the template is authoritative and repl
 the live set:
 
 ```bash
-az deployment group what-if -g PoTraffic -f infra/main.bicep -p @infra/main.parameters.json
-az deployment group create   -g PoTraffic -f infra/main.bicep -p @infra/main.parameters.json
+az deployment group what-if -g PoTraffic -f infra/main.bicep -p infra/main.bicepparam
+az deployment group create   -g PoTraffic -f infra/main.bicep -p infra/main.bicepparam
 ```
 
 ## What it encodes (and why)

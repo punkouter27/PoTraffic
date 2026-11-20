@@ -109,9 +109,9 @@ public sealed class MobileViewportScenarios : PlaywrightTestBase
     }
 
     /// <summary>
-    /// /diag is the anonymous system-status page: a signed-out visitor gets the banner, the
-    /// API / storage / services sections and the version, at phone and desktop widths, with no
-    /// console or network errors (the base class fails the test on any).
+    /// /diag is the anonymous "System status" page (the /diag contract in AGENTS.md): a signed-out
+    /// visitor gets the banner, then API / Data / Services and the version, at phone and desktop
+    /// widths, with no console or network errors (the base class fails the test on any).
     /// </summary>
     [SkipUnlessE2EReady]
     public async Task DiagPage_RendersForSignedOutVisitor_AtPhoneAndDesktop()
@@ -123,15 +123,17 @@ public sealed class MobileViewportScenarios : PlaywrightTestBase
 
             await Page.GetByTestId("diag-banner").WaitForAsync(new() { Timeout = 30_000 });
             Assert.Contains("/diag", Page.Url, StringComparison.OrdinalIgnoreCase);
-            Assert.True(await Page.GetByTestId("diag-api").IsVisibleAsync(), "API section missing");
-            Assert.True(await Page.GetByTestId("diag-check-storage").IsVisibleAsync(), "storage row missing");
-            Assert.True(await Page.GetByTestId("diag-check-trafficProvider").IsVisibleAsync(), "services rows missing");
+            Assert.Equal("System status", await Page.TitleAsync());
+            Assert.Equal(["API", "Data", "Services"], await Page.Locator("section.po-diag__group h2").AllInnerTextsAsync());
+            Assert.True(await Page.Locator("[data-group='api'] [data-check='api']").IsVisibleAsync(), "API row missing");
+            Assert.True(await Page.Locator("[data-group='data'] [data-check='storage']").IsVisibleAsync(), "storage row missing");
+            Assert.True(await Page.Locator("[data-group='service'] [data-check='trafficProvider']").IsVisibleAsync(), "services rows missing");
             Assert.True(await Page.GetByTestId("diag-about").IsVisibleAsync(), "version/environment missing");
             // Po web standard: one .po-diag__card per dependency, each with a .po-badge status.
             int badgedCards = await Page.Locator(".po-diag__card .po-badge").CountAsync();
             Assert.True(badgedCards >= 3, $"expected a badged .po-diag__card per dependency, found {badgedCards}");
 
-            await Page.GetByTestId("diag-refresh").ClickAsync();
+            await Page.GetByRole(AriaRole.Button, new() { Name = "Refresh" }).ClickAsync();
             await Page.GetByTestId("diag-banner").WaitForAsync();
 
             int scrollWidth = await Page.EvaluateAsync<int>("document.documentElement.scrollWidth");

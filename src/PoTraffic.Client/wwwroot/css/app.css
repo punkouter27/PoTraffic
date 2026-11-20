@@ -1611,8 +1611,8 @@ html:has(.pt-dialog[open]) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   Po shell (Po web standard). The header, gear, build stamp and /diag
-   cards are styled by po-tokens.css; only PoTraffic's adjustments live here.
+   Page shell (AGENTS.md). The header, Sign in button, gear, version badge and
+   /diag are styled by po-tokens.css; only PoTraffic's adjustments live here.
    ═══════════════════════════════════════════════════════════════ */
 
 /* The phone bottom nav (BottomNav, ≤640px) owns the bottom edge: lift the
@@ -1642,22 +1642,6 @@ html:has(.pt-dialog[open]) {
     .po-header__actions .pt-mock-banner { padding: var(--pt-space-1); }
     .po-header__actions .pt-mock-banner-text { display: none; }
 }
-
-/* Signed out, the header's action is the app's existing "Sign in" link. */
-.po-header__signin {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 var(--pt-space-3);
-    border-radius: var(--po-radius-pill);
-    background: var(--po-accent);
-    color: var(--po-on-accent);
-    font-weight: var(--pt-weight-semibold);
-    font-size: var(--pt-text-sm);
-    text-decoration: none;
-    white-space: nowrap;
-}
-.po-header__signin:hover { background: var(--po-accent-hover); }
 
 /* The logo mark that sits before the app name in the header title. */
 .po-header__mark {

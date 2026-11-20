@@ -20,7 +20,7 @@
         bottom: 0;
         min-height: var(--pt-bottom-nav-h);
         padding: var(--pt-space-2) var(--pt-space-3) calc(var(--pt-space-2) + env(safe-area-inset-bottom, 0px));
-        background: var(--pt-color-surface);
+        background: var(--po-surface);   /* opaque: content must never show through the nav */
         border-top: 1px solid var(--pt-border-subtle);
         z-index: var(--pt-z-nav);
     }
@@ -43,7 +43,7 @@
        .pt-user-dropdown on desktop so the two surfaces feel like the same
        control opened differently. */
     bottom: calc(var(--pt-bottom-nav-h) + var(--pt-space-2) + env(safe-area-inset-bottom, 0px));
-    background: var(--pt-color-surface);
+    background: var(--po-surface);
     border: 1px solid var(--pt-border-subtle);
     border-radius: var(--pt-radius-lg);
     box-shadow: var(--pt-elev-4);
