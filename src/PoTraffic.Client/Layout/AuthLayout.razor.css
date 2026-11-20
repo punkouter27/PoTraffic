@@ -1,7 +1,10 @@
-/* Fills the viewport under the Po header (--po-header-h, po-tokens.css). */
+/* Fills the viewport under the Po header (--po-header-h, po-tokens.css). The brand panel runs to
+   the bottom edge, so the shell drops main's badge padding (po-tokens.css): the badge sits over the
+   form panel's own padding, never over content. */
 .auth-shell {
     display: flex;
     min-height: calc(100dvh - var(--po-header-h));
+    padding-bottom: 0;
 }
 
 /* The brand panel is a marketing hero that is always dark, in both themes — its
