@@ -113,6 +113,12 @@ App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowerc
 
 ## 3. Verification
 
+One command sequence verifies the repo (format, build, Unit, Integration, then E2E API + E2E UI on the Release publish):
+
+```powershell
+dotnet format PoTraffic.slnx --verify-no-changes && dotnet build PoTraffic.slnx -c Release && dotnet test tests/PoTraffic.Unit -c Release && dotnet test tests/PoTraffic.Integration -c Release && pwsh scripts/run-e2eui.ps1 -Tier All
+```
+
 Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 
 | What | Command | Needs / skips |
@@ -134,6 +140,21 @@ Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 - **Live:** https://potraffic-api-win2.azurewebsites.net and https://potraffic-api-win2.azurewebsites.net/diag
 - **Pinned:** .NET SDK `10.0.400` (`global.json`, rollForward latestFeature); MAUI client built with the
   `maui-android` workload in CI only (not in the .slnx).
+
+### Deliberate deviations
+
+| Deviation | Why | Commit sha / date | How to undo |
+|---|---|---|---|
+| `/login` brand panel removed: header title only, card h1 and one "Sign in with Microsoft" button. This overrides the owner's `6a24553` ("brand panel reaches the bottom again") | the v3 standard (title + one button) conflicted with the owner's panel | `3ee28fb` 2026-11-21 | `git revert 3ee28fb` (login part) or restore from `6a24553` |
+| Development/Test hosts add "Continue as Guest" on `/login`; Production shows one button | the browser tests sign in with it | `3ee28fb` 2026-11-21 | remove it (tests then need a real account) |
+| Radzen exception: read-only `<table>` in `Features/Routes/VolatilityHeatmap.razor` (the only one) | read-only data table, an allowed kind (Profile A) | `3ee28fb` 2026-11-21 | — |
+| /diag: a service switched off on purpose is **Off** (grey, not counted); live today TomTom incidents (no `PoTraffic--TomTom--ApiKey`) and the scheduler on hosts without timed checks | opt-in services left off are not faults | `3ee28fb`, `9c06ec4` 2026-11-21 | add the key to `kv-poshared2` |
+| Phones (<= 768px): stamp static after the page content; bottom nav signed-in only | a fixed stamp and nav covered /diag cards (overrides the older fixed rule) | `3ee28fb` 2026-11-21 | `git revert 3ee28fb` (stamp part) |
+| Client app assembly is not `IsTrimmable` (owner note: routable pages); the browser tier runs on the Release publish that deploys | trimming routable pages breaks them | — | owner call |
+| App Service `potraffic-api-win2` (standard `app-potraffic`) on the shared plan `asp-poissues-b1-wus2` in `PoShared` | renaming means recreating; B1 gives Always On at no added cost | — | owner-approved recreate |
+
+**Hosting:** App Service B1 (Basic) on the shared `asp-poissues-b1-wus2` plan in `PoShared`, Always On. Never run
+test suites against the live site; live checks = at most 6 page loads + /diag + X-Commit.
 
 ---
 
@@ -193,8 +214,8 @@ Consolidate functionality and UI into shared components when possible — before
 widget, look for an existing one that does the same job and extend it instead.
 
 The layout shows the version badge `vYYMMDD` (`BuildVersion`, the UTC date of the HEAD commit;
-see the `PoBuildStamp` target in `Directory.Build.props`) as `<span class="po-version">`, fixed in
-the bottom-right corner. Keep it there when changing the layout. The page shell header (app name,
+see the `PoBuildStamp` target in `Directory.Build.props`) as `<span class="po-version">`, bottom-right: fixed on
+wide screens, static after the content on phones (<= 768px). Keep it so when changing the layout. The page shell header (app name,
 email or Sign in, settings gear) is on every page; see "Page shell" in docs/development.md.
 
 ### Running a subset of tests
@@ -240,4 +261,4 @@ not technical jargon — so it reads like a person wrote it, then push without a
 - Every permission the app and CI need lives in `scripts/ensure-azure-access.ps1`. A role granted by hand and not added there is a bug: the next re-provision loses it.
 - The app answers `/health/live` (process up, no dependencies, `X-Commit` header), `/health` (readiness), `/health/json` and `/api/diag` (dependencies reachable). The deploy waits for `/health/live` to report the pushed commit.
 - Tests pass on any machine: no drive-letter, temp-folder or working-directory assumptions, and no live config value hard-coded as an expected result (read it from the same config the app reads).
-- A red run on the default branch gets an ntfy push from the CI watcher in PoPunkouterSoftware. Fix it, or say why it is red.
+- Nothing alerts on a red run any more (the PoPunkouterSoftware CI watcher was dropped 2026-11-20): check `gh run list -L 1` after a push. Fix it, or say why it is red.
