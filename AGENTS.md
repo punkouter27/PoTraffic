@@ -151,10 +151,11 @@ Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 | /diag: a service switched off on purpose is **Off** (grey, not counted); live today TomTom incidents (no `PoTraffic--TomTom--ApiKey`) and the scheduler on hosts without timed checks | opt-in services left off are not faults | `3ee28fb`, `9c06ec4` 2026-11-21 | add the key to `kv-poshared2` |
 | Phones (<= 768px): stamp static after the page content; bottom nav signed-in only | a fixed stamp and nav covered /diag cards (overrides the older fixed rule) | `3ee28fb` 2026-11-21 | `git revert 3ee28fb` (stamp part) |
 | Client app assembly is not `IsTrimmable` (owner note: routable pages); the browser tier runs on the Release publish that deploys | trimming routable pages breaks them | — | owner call |
-| App Service `potraffic-api-win2` (standard `app-potraffic`) on the shared plan `asp-poissues-b1-wus2` in `PoShared` | renaming means recreating; B1 gives Always On at no added cost | — | owner-approved recreate |
+| App Service `potraffic-api-win2` (standard `app-potraffic`) on `asp-PoTraffic-f1` | renaming means recreating | — | owner-approved recreate |
 
-**Hosting:** App Service B1 (Basic) on the shared `asp-poissues-b1-wus2` plan in `PoShared`, Always On. Never run
-test suites against the live site; live checks = at most 6 page loads + /diag + X-Commit.
+**Hosting:** App Service F1 (Free, Windows, `asp-PoTraffic-f1`, no Always On; checked with `az` 2026-11-22, so
+`infra/README.md`'s B1 `asp-poissues-b1-wus2` is out of date): 60 CPU-minutes and a data-out quota per day (Azure
+reported 3.1 GB). Never run test suites against the live site; live checks = at most 6 page loads + /diag + X-Commit.
 
 ---
 
