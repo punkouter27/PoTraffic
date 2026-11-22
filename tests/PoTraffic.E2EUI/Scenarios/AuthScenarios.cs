@@ -115,10 +115,10 @@ public sealed class AuthScenarios : PlaywrightTestBase
 
         await Page.GotoAsync($"{BaseUrl}/login");
 
-        // RadzenButton Text includes an emoji prefix (e.g. "  Continue with Microsoft").
+        // RadzenButton Text includes an emoji prefix (e.g. "  Sign in with Microsoft").
         // Use Exact = false for partial accessible-name matching.
         var microsoftBtn = Page.GetByRole(Microsoft.Playwright.AriaRole.Button,
-            new() { Name = "Continue with Microsoft", Exact = false });
+            new() { Name = "Sign in with Microsoft", Exact = false });
         await microsoftBtn.WaitForAsync(new() { Timeout = 30_000 });
         Assert.True(await microsoftBtn.IsVisibleAsync(), "Microsoft sign-in button must be visible on login page.");
     }

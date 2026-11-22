@@ -78,9 +78,9 @@
                 @* Dev-only fake personas (X-Fake-User). They used to sit in the header's
                    account dropdown; the Po header carries only the email and the gear. *@
                 <div class="pt-settings-links pt-mt-3">
-                    <button class="pt-settings-link" type="button" @onclick='() => SwitchFakeUserAsync("dev-commuter@potraffic.dev", "Commuter")'><PtIcon Name="person" Size="sm" />Dev: Commuter</button>
-                    <button class="pt-settings-link" type="button" @onclick='() => SwitchFakeUserAsync("dev-admin@potraffic.dev", "Administrator")'><PtIcon Name="admin_panel_settings" Size="sm" />Dev: Admin</button>
-                    <button class="pt-settings-link" type="button" @onclick="() => SwitchFakeUserAsync(null, null)"><PtIcon Name="person_off" Size="sm" />Clear dev user</button>
+                    <RadzenButton class="pt-plain pt-settings-link" Click='() => SwitchFakeUserAsync("dev-commuter@potraffic.dev", "Commuter")'><PtIcon Name="person" Size="sm" />Dev: Commuter</RadzenButton>
+                    <RadzenButton class="pt-plain pt-settings-link" Click='() => SwitchFakeUserAsync("dev-admin@potraffic.dev", "Administrator")'><PtIcon Name="admin_panel_settings" Size="sm" />Dev: Admin</RadzenButton>
+                    <RadzenButton class="pt-plain pt-settings-link" Click="() => SwitchFakeUserAsync(null, null)"><PtIcon Name="person_off" Size="sm" />Clear dev user</RadzenButton>
                 </div>
             }
         }

@@ -245,6 +245,17 @@
     --rz-warning: var(--pt-color-warning);
     --rz-info:    var(--pt-color-info);
 
+    /* Filled buttons read --rz-on-* for their text. Radzen's stock secondary is a light blue
+       under white text (2.9:1) and its white-on-danger fails on the dark theme's light red,
+       so both are mapped: secondary is the neutral raised surface, and danger text goes dark
+       where the red goes light. Field labels follow the app's secondary text colour. */
+    --rz-secondary:               var(--pt-bg-elev-2);
+    --rz-on-secondary:            var(--pt-fg-primary);
+    --rz-on-danger:               light-dark(#ffffff, #1a0b0d);
+    --rz-form-field-label-color:  var(--pt-fg-secondary);
+    /* A filled-in field's floating label is drawn in the placeholder colour (3.8:1 stock). */
+    --rz-input-placeholder-color: var(--pt-fg-secondary);
+
     /* Chart series. The admin line chart is the app's only RadzenChart; pinning the
        first two series keeps it in step with pt-chart.js, which draws series A in
        brand and series B in warning-amber. */

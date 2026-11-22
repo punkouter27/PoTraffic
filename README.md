@@ -73,9 +73,10 @@ prints the URL.
 
 The script fails fast if a tier holds more test cases than its cap — 100 unit, 50
 integration, 25 E2E API, 25 E2E UI (theory rows count individually). Merge or trim tests
-rather than raising a cap. Real counts (2026-11-20): Unit 87, Integration 35, E2E API 13,
-E2E UI 14. CI runs Unit and Integration; the E2E tiers skip with one clear message when no
-app is running.
+rather than raising a cap. Real counts (2026-11-21): Unit 87, Integration 36, E2E API 13,
+E2E UI 17. CI runs Unit and Integration; the E2E tiers skip with one clear message when no
+app is running. `pwsh scripts/run-e2eui.ps1 -Tier All` runs both E2E tiers against the Release
+publish (the build that deploys).
 
 Or run individual suites:
 

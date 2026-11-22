@@ -3,7 +3,7 @@
     display: inline-flex;
 }
 
-.pt-bell-btn {
+::deep .pt-bell-btn{
     position: relative;
     background: transparent;
     border: none;
@@ -17,7 +17,7 @@
     transition: background var(--pt-dur-fast, 120ms) var(--pt-ease-out, ease-out);
 }
 
-.pt-bell-btn:hover {
+::deep .pt-bell-btn:hover{
     background: var(--pt-bg-tint);
 }
 
@@ -66,7 +66,7 @@
     color: var(--pt-fg-primary);
 }
 
-.pt-bell-link {
+::deep .pt-bell-link{
     background: transparent;
     border: none;
     color: var(--pt-color-brand-on-surface);

@@ -1,0 +1,16 @@
+@implements IDisposable
+
+@* The body PtDialog hands to Radzen's DialogService. It renders the owner's ChildContent and
+   Footer, and re-renders whenever the owner's parent does, so a dialog's content keeps up
+   with the page's state while it is open. *@
+@Owner.RenderBody
+
+@code {
+    [Parameter, EditorRequired] public PtDialog Owner { get; set; } = default!;
+
+    protected override void OnInitialized() => Owner.Attach(this);
+
+    internal void Refresh() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Owner.Detach(this);
+}

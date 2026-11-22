@@ -45,14 +45,21 @@ Azure resources are defined in `infra/main.bicep`; production is
 
 `/diag` follows the /diag contract in AGENTS.md: title "System status", a plain-words banner,
 then API, Data and Services. `GET /api/diag` (`DiagReportHandler`) never passes raw check
-descriptions (which can name accounts or config keys) to anyone.
+descriptions (which can name accounts or config keys) to anyone. Storage and the scheduler come
+from the health checks; every external service (Google Maps, Open-Meteo, Nager.Date, TomTom,
+Key Vault, Microsoft sign-in, Application Insights) is called LIVE by
+`Features/Diagnostics/ServiceProbes.cs` with free requests and a 60 s cache. A service switched
+off on purpose (mock providers, no TomTom key, no vault locally, the Test host's scheduler) is
+`Off`: a grey pill, no latency, left out of the banner and the overall status.
 
 ### Tests
 
 Four tiers. `run-tests.ps1` owns Azurite (Testcontainers), starts/stops the `Testing` host
 on `http://localhost:5150` for the E2E tiers, and writes `TestResults/test-report.html`.
 It also enforces test-case caps per tier (100 unit / 50 integration / 25 E2E API / 25 E2E UI)
-before running anything. Real counts (2026-11-20): Unit 87, Integration 35, E2EAPI 13, E2EUI 14.
+before running anything. Real counts (2026-11-21): Unit 87, Integration 36, E2EAPI 13, E2EUI 17.
+`pwsh scripts/run-e2eui.ps1 [-Tier E2EUI|E2EAPI|All]` runs the E2E tiers against the Release
+publish (the build that deploys) with its own Azurite container, and stops everything after.
 CI runs Unit and Integration; the E2E tiers run locally and skip with one clear message when no
 app answers (or Chromium is missing); Integration skips locally when Docker is not running.
 
@@ -212,9 +219,13 @@ Every page, signed in and out, carries the same shell (AGENTS.md, Page shell), s
   Material Symbols is the only Google Fonts load (icon font).
 - **Version badge** `<span class="po-version">vYYMMDD</span>` (`Layout/BuildVersion.razor`), the
   UTC date of the HEAD commit, stamped once as `BuildVersion` by the `PoBuildStamp` target in
-  `Directory.Build.props` for every assembly; `/api/diag` reports the same value. Lifted above the
-  phone bottom nav via `--po-stamp-lift`; the bottom nav is opaque and hides "+" (add route) when signed out.
-- **/diag** "System status": banner, then API / Data / Services as `.po-diag__card`s with `.po-badge--ok|warn|bad`.
+  `Directory.Build.props` for every assembly; `/api/diag` reports the same value. Fixed bottom-right
+  on wide screens; at <=768px it is static and rendered last in the page column, so it sits after
+  the content and never covers it. The bottom nav (all its destinations need an account) is shown
+  to signed-in users only.
+- **Sign-in page** `/login` (`AuthLayout`): the header shows the title only; the page shows the
+  title and the one "Sign in with Microsoft" button (plus "Continue as Guest" on Development/Test hosts).
+- **/diag** "System status": banner, then API / Data / Services as `.po-diag__card`s with `.po-badge--ok|warn|bad|off`.
 - **Tab window**: Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`,
   `js/po-dev.js`): `/health/live` + `X-Commit`, and the checks from `GET /api/diag`. `App.razor` only moves focus to the h1 after the user has
   followed a link, so a fresh page has nothing focused.

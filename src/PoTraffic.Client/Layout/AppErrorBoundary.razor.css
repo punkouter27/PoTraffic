@@ -87,7 +87,7 @@
     overflow-y: auto;
 }
 
-.retry-button {
+::deep .retry-button{
     background: var(--pt-color-brand-600);
     color: var(--pt-fg-on-brand);
     border: none;
@@ -99,6 +99,6 @@
     transition: background var(--pt-dur-fast) var(--pt-ease);
 }
 
-.retry-button:hover {
+::deep .retry-button:hover{
     background: var(--pt-color-brand-700);
 }

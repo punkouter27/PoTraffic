@@ -3,7 +3,7 @@
     width: 100%;
 }
 
-.pt-ac-input {
+::deep .pt-ac-input{
     width: 100%;
     padding: 0.5rem 0.75rem;
     border: 1px solid var(--pt-border-strong, #c9ccd1);
@@ -16,20 +16,20 @@
 /* Same tokens as every other control's states (app.css): hover darkens the border,
    focus draws the brand ring, invalid takes the danger colour. None of them change
    the box's size. */
-.pt-ac-input {
+::deep .pt-ac-input{
     transition: border-color var(--pt-ix-dur) var(--pt-ix-ease),
                 box-shadow var(--pt-ix-dur) var(--pt-ix-ease);
 }
 
 @media (hover: hover) {
-    .pt-ac-input:hover { border-color: var(--pt-fg-tertiary); }
+    ::deep .pt-ac-input:hover{ border-color: var(--pt-fg-tertiary); }
 }
 
-.pt-ac-input[aria-invalid="true"] {
+::deep .pt-ac-input[aria-invalid="true"]{
     border-color: var(--pt-color-danger-on-surface);
 }
 
-.pt-ac-input:focus {
+::deep .pt-ac-input:focus{
     outline: none;
     border-color: var(--pt-color-brand-400);
     box-shadow: 0 0 0 2px var(--pt-color-brand-100, rgba(99, 102, 241, 0.25));

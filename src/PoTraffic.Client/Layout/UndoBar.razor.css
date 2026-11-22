@@ -32,7 +32,7 @@
     white-space: nowrap;
 }
 
-.pt-undo-action {
+::deep .pt-undo-action{
     align-items: center;
     background: var(--pt-color-brand-600);
     border: none;
@@ -49,11 +49,11 @@
                 transform var(--pt-ix-dur) var(--pt-ix-ease);
 }
 
-.pt-undo-action:hover {
+::deep .pt-undo-action:hover{
     background: var(--pt-color-brand-700);
 }
 
-.pt-undo-action:active {
+::deep .pt-undo-action:active{
     transform: scale(var(--pt-ix-press-scale));
 }
 

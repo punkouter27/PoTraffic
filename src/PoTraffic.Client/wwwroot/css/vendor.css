@@ -13,7 +13,7 @@
 
    Paths resolve relative to this file (/css/), hence the `../`.
    ═══════════════════════════════════════════════════════════════════════════ */
-@layer vendor;
+@layer vendor, plain;
 
 /* Bootstrap was removed. An audit of every class attribute in every .razor file
    found zero Bootstrap classes in use — no grid, no utilities, no components. It
@@ -26,3 +26,35 @@
    `.leaflet-pane > canvas` (0,1,1) out-rank app rules on specificity. Inside the
    layer it loses to every app rule regardless. */
 @import url("../lib/leaflet/leaflet.css") layer(vendor);
+
+/* `plain`: a Radzen control that keeps the app's own look carries class "pt-plain". Every
+   control is a Radzen component (AGENTS.md, Components); this layer sits after `vendor`, so it
+   reverts what the Radzen theme set on such a control to the browser's native element, and the
+   app's own unlayered rules (.po-link-btn, .pt-undo-action, …) style it exactly as they styled
+   the native <button>/<input>. The button's content box steps out of the layout, so flex gaps
+   still see its children. */
+@layer plain {
+    :where(.rz-button.pt-plain, .rz-textbox.pt-plain),
+    :where(.rz-button.pt-plain)::before,
+    :where(.rz-button.pt-plain)::after {
+        all: revert;
+    }
+
+    :where(.rz-button.pt-plain, .rz-textbox.pt-plain) {
+        box-sizing: border-box;
+        font: inherit;
+        color: inherit;
+    }
+
+    :where(.rz-button.pt-plain) {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    :where(.rz-button.pt-plain > .rz-button-box) {
+        all: revert;
+        display: contents;
+    }
+}

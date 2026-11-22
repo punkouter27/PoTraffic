@@ -127,7 +127,10 @@ public sealed class MobileViewportScenarios : PlaywrightTestBase
             Assert.Equal(["API", "Data", "Services"], await Page.Locator("section.po-diag__group h2").AllInnerTextsAsync());
             Assert.True(await Page.Locator("[data-group='api'] [data-check='api']").IsVisibleAsync(), "API row missing");
             Assert.True(await Page.Locator("[data-group='data'] [data-check='storage']").IsVisibleAsync(), "storage row missing");
-            Assert.True(await Page.Locator("[data-group='service'] [data-check='trafficProvider']").IsVisibleAsync(), "services rows missing");
+            Assert.True(await Page.Locator("[data-group='service'] [data-check='google-maps']").IsVisibleAsync(), "services rows missing");
+            // The Test host mocks Google Maps on purpose: a neutral Off row, not a fault, and the banner ignores it.
+            Assert.Equal("Off", await Page.Locator("[data-check='google-maps'] .po-badge").InnerTextAsync());
+            Assert.Equal("Everything is working", await Page.GetByTestId("diag-banner").InnerTextAsync());
             Assert.True(await Page.GetByTestId("diag-about").IsVisibleAsync(), "version/environment missing");
             // Po web standard: one .po-diag__card per dependency, each with a .po-badge status.
             int badgedCards = await Page.Locator(".po-diag__card .po-badge").CountAsync();

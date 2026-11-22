@@ -79,6 +79,28 @@ installs the `maui-android` workload and builds the Android target, so the clien
 #### Azure naming
 App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowercase>`; shared things only in `PoShared`.
 
+#### Components (Radzen), validation, layout states (this repo)
+- Every control is a Radzen component (`Radzen.Blazor`, pinned in `Directory.Packages.props`):
+  buttons are `RadzenButton`, fields `RadzenTextBox`/`RadzenDropDown`/…, dialogs and the bulk
+  drawer go through `DialogService` (`Layout/PtDialog.razor`). A control that keeps the app's own
+  look carries class `pt-plain` (the `plain` cascade layer in `wwwroot/css/vendor.css` reverts the
+  Radzen theme on it); scoped CSS reaches it with `::deep`.
+- Allowed native exceptions (the only ones): native file inputs for resumable uploads (none
+  here), native audio/video (none here), and read-only data tables: `<table>` in
+  `Features/Routes/VolatilityHeatmap.razor`.
+- FluentValidation with inline errors. Validators are created BY TYPE (each handler holds
+  `private static readonly XValidator Validator = new()`; the client's `CreateRoutePage` passes its
+  validator instance to `FluentValidationValidator`), never by assembly scanning. No `alert()`/`confirm()`.
+- One `MainLayout` (plus `AuthLayout` for `/login` and `BareLayout`, sharing `PoHeader` and
+  `BuildVersion`), a `NotFound` page, and `StateCard`/`LoadingErrorCard`/`SectionErrorBoundary`
+  for loading, empty and error states.
+- Sign-in is Microsoft Entra; `/login` shows the title and one "Sign in with Microsoft" button
+  (Development/Test hosts add "Continue as Guest" for the browser tests). The bottom nav and the
+  header's account items are for signed-in users only.
+- `/diag` calls every external service live (`Features/Diagnostics/ServiceProbes.cs`); a service
+  switched off on purpose is `Off` (grey, not counted in the banner or the overall status).
+- On phones (<=768px) the `vYYMMDD` stamp is static, after the page content.
+
 ## 2. Concurrent work
 
 > Several sessions (people and agents) commit to this repo, sometimes at the same time.
@@ -91,18 +113,19 @@ App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowerc
 
 ## 3. Verification
 
-Every command below was run on 2026-11-20 (PowerShell or bash, repo root).
+Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 
 | What | Command | Needs / skips |
 |---|---|---|
 | Format | `dotnet format PoTraffic.slnx --verify-no-changes` | — |
 | Build | `dotnet build PoTraffic.slnx -c Release` | warnings are errors |
 | Unit | `dotnet test tests/PoTraffic.Unit -c Release` | nothing (87 tests) |
-| Integration | `dotnet test tests/PoTraffic.Integration -c Release` | Docker (Testcontainers Azurite); Docker-dependent tests skip with one message without it (35) |
+| Integration | `dotnet test tests/PoTraffic.Integration -c Release` | Docker (Testcontainers Azurite); Docker-dependent tests skip with one message without it (36) |
 | Azurite for a local run | `docker run -d --rm -p 21000:10000 -p 21001:10001 -p 21002:10002 mcr.microsoft.com/azure-storage/azurite:latest azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose` | Docker |
 | Run locally (Test host: mock traffic, guest sign-in) | `ConnectionStrings__TableStorage="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<Azurite's well-known dev key>;TableEndpoint=http://127.0.0.1:21002/devstoreaccount1;" dotnet run --project src/PoTraffic.Api --launch-profile Test` | → http://localhost:5150 and http://localhost:5150/diag |
-| E2E API | `E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EAPI -c Release` | the Test host above; skips without it (13) |
-| E2E UI | `E2E_HEADED=0 E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EUI -c Release` | the Test host + Playwright Chromium; skips with the reason otherwise (14) |
+| E2E UI + API on the Release publish | `pwsh scripts/run-e2eui.ps1 -Tier All` | Docker + Playwright Chromium; publishes `-c Release` (the build that deploys), starts its own Azurite + the published Test host on 5150, runs E2EAPI (13) and E2EUI (17), stops everything |
+| E2E API (against a running host) | `E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EAPI -c Release` | the Test host above; skips without it (13) |
+| E2E UI (against a running host) | `E2E_HEADED=0 E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EUI -c Release` | the Test host + Playwright Chromium; skips with the reason otherwise (17) |
 
 - **Deploy:** push to `master` runs `.github/workflows/deploy.yml` (format, build, Unit, Integration, publish,
   deploy; the `mobile` job builds the Android client beside it). `*.md` changes do not deploy.

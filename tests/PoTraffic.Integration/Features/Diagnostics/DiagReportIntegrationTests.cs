@@ -45,11 +45,33 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
         doc.RootElement.GetProperty("version").GetString().Should().MatchRegex("^[0-9]{6}$");
         JsonElement checks = doc.RootElement.GetProperty("checks");
         checks.EnumerateArray().Select(c => c.GetProperty("name").GetString())
-            .Should().Contain(["api", "storage", "keyvault", "trafficProvider", "scheduler"]);
+            .Should().Contain(["api", "storage", "scheduler", "google-maps", "weather", "holidays", "incidents", "keyvault", "microsoft-sign-in", "telemetry"]);
         checks.EnumerateArray().Select(c => c.GetProperty("group").GetString())
             .Should().OnlyContain(g => g == "api" || g == "data" || g == "service");
 
         AssertNoSecrets(body, "/api/diag");
+    }
+
+    /// <summary>
+    /// The Test host mocks every live provider and has no vault, sign-in app, TomTom key or
+    /// telemetry: those rows are "Off" (switched off on purpose, no call made) and the overall
+    /// status ignores them, so the report is Healthy rather than Degraded.
+    /// </summary>
+    [SkipUnlessAzuriteAvailable]
+    public async Task Services_switched_off_on_purpose_are_Off_and_left_out_of_the_overall_status()
+    {
+        using JsonDocument doc = JsonDocument.Parse(await CreateClient().GetStringAsync("/api/diag"));
+        JsonElement[] checks = [.. doc.RootElement.GetProperty("checks").EnumerateArray()];
+        string StatusOf(string name) => checks.Single(c => c.GetProperty("name").GetString() == name).GetProperty("status").GetString()!;
+
+        foreach (string name in new[] { "google-maps", "weather", "holidays", "incidents", "keyvault", "microsoft-sign-in", "telemetry", "scheduler" })
+        {
+            StatusOf(name).Should().Be("Off", $"{name} is switched off on purpose in the Test host");
+            checks.Single(c => c.GetProperty("name").GetString() == name).GetProperty("latencyMs").GetDouble().Should().Be(0);
+        }
+
+        StatusOf("storage").Should().Be("Healthy");
+        doc.RootElement.GetProperty("status").GetString().Should().Be("Healthy");
     }
 
     [SkipUnlessAzuriteAvailable]

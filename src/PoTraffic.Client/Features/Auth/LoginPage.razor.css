@@ -1,4 +1,6 @@
-/* LoginPage — scoped styles. Replaces inline color="var(--rz-text-tertiary-color)" usages. */
-.pt-fg-tertiary {
-    color: var(--pt-fg-tertiary);
+/* LoginPage: the app title over the one sign-in button. */
+.auth-title {
+    margin: 0 0 var(--pt-space-5);
+    text-align: center;
+    font-size: var(--pt-text-2xl, 1.75rem);
 }

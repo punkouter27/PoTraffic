@@ -168,7 +168,7 @@
     gap: var(--pt-space-2);
 }
 
-.pt-settings-link {
+::deep .pt-settings-link{
     display: inline-flex;
     align-items: center;
     gap: var(--pt-space-2);
@@ -183,5 +183,5 @@
     cursor: pointer;
 }
 
-.pt-settings-link:hover { border-color: var(--po-accent); color: var(--po-accent); }
+::deep .pt-settings-link:hover{ border-color: var(--po-accent); color: var(--po-accent); }
 .pt-settings-link-danger { color: var(--pt-color-danger-on-surface); }

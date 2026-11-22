@@ -1,8 +1,7 @@
-// pt-keys.js — app-wide keyboard shortcuts, and the native <dialog> plumbing behind
-// PtDialog (the bulk-actions drawer and the shortcut help overlay).
+// pt-keys.js — app-wide keyboard shortcuts.
 //
-// Imported on demand through IJSRuntime "import" (Layout/KeyboardShortcuts.razor,
-// Components/PtDialog.razor), so index.html needs no script tag for it.
+// Imported on demand through IJSRuntime "import" (Layout/KeyboardShortcuts.razor), so
+// index.html needs no script tag for it.
 //
 // Shortcuts are deliberately declarative: a page marks the element a key acts on with
 // data-shortcut="<key>" and this module finds it. "/" focuses the marked field; any other
@@ -24,9 +23,12 @@ function isUsable(el) {
         && !el.matches(':disabled, [aria-disabled="true"]');
 }
 
+/** An open Radzen dialog or side dialog (PtDialog): it owns the keyboard while open. */
+const OPEN_DIALOG = '.rz-dialog-wrapper .rz-dialog, .rz-dialog-side';
+
 function marked(key) {
     // A modal dialog makes everything outside it inert; only look inside it then.
-    const modal = document.querySelector('dialog[open]:modal');
+    const modal = document.querySelector(OPEN_DIALOG);
     const scope = modal ?? document;
     for (const el of scope.querySelectorAll(`[data-shortcut="${CSS.escape(key)}"]`)) {
         if (isUsable(el)) return el;
@@ -80,7 +82,7 @@ export function attachShortcuts(dotnet) {
 
         // Keys with no element to act on are app-level (navigation) — but not while a
         // modal is open: a dialog owns the keyboard until it closes.
-        if (lower === 'n' && !document.querySelector('dialog[open]:modal')) {
+        if (lower === 'n' && !document.querySelector(OPEN_DIALOG)) {
             event.preventDefault();
             dotnet.invokeMethodAsync('OnShortcut', 'n');
         }
@@ -90,43 +92,4 @@ export function attachShortcuts(dotnet) {
     return {
         dispose() { document.removeEventListener('keydown', onKeyDown); }
     };
-}
-
-// ── <dialog> ───────────────────────────────────────────────────────────────────
-
-/**
- * Wires a dialog's close (Esc, the close button, a backdrop click) back to .NET, so the
- * component's Open state can never disagree with the element's. Returns a handle with
- * dispose() that removes both listeners.
- */
-export function bindDialog(dialog, dotnet) {
-    const onClose = () => dotnet.invokeMethodAsync('OnDialogClosed');
-
-    // A click whose target is the <dialog> itself landed on the ::backdrop: the panel's
-    // own content always has a child element under the pointer.
-    const onClick = (event) => {
-        if (event.target === dialog) dialog.close();
-    };
-
-    dialog.addEventListener('close', onClose);
-    dialog.addEventListener('click', onClick);
-    return {
-        dispose() {
-            dialog.removeEventListener('close', onClose);
-            dialog.removeEventListener('click', onClick);
-        }
-    };
-}
-
-/**
- * Opens modally. showModal() moves focus into the dialog (to [autofocus] or the first
- * focusable), makes the page behind it inert, and on close the browser hands focus back
- * to whatever had it before — the focus management a hand-rolled overlay gets wrong.
- */
-export function showDialog(dialog) {
-    if (dialog && !dialog.open) dialog.showModal();
-}
-
-export function closeDialog(dialog) {
-    if (dialog && dialog.open) dialog.close();
 }

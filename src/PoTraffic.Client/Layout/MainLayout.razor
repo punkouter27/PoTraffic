@@ -21,10 +21,19 @@
             <SectionErrorBoundary @ref="_pageBoundary" Label="this page">
                 @Body
             </SectionErrorBoundary>
+            @* Build stamp vYYMMDD (AGENTS.md standing requirement): fixed bottom-right on wide
+               screens; on phones po-tokens.css makes it static, so it sits after the page
+               content and above the bottom nav's reserved space. Keep it here. *@
+            <BuildVersion />
         </article>
     </main>
 
-    <BottomNav />
+    @* Every bottom-nav destination needs an account, so signed-out visitors don't get the bar. *@
+    <AuthorizeView>
+        <Authorized>
+            <BottomNav />
+        </Authorized>
+    </AuthorizeView>
 </div>
 
 @* Global overlay — one instance, above the page so it survives navigation.
@@ -42,8 +51,6 @@
 @* "/", "n", "c" and "?" — see KeyboardShortcuts for how pages opt in. *@
 <KeyboardShortcuts />
 
-@* Build stamp vYYMMDD, bottom-right — a standing layout requirement (AGENTS.md). Keep it here. *@
-<BuildVersion />
 
 
 @code {

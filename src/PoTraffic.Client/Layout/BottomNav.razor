@@ -34,12 +34,11 @@
             </span>
         </a>
     }
-    <button class="pt-bottom-nav-link" type="button" aria-haspopup="menu"
-            aria-expanded="@_sheetOpen" aria-label="Account menu"
-            @onclick="ToggleSheet" @onclick:stopPropagation="true">
+    <RadzenButton class="pt-plain pt-bottom-nav-link" aria-haspopup="menu"
+                  aria-expanded="@(_sheetOpen ? "true" : "false")" aria-label="Account menu" Click="ToggleSheet">
         <PtIcon Name="account_circle" Class="pt-bottom-nav-icon" />
         <span class="pt-bottom-nav-label">@(_id.IsAuthenticated ? "Account" : "Menu")</span>
-    </button>
+    </RadzenButton>
 </nav>
 
 @if (_sheetOpen && _id.IsAuthenticated)
@@ -58,9 +57,9 @@
             </a>
         }
         <div class="pt-bottom-sheet-divider" role="separator"></div>
-        <button type="button" class="pt-bottom-sheet-item pt-bottom-sheet-danger" role="menuitem" @onclick="LogoutAsync">
+        <RadzenButton class="pt-plain pt-bottom-sheet-item pt-bottom-sheet-danger" role="menuitem" Click="LogoutAsync">
             <PtIcon Name="logout" Size="sm" />Sign out
-        </button>
+        </RadzenButton>
     </div>
 }
 else if (_sheetOpen)

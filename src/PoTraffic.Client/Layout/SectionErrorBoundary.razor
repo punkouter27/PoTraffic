@@ -27,7 +27,7 @@
         <div class="pt-section-error" role="alert">
             <PtIcon Name="error" Size="sm" Class="pt-section-error-icon" />
             <span class="pt-section-error-text">Couldn't show @Label.</span>
-            <button type="button" class="pt-section-error-retry pt-tap" @onclick="Recover">Retry</button>
+            <RadzenButton class="pt-plain pt-section-error-retry pt-tap" Click="Recover" Text="Retry" />
         </div>
     </ErrorContent>
 </ErrorBoundary>

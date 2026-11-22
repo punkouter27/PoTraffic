@@ -34,7 +34,7 @@
     margin-left: var(--pt-space-2);
 }
 
-.pt-trend-selection-clear {
+::deep .pt-trend-selection-clear{
     align-items: center;
     background: none;
     border: none;
@@ -46,6 +46,6 @@
     padding: var(--pt-space-1);
 }
 
-.pt-trend-selection-clear:hover {
+::deep .pt-trend-selection-clear:hover{
     color: var(--pt-fg-body);
 }

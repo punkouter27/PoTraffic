@@ -10,14 +10,11 @@
 
 <PageTitle>Sign in · PoTraffic</PageTitle>
 
-<RadzenCard class="pt-p-6">
-    @* An <h1>, not a RadzenText H5. This is the app's landing page for anyone
-       signed out and it exposed no heading element at all — a screen reader's
-       heading list was empty on the one page every new user sees first. *@
-    <PageHeader Title="Sign in"
-                Subtitle="@(_guestEnabled
-                    ? "Use your Microsoft account, or continue as a guest (local development)."
-                    : "Use your Microsoft account to continue.")" />
+@* Po web standard: the sign-in page shows the title and one sign-in button. The guest button
+   exists only on Development/Test hosts (the browser tests sign in with it); an alert appears
+   only when sign-in failed or is not configured. *@
+<RadzenCard class="pt-p-6 auth-card-body">
+    <h1 class="auth-title">PoTraffic</h1>
 
     @if (!string.IsNullOrEmpty(_error))
     {
@@ -33,13 +30,12 @@
 
     @if (!_providersLoaded || _microsoftConfigured || !_guestEnabled)
     {
-        <RadzenButton Text="Continue with Microsoft" ButtonStyle="ButtonStyle.Primary"
+        <RadzenButton Text="Sign in with Microsoft" ButtonStyle="ButtonStyle.Primary"
                       class="pt-w-100 auth-social-btn"
                       Click='() => StartExternalLogin("microsoft")'
                       Disabled="@(_loading || (_providersLoaded && !_microsoftConfigured))" />
     }
 
-    @* Rule 4.4 — Dev split view / Testing bypass: guest login skips OAuth entirely. *@
     @if (_guestEnabled)
     {
         <RadzenButton Text="Continue as Guest" ButtonStyle="ButtonStyle.Secondary"
@@ -47,11 +43,7 @@
                       Click="@GuestLoginAsync"
                       IsBusy="@_guestLoading"
                       Disabled="@_loading" />
-        <RadzenText TextStyle="TextStyle.Caption" class="pt-mt-2 pt-fg-tertiary">
-            Guest sessions are for local development and testing only.
-        </RadzenText>
     }
-
 </RadzenCard>
 
 @code {

@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using PoTraffic.Api.Features.Diagnostics;
 
 namespace PoTraffic.Api.Infrastructure;
 
@@ -54,8 +56,10 @@ internal static class KeyVaultConfigurationExtensions
 
             try
             {
-                builder.Configuration.AddAzureKeyVault(
-                    new Uri(vaultUri), new DefaultAzureCredential(credentialOptions), kvOptions);
+                var devCredential = new DefaultAzureCredential(credentialOptions);
+                builder.Configuration.AddAzureKeyVault(new Uri(vaultUri), devCredential, kvOptions);
+                // /diag probes the same vault with the same credential (Features/Diagnostics/ServiceProbes).
+                builder.Services.AddSingleton(new KeyVaultSource(new SecretClient(new Uri(vaultUri), devCredential)));
             }
             catch (Exception ex) when (
                 ex is AuthenticationFailedException      // covers CredentialUnavailableException
@@ -81,6 +85,7 @@ internal static class KeyVaultConfigurationExtensions
             : new ManagedIdentityCredential(ManagedIdentityId.SystemAssigned);
 
         builder.Configuration.AddAzureKeyVault(new Uri(vaultUri), credential, kvOptions);
+        builder.Services.AddSingleton(new KeyVaultSource(new SecretClient(new Uri(vaultUri), credential)));
         return builder;
     }
 }

@@ -1,16 +1,19 @@
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using PoTraffic.Api.Infrastructure.Scheduling;
 using PoTraffic.Shared.DTOs.Admin;
 
 namespace PoTraffic.Api.Features.Diagnostics;
 
 /// <summary>
-/// Turns the registered health checks into the anonymous <c>GET /api/diag</c> report
-/// (<see cref="DiagReportDto"/>). Everything in it is fixed text from <see cref="Describe"/>
-/// plus status and timing: a health check's own description (which can name config keys or
-/// accounts) is never copied, nor is an exception.
+/// Builds the anonymous <c>GET /api/diag</c> report (<see cref="DiagReportDto"/>): the registered
+/// health checks (storage, scheduler) plus the live <see cref="ServiceProbes"/> rows. Everything
+/// in it is fixed text from <see cref="Describe"/> or the probes plus status and timing: a health
+/// check's own description (which can name config keys or accounts) is never copied, nor is an
+/// exception. Rows that are <see cref="ServiceProbes.Off"/> (switched off on purpose) are shown
+/// but left out of the overall status.
 /// </summary>
-public sealed class DiagReportHandler(HealthCheckService healthChecks, IHostEnvironment env)
+public sealed class DiagReportHandler(HealthCheckService healthChecks, ServiceProbes probes, IServiceProvider services, IHostEnvironment env)
 {
     private static readonly TimeProvider Clock = TimeProvider.System;
 
@@ -22,6 +25,7 @@ public sealed class DiagReportHandler(HealthCheckService healthChecks, IHostEnvi
     public async Task<DiagReportDto> Handle(CancellationToken ct)
     {
         long started = Clock.GetTimestamp();
+        Task<DiagCheckDto[]> serviceRows = probes.RunAsync(ct);
         HealthReport report = await healthChecks.CheckHealthAsync(ct);
 
         List<DiagCheckDto> checks =
@@ -34,6 +38,13 @@ public sealed class DiagReportHandler(HealthCheckService healthChecks, IHostEnvi
         foreach ((string key, HealthReportEntry entry) in report.Entries)
         {
             (string label, string group, string purpose, string problem) = Describe(key);
+            if (key == "scheduler" && services.GetService<IJobScheduler>() is null or NoOpJobScheduler)
+            {
+                // The Test host runs no timed checks on purpose.
+                checks.Add(new DiagCheckDto(key, group, label, ServiceProbes.Off, purpose, "Off (no timed checks on this host)", 0, null));
+                continue;
+            }
+
             checks.Add(new DiagCheckDto(
                 Name: key,
                 Group: group,
@@ -50,7 +61,10 @@ public sealed class DiagReportHandler(HealthCheckService healthChecks, IHostEnvi
                 Problem: entry.Status == HealthStatus.Healthy ? null : problem));
         }
 
-        HealthStatus overall = checks.Min(c => Enum.TryParse(c.Status, out HealthStatus s) ? s : HealthStatus.Unhealthy);
+        checks.AddRange(await serviceRows);
+
+        HealthStatus overall = checks.Where(c => c.Status != ServiceProbes.Off)
+            .Min(c => Enum.TryParse(c.Status, out HealthStatus s) ? s : HealthStatus.Unhealthy);
         return new DiagReportDto(
             overall.ToString(),
             env.EnvironmentName,
@@ -64,10 +78,6 @@ public sealed class DiagReportHandler(HealthCheckService healthChecks, IHostEnvi
     {
         "storage" => ("Table Storage", DiagGroups.Data, "Keeps your commutes, schedules and every recorded trip.",
             "Storage is not reachable, so commutes cannot be loaded or saved."),
-        "keyvault" => ("Key Vault", DiagGroups.Service, "Holds the secrets that Microsoft sign-in needs.",
-            "The sign-in secret did not load from Key Vault, so Microsoft sign-in will fail."),
-        "trafficProvider" => ("Google Maps traffic", DiagGroups.Service, "Measures the travel time of each commute.",
-            "The Google Maps key is missing, so travel times cannot be measured."),
         "scheduler" => ("Scheduler", DiagGroups.Service, "Runs the timed traffic checks for monitored commutes.",
             "Timed traffic checks are not running."),
         _ => (key, DiagGroups.Service, "Another dependency this app checks.", "This dependency is not working."),

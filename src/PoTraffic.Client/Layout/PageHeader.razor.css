@@ -90,7 +90,7 @@
 
 /* ── Rename in place ───────────────────────────────────────────────────── */
 
-.pt-page-title-edit {
+::deep .pt-page-title-edit{
     display: inline-flex;
     vertical-align: middle;
     margin-inline-start: var(--pt-space-1);
@@ -102,13 +102,13 @@
     cursor: pointer;
 }
 
-.pt-page-title-edit:hover,
-.pt-page-title-edit:focus-visible {
+::deep .pt-page-title-edit:hover,
+::deep .pt-page-title-edit:focus-visible{
     color: var(--pt-fg-primary);
     background: var(--pt-bg-tint);
 }
 
-.pt-page-title-input {
+::deep .pt-page-title-input{
     width: 100%;
     font: inherit;
     color: inherit;

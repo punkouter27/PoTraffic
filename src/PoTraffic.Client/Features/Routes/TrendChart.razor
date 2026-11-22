@@ -33,7 +33,7 @@ else
             <span class="pt-trend-zoom-label">
                 Zoomed to @(zoom.To - zoom.From + 1) of @Points.Count samples
             </span>
-            <button type="button" class="pt-trend-zoom-reset" @onclick="() => _zoom = null">Reset zoom</button>
+            <RadzenButton class="pt-plain pt-trend-zoom-reset" Click="() => _zoom = null" Text="Reset zoom" />
         }
         else
         {

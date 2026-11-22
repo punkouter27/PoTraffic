@@ -230,9 +230,16 @@ main { padding-bottom: calc(var(--po-space-6) + env(safe-area-inset-bottom, 0px)
   pointer-events: none;
   opacity: 0.9;
 }
-/* Apps with a bottom nav on phones lift the stamp above it by setting --po-stamp-lift. */
+/* Phones: the stamp leaves the corner and sits after the page content (the layout renders it
+   last in the page column), so it can never cover a row, a button or the bottom nav. */
 @media (max-width: 768px) {
-  .po-version { bottom: calc(max(var(--po-space-3), env(safe-area-inset-bottom, 0px)) + var(--po-stamp-lift, 0px)); }
+  .po-version {
+    position: static;
+    display: block;
+    width: fit-content;
+    margin: var(--po-space-4) var(--po-space-3) var(--po-space-3) auto;
+    opacity: 1;
+  }
 }
 
 /* ── Shell: /diag (System status) ── */
@@ -271,3 +278,5 @@ main { padding-bottom: calc(var(--po-space-6) + env(safe-area-inset-bottom, 0px)
 .po-badge--ok { background: var(--po-success-soft); box-shadow: inset 0 0 0 1px var(--po-success); }
 .po-badge--warn { background: var(--po-warning-soft); box-shadow: inset 0 0 0 1px var(--po-warning); }
 .po-badge--bad { background: var(--po-danger-soft); box-shadow: inset 0 0 0 1px var(--po-danger); }
+/* Off: switched off on purpose (mock mode, no key). Neutral grey, never a fault. */
+.po-badge--off { background: var(--po-surface-2); box-shadow: inset 0 0 0 1px var(--po-border); }

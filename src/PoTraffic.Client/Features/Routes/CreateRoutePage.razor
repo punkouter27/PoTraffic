@@ -19,7 +19,7 @@
     }
 
     <SectionErrorBoundary Label="the form">
-    <RadzenTemplateForm TItem="CreateRouteForm" Data="@_form" Submit="@SaveAsync">
+    <RadzenTemplateForm TItem="CreateRouteForm" Data="@_form" Submit="@SaveAsync" InvalidSubmit="@(_ => ShowValidationErrors())">
         <FluentValidationValidator TModel="CreateRouteForm" Validator="@_validator" />
         <RadzenFormField Text="From" class="pt-w-100 pt-mb-2">
             <ChildContent>
@@ -64,7 +64,7 @@
                           Icon="play_arrow" ButtonStyle="ButtonStyle.Primary"
                           IsBusy="_loading" Disabled="_loading" />
             <RadzenButton ButtonType="ButtonType.Button" Text="Cancel"
-                          ButtonStyle="ButtonStyle.Light" Variant="Variant.Outlined"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
                           Disabled="_loading" Click="@(() => Nav.NavigateTo("/dashboard"))" />
         </div>
     </RadzenTemplateForm>
@@ -126,6 +126,21 @@
         _startTime = end.AddHours(-3);
     }
 
+    /// <summary>
+    /// Runs the FluentValidation validator and shows its messages inline under each field. Also the
+    /// form's InvalidSubmit handler: when FluentValidationValidator marks the EditContext invalid the
+    /// form never calls Submit, so without this an empty form failed silently.
+    /// </summary>
+    private bool ShowValidationErrors()
+    {
+        _form.DayMask = DayMask;
+        FluentValidation.Results.ValidationResult validation = _validator.Validate(_form);
+        _originError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.OriginAddress))?.ErrorMessage;
+        _destinationError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DestinationAddress))?.ErrorMessage;
+        _daysError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DayMask))?.ErrorMessage;
+        return validation.IsValid;
+    }
+
     private async Task SaveAsync()
     {
         if (_loading)
@@ -136,15 +151,8 @@
         _destinationError = null;
         _daysError = null;
 
-        _form.DayMask = DayMask;
-        FluentValidation.Results.ValidationResult validation = _validator.Validate(_form);
-        if (!validation.IsValid)
-        {
-            _originError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.OriginAddress))?.ErrorMessage;
-            _destinationError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DestinationAddress))?.ErrorMessage;
-            _daysError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DayMask))?.ErrorMessage;
+        if (!ShowValidationErrors())
             return;
-        }
 
         if (_startTime is null || _endTime is null || !ScheduleFields.EndDiffersFromStart(_startTime, _endTime))
             return;

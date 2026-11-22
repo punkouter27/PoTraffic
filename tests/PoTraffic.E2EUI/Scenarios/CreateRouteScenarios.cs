@@ -164,4 +164,27 @@ public sealed class CreateRouteScenarios : PlaywrightTestBase
         Assert.False(blazorCrash,
             "Blazor error toast appeared — the route creation endpoint returned an unexpected unhandled error.");
     }
+
+    /// <summary>
+    /// FluentValidation's errors show inline under the field (not as an alert or a toast):
+    /// saving an empty form names the missing origin and destination beside their fields.
+    /// </summary>
+    [SkipUnlessE2EReady]
+    public async Task CreateRouteForm_Empty_ShowsFluentValidationErrorsInline()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Continue as Guest" }).ClickAsync();
+        // The guest session is in place once the header shows its email (a client-side navigation, no load event).
+        await Page.Locator(".po-header__email").WaitForAsync(new() { Timeout = 30_000 });
+
+        await Page.GotoAsync($"{BaseUrl}/routes/create");
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Save & start monitoring" }).ClickAsync();
+
+        ILocator origin = Page.Locator(".rz-form-field", new() { Has = Page.GetByLabel("From", new() { Exact = true }) })
+            .Locator(".rz-messages-error");
+        await origin.WaitForAsync(new() { Timeout = 15_000 });
+        Assert.Equal("Enter an origin address.", (await origin.InnerTextAsync()).Trim());
+        Assert.Contains("Enter a destination address.", await Page.Locator(".rz-messages-error").AllInnerTextsAsync());
+        Assert.EndsWith("/routes/create", Page.Url);
+    }
 }

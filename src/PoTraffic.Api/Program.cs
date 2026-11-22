@@ -81,7 +81,7 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-    builder.Services.AddPoTrafficHealthChecks(builder.Environment, builder.Configuration);
+    builder.Services.AddPoTrafficHealthChecks();
     builder.Services.AddOpenApi();
 
     // Reverse-proxy awareness (Azure App Service): TLS terminates at the front end and the

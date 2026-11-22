@@ -32,20 +32,20 @@
         <h1 class="pt-page-title">
             @if (_editing)
             {
-                <input @ref="_input" class="pt-page-title-input" maxlength="60" aria-label="Name"
-                       placeholder="@EditPlaceholder" value="@EditValue"
-                       @onchange="SaveAsync" @onblur="() => _editing = false"
-                       @onkeydown="@(e => { if (e.Key == "Escape") _editing = false; })" />
+                <RadzenTextBox @ref="_input" class="pt-plain pt-page-title-input" MaxLength="60" aria-label="Name"
+                               Placeholder="@EditPlaceholder" Value="@EditValue"
+                               Change="@((string v) => SaveAsync(v))" @onblur="() => _editing = false"
+                               @onkeydown="@(e => { if (e.Key == "Escape") _editing = false; })" />
             }
             else
             {
                 @Title
                 @if (TitleChanged.HasDelegate)
                 {
-                    <button type="button" class="pt-page-title-edit" aria-label="Rename" title="Rename"
-                            @onclick="BeginEdit">
+                    <RadzenButton class="pt-plain pt-page-title-edit" aria-label="Rename" title="Rename"
+                                  Click="BeginEdit">
                         <PtIcon Name="edit" Size="sm" />
-                    </button>
+                    </RadzenButton>
                 }
             }
         </h1>
@@ -82,7 +82,7 @@
 
     private bool _editing;
     private bool _focusNext;
-    private ElementReference _input;
+    private RadzenTextBox? _input;
 
     private void BeginEdit() => _editing = _focusNext = true;
 
@@ -92,14 +92,15 @@
         if (_focusNext)
         {
             _focusNext = false;
-            await _input.FocusAsync();
+            if (_input is not null)
+                await _input.FocusAsync();
         }
     }
 
-    private async Task SaveAsync(ChangeEventArgs e)
+    private async Task SaveAsync(string? raw)
     {
         _editing = false;
-        string? value = (e.Value as string)?.Trim();
+        string? value = raw?.Trim();
         await TitleChanged.InvokeAsync(string.IsNullOrEmpty(value) ? null : value);
     }
 }

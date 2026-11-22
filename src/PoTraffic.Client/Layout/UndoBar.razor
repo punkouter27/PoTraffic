@@ -15,11 +15,11 @@
         <span class="pt-undo-text">
             Deleted <strong>@deletion.Label</strong>
         </span>
-        <button type="button" class="pt-undo-action" @onclick="() => Pending.Undo(deletion.Key)">
+        <RadzenButton class="pt-plain pt-undo-action" Click="() => Pending.Undo(deletion.Key)">
             <span class="pt-undo-ring" style="--pt-undo-pct:@RemainingPercent(deletion)" aria-hidden="true"></span>
             Undo
             <span class="pt-undo-secs">@RemainingSeconds(deletion)s</span>
-        </button>
+        </RadzenButton>
     </div>
 }
 

@@ -60,7 +60,7 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 
-.pt-bottom-sheet-item {
+::deep .pt-bottom-sheet-item{
     display: flex;
     align-items: center;
     gap: var(--pt-space-3);
@@ -78,13 +78,13 @@
     transition: background var(--pt-dur-fast) var(--pt-ease);
 }
 
-.pt-bottom-sheet-item:hover,
-.pt-bottom-sheet-item:focus-visible {
+::deep .pt-bottom-sheet-item:hover,
+::deep .pt-bottom-sheet-item:focus-visible{
     background: var(--pt-color-surface-hover);
     outline: none;
 }
 
-.pt-bottom-sheet-danger {
+::deep .pt-bottom-sheet-danger{
     color: var(--pt-color-danger-fg);
 }
 

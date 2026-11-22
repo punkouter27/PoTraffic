@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using PoTraffic.Api.Features.Config;
+using PoTraffic.Api.Features.Diagnostics;
 using PoTraffic.Api.Infrastructure.Storage;
 using System.Diagnostics.CodeAnalysis;
 
@@ -9,40 +9,18 @@ namespace PoTraffic.Api.Infrastructure;
 internal static class HealthCheckExtensions
 {
     /// <summary>
-    /// Registers the app's health checks — all cheap and free of external-quota cost.
-    /// "keyvault" proves the Microsoft OAuth client secret resolved from the vault;
-    /// "trafficProvider" confirms the live GoogleMaps key is present. Both short-circuit
-    /// to Healthy when mock providers are in use (Testing, or Features:UseMockProviders).
+    /// Registers the app's health checks (storage reachability and scheduler liveness, both
+    /// free) and the live <see cref="ServiceProbes"/> behind <c>/api/diag</c>: every external
+    /// service is called over the network there, with a short timeout and a 60 s cache.
     /// </summary>
-    internal static IServiceCollection AddPoTrafficHealthChecks(
-        this IServiceCollection services, IHostEnvironment env, IConfiguration config)
+    internal static IServiceCollection AddPoTrafficHealthChecks(this IServiceCollection services)
     {
-        // The host-level switch, not the runtime one: an admin flipping a live host to mock data
-        // does not take its vault or Google key away, so these keep checking the real dependencies.
-        bool usingMockProviders = FeatureFlags.IsMockForcedByHost(config, env);
-
         services.AddHealthChecks()
-            .AddCheck("keyvault", () =>
-            {
-                if (usingMockProviders)
-                    return HealthCheckResult.Healthy("Key Vault not required (test/dev mock mode)");
-                string? secret = config["ExternalAuth:Microsoft:ClientSecret"];
-                bool resolved = !string.IsNullOrWhiteSpace(secret)
-                    && !secret.StartsWith("REPLACE_WITH", StringComparison.OrdinalIgnoreCase);
-                return resolved
-                    ? HealthCheckResult.Healthy("Key Vault secrets resolved")
-                    : HealthCheckResult.Unhealthy("Key Vault secret 'ExternalAuth:Microsoft:ClientSecret' not resolved");
-            })
-            .AddCheck("trafficProvider", () =>
-            {
-                if (usingMockProviders)
-                    return HealthCheckResult.Healthy("Mock provider (test/dev)");
-                return !string.IsNullOrWhiteSpace(config["GoogleMaps:ApiKey"])
-                    ? HealthCheckResult.Healthy("Live GoogleMaps provider configured")
-                    : HealthCheckResult.Degraded("GoogleMaps:ApiKey missing — live provider will fail");
-            })
             .AddCheck<StorageHealthCheck>("storage")
             .AddCheck<SchedulerHealthCheck>("scheduler");
+
+        services.AddHttpClient(ServiceProbes.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(8));
+        services.AddSingleton<ServiceProbes>();
 
         return services;
     }

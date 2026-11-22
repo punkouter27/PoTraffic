@@ -5,10 +5,10 @@
 @* #9 — debounced Google Places autocomplete (BFF-proxied). Degrades to a plain text box
    when the API returns nothing, so free-text entry always works. *@
 <div class="pt-ac">
-    <input class="pt-ac-input" type="text" value="@Value" placeholder="@Placeholder"
-           aria-label="@AriaLabel" aria-invalid="@(Invalid ? "true" : null)"
-           aria-autocomplete="list" aria-expanded="@(_open && _suggestions.Count > 0 ? "true" : "false")"
-           @oninput="OnInput" @onblur="OnBlur" @onkeydown="OnKeyDown" autocomplete="off" />
+    <RadzenTextBox class="pt-plain pt-ac-input" Value="@Value" Placeholder="@Placeholder"
+                   aria-label="@AriaLabel" aria-invalid="@(Invalid ? "true" : null)"
+                   aria-autocomplete="list" aria-expanded="@(_open && _suggestions.Count > 0 ? "true" : "false")"
+                   @oninput="OnInput" @onblur="OnBlur" @onkeydown="OnKeyDown" AutoCompleteType="AutoCompleteType.Off" />
     @if (_open && _suggestions.Count > 0)
     {
         <ul class="pt-ac-list" role="listbox">

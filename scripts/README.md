@@ -12,6 +12,7 @@ PowerShell utility scripts for local development and CI. Run all scripts from th
 | `start-dev.ps1` | Stops a stale PoTraffic host, starts PoTraffic's own Azurite (host port 10012) and waits for its health check, then launches the API + Blazor client on 5001, or 5011/5021 if another app holds 5001. |
 | `stop-dev.ps1` | Stops and removes the local Docker containers (Azurite). |
 | `run-tests.ps1` | Runs all four tiers and writes `TestResults/test-report.html`. Integration owns an Azurite container via Testcontainers (needs Docker); the E2E tiers get a `Testing` host started and stopped for them on `http://localhost:5150`. |
+| `run-e2eui.ps1` | Runs the E2E tiers against the **Release publish** (`dotnet publish -c Release`, the build that deploys): publishes, starts its own Azurite container on 21000-21002 and the published app as the `Test` host on 5150, runs `tests/PoTraffic.E2EUI` (`-Tier E2EAPI` or `-Tier All` for the API tier too), then stops everything it started. Needs Docker. |
 | `post-deploy-smoke.ps1` | Run by hand after a deploy (the deploy workflow no longer runs it), against any instance. Browser-style smoke checks against a freshly-deployed App Service instance: `/health/json` (dependency status), `/health/ready` (hydration complete), `GET /` (render-tree / Blazor bundle hash), `/api/diag/keyvault` (Key Vault + Managed Identity wiring, optional). Exits non-zero if any check fails. |
 
 ---

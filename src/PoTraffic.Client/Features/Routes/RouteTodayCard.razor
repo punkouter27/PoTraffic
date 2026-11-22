@@ -27,10 +27,10 @@
                     <span class="pt-trend-selection-flag">rerouted</span>
                 }
             </span>
-            <button type="button" class="pt-trend-selection-clear"
-                    aria-label="Clear selection" @onclick="() => _selectedPoll = null">
+            <RadzenButton class="pt-plain pt-trend-selection-clear"
+                          aria-label="Clear selection" Click="() => _selectedPoll = null">
                 <PtIcon Name="close" Size="sm" />
-            </button>
+            </RadzenButton>
         </div>
     }
     </SectionErrorBoundary>

@@ -34,7 +34,7 @@
     font-weight: var(--pt-weight-medium);
 }
 
-.pt-trend-zoom-reset {
+::deep .pt-trend-zoom-reset{
     background: var(--pt-bg-tint);
     border: 1px solid var(--pt-border-subtle);
     border-radius: var(--pt-radius-full);
@@ -45,7 +45,7 @@
     transition: background-color var(--pt-dur-fast) var(--pt-ease);
 }
 
-.pt-trend-zoom-reset:hover {
+::deep .pt-trend-zoom-reset:hover{
     background: var(--pt-bg-tint-strong);
 }
 

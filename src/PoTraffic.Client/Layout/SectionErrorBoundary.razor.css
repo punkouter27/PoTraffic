@@ -23,7 +23,7 @@
     min-width: 0;
 }
 
-.pt-section-error-retry {
+::deep .pt-section-error-retry{
     background: none;
     border: 1px solid var(--pt-border-subtle);
     border-radius: var(--pt-radius-sm);
@@ -34,6 +34,6 @@
     padding: var(--pt-space-1) var(--pt-space-3);
 }
 
-.pt-section-error-retry:hover {
+::deep .pt-section-error-retry:hover{
     background: var(--pt-bg-tint);
 }

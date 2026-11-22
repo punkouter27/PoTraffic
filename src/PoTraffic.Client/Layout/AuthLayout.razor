@@ -1,46 +1,13 @@
 @inherits LayoutComponentBase
 
-@* The Po shell header stays on the sign-in page too; the sign-in card is page body under it. *@
-<PoHeader />
+@* The sign-in page (Po web standard): the shell header shows the app title only, and the page
+   shows the title and one sign-in button, nothing else. *@
+<PoHeader TitleOnly="true" />
 <main class="auth-shell" id="main-content" tabindex="-1">
-    <div class="auth-brand-panel">
-        <div class="auth-brand-content">
-            <div class="auth-logo">PoTraffic</div>
-            <div class="auth-tagline">Real-time commute intelligence for your daily routes.</div>
-            @* Four emoji at four different optical weights, each rendering as a
-               different drawing per operating system and none of them taking the
-               panel's foreground colour. One icon font, tinted to the panel. *@
-            <ul class="auth-features" role="list">
-                <li class="auth-feature">
-                    <PtIcon Name="bolt" />
-                    <span>5-minute polling intervals</span>
-                </li>
-                <li class="auth-feature">
-                    <PtIcon Name="insights" />
-                    <span>Historical baseline analysis</span>
-                </li>
-                <li class="auth-feature">
-                    <PtIcon Name="route" />
-                    <span>Multi-route monitoring</span>
-                </li>
-                <li class="auth-feature">
-                    <PtIcon Name="schedule" />
-                    <span>Optimal departure time suggestions</span>
-                </li>
-            </ul>
-        </div>
-    </div>
-    <div class="auth-form-panel">
-        <div class="auth-form-container">
-            @* Compact brand shown only on mobile, where the left brand panel is hidden. *@
-            <div class="auth-mobile-brand">
-                <div class="auth-mobile-logo">PoTraffic</div>
-                <div class="auth-mobile-tagline">Real-time commute intelligence</div>
-            </div>
-            <SectionErrorBoundary Label="the sign-in form">
-                @Body
-            </SectionErrorBoundary>
-        </div>
+    <div class="auth-card">
+        <SectionErrorBoundary Label="the sign-in form">
+            @Body
+        </SectionErrorBoundary>
     </div>
 </main>
 <RadzenNotification />
