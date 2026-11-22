@@ -54,12 +54,12 @@ public sealed class ServiceProbes(
 
             DiagCheckDto[] rows = await Task.WhenAll(
                 Run("google-maps", "Google Maps", "Measures the travel time of each commute and suggests addresses.", GoogleMapsAsync, cancellationToken),
-                Run("weather", "Open-Meteo weather", "Records the weather beside each traffic check.", WeatherAsync, cancellationToken),
-                Run("holidays", "Public holidays (Nager.Date)", "Marks public holidays so they do not skew the usual times.", HolidaysAsync, cancellationToken),
-                Run("incidents", "TomTom incidents", "Explains slowdowns with the incident on the route.", IncidentsAsync, cancellationToken),
+                Run("weather", "Open-Meteo weather", "Records the weather beside each traffic check.", WeatherAsync, cancellationToken, optional: true),
+                Run("holidays", "Public holidays (Nager.Date)", "Marks public holidays so they do not skew the usual times.", HolidaysAsync, cancellationToken, optional: true),
+                Run("incidents", "TomTom incidents", "Explains slowdowns with the incident on the route.", IncidentsAsync, cancellationToken, optional: true),
                 Run("keyvault", "Key Vault", "Holds the secrets the app loads at startup.", KeyVaultAsync, cancellationToken),
                 Run("microsoft-sign-in", "Microsoft sign-in", "Lets people sign in with a Microsoft account.", MicrosoftSignInAsync, cancellationToken),
-                Run("telemetry", "Telemetry", "Sends logs and traces to Application Insights.", TelemetryAsync, cancellationToken));
+                Run("telemetry", "Telemetry", "Sends logs and traces to Application Insights.", TelemetryAsync, cancellationToken, optional: true));
 
             _cache = (DateTimeOffset.UtcNow, rows);
             return rows;
@@ -81,7 +81,9 @@ public sealed class ServiceProbes(
 
     private delegate Task<Outcome> Probe(HttpClient http, CancellationToken cancellationToken);
 
-    private async Task<DiagCheckDto> Run(string name, string label, string purpose, Probe probe, CancellationToken cancellationToken)
+    /// <param name="optional">The app keeps working without this service (a poll is recorded
+    /// without weather, an alert without an incident), so an unreachable service is Degraded.</param>
+    private async Task<DiagCheckDto> Run(string name, string label, string purpose, Probe probe, CancellationToken cancellationToken, bool optional = false)
     {
         long started = Stopwatch.GetTimestamp();
         Outcome outcome;
@@ -93,7 +95,9 @@ public sealed class ServiceProbes(
         catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(ex, "/api/diag probe {Probe} failed", name);
-            outcome = Outcome.Unhealthy($"Not reachable ({ex.GetType().Name}).");
+            outcome = optional
+                ? Outcome.Degraded($"Not reachable ({ex.GetType().Name}); the app carries on without it.")
+                : Outcome.Unhealthy($"Not reachable ({ex.GetType().Name}).");
         }
 
         // An Off row made no call, so it has no latency to report.
@@ -107,23 +111,32 @@ public sealed class ServiceProbes(
     private string? Setting(string key) => configuration[key] is { } value && !string.IsNullOrWhiteSpace(value)
         && !value.StartsWith("REPLACE_WITH", StringComparison.OrdinalIgnoreCase) ? value.Trim() : null;
 
-    // ── Google Maps: a geocode request with no address. Google checks the key first, so a valid
-    //    key gets INVALID_REQUEST (an error, not billed) and a bad one REQUEST_DENIED.
+    // ── Google Maps: a geocode request for a country that does not exist. Google checks the key
+    //    before anything else (a bad key gets REQUEST_DENIED), then finds nothing. The verdict is
+    //    cached for GoogleCacheFor, so even a visitor hammering Refresh makes at most a few
+    //    dozen such calls a day, well inside Google's free monthly allowance.
+    internal static readonly TimeSpan GoogleCacheFor = TimeSpan.FromMinutes(15);
+    private (DateTimeOffset At, Outcome Outcome)? _google;
+
     private async Task<Outcome> GoogleMapsAsync(HttpClient http, CancellationToken ct)
     {
         if (MockHost)
             return Outcome.SwitchedOff("Mocked (sample travel times)");
         if (Setting("GoogleMaps:ApiKey") is not { } key)
             return Outcome.Unhealthy("The Google Maps key is missing, so travel times cannot be measured.");
+        if (_google is { } cached && DateTimeOffset.UtcNow - cached.At < GoogleCacheFor)
+            return cached.Outcome;
 
         using HttpResponseMessage response = await http.GetAsync(
-            $"https://maps.googleapis.com/maps/api/geocode/json?address=&key={Uri.EscapeDataString(key)}", ct);
+            $"https://maps.googleapis.com/maps/api/geocode/json?components=country:ZZZZ&key={Uri.EscapeDataString(key)}", ct);
         string body = await response.Content.ReadAsStringAsync(ct);
-        if (body.Contains("REQUEST_DENIED", StringComparison.Ordinal))
-            return Outcome.Unhealthy("Google rejected the Maps key, so travel times cannot be measured.");
-        return response.IsSuccessStatusCode
-            ? Outcome.Healthy("Key accepted (live call)")
-            : Outcome.Degraded($"Google Maps answered {(int)response.StatusCode}.");
+        Outcome outcome = body.Contains("REQUEST_DENIED", StringComparison.Ordinal)
+            ? Outcome.Unhealthy("Google rejected the Maps key, so travel times cannot be measured.")
+            : (int)response.StatusCode < 500
+                ? Outcome.Healthy("Key accepted (live call)")
+                : Outcome.Degraded($"Google Maps answered {(int)response.StatusCode}.");
+        _google = (DateTimeOffset.UtcNow, outcome);
+        return outcome;
     }
 
     // ── Open-Meteo: a real (free, keyless) one-variable forecast.
