@@ -26,14 +26,12 @@ public sealed class UpdateSystemConfigurationValidator : AbstractValidator<Updat
     }
 }
 
-public sealed class UpdateSystemConfigurationHandler(TableStorageContext db)
+public sealed class UpdateSystemConfigurationHandler(TableStorageContext db, IValidator<UpdateSystemConfigurationCommand> validator)
 {
-    private static readonly UpdateSystemConfigurationValidator Validator = new();
-
     /// <summary>False when the row does not exist (editable rows are seeded at startup).</summary>
     public async Task<bool> Handle(UpdateSystemConfigurationCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         SystemConfiguration? row = db.SystemConfigurations.FirstOrDefault(c => c.Key == cmd.Key);
         if (row is null)

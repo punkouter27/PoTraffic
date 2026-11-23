@@ -84,21 +84,30 @@ App Service `app-<repo lowercase>`; per-app resources named `<type>-<repo lowerc
   buttons are `RadzenButton`, fields `RadzenTextBox`/`RadzenDropDown`/…, dialogs and the bulk
   drawer go through `DialogService` (`Layout/PtDialog.razor`). A control that keeps the app's own
   look carries class `pt-plain` (the `plain` cascade layer in `wwwroot/css/vendor.css` reverts the
-  Radzen theme on it); scoped CSS reaches it with `::deep`.
+  Radzen theme on it); scoped CSS reaches it with `::deep`. Radzen's CSS loads ONCE and FIRST:
+  `css/vendor.css` is the first stylesheet in `index.html` and imports Radzen's `default.css` into
+  the `vendor` layer, before any app CSS (no `<RadzenTheme>`, no second link; E2EUI
+  `Radzen_Css_Loads_Once_Before_The_App_Css`).
 - Allowed native exceptions (the only ones): native file inputs for resumable uploads (none
   here), native audio/video (none here), and read-only data tables: `<table>` in
   `Features/Routes/VolatilityHeatmap.razor`.
-- FluentValidation with inline errors. Validators are created BY TYPE (each handler holds
-  `private static readonly XValidator Validator = new()`; the client's `CreateRoutePage` passes its
-  validator instance to `FluentValidationValidator`), never by assembly scanning. No `alert()`/`confirm()`.
-- One `MainLayout` (plus `AuthLayout` for `/login` and `BareLayout`, sharing `PoHeader` and
-  `BuildVersion`), a `NotFound` page, and `StateCard`/`LoadingErrorCard`/`SectionErrorBoundary`
-  for loading, empty and error states.
-- Sign-in is Microsoft Entra; `/login` shows the title and one "Sign in with Microsoft" button
-  (Development/Test hosts add "Continue as Guest" for the browser tests). The bottom nav and the
-  header's account items are for signed-in users only.
-- `/diag` calls every external service live (`Features/Diagnostics/ServiceProbes.cs`); a service
-  switched off on purpose is `Off` (grey, not counted in the banner or the overall status).
+- FluentValidation with inline errors. Validators are registered BY TYPE
+  (`AddScoped<IValidator<X>, XValidator>()`: API in `Infrastructure/ValidationExtensions.cs`, client
+  in `Program.cs`) and injected (handlers' constructors, `CreateRoutePage` `@inject`), never `new()`
+  and never by assembly scanning (Unit `ValidatorRegistrationTests` checks every validator is
+  listed). No `alert()`/`confirm()`.
+- ONE layout, `MainLayout` (on `/login` it renders the title-only header and the centred sign-in
+  card), a `NotFound` page, and `StateCard`/`LoadingErrorCard`/`SectionErrorBoundary` for loading,
+  empty and error states. The `vYYMMDD` stamp is a `<footer>` (`Layout/BuildVersion.razor`).
+- Sign-in is Microsoft Entra; `/login` shows the h1 title and exactly one "Sign in with Microsoft"
+  button in EVERY environment. Development/Test hosts have a fake sign-in URL instead of a button:
+  `GET /api/auth/guest-login?returnUrl=/dashboard` (fresh `guestNNNNNNNN@potraffic.dev`, local
+  return paths only; Production never maps it). The bottom nav and the header's account items are
+  for signed-in users only (E2EUI `SignedOut_HasNoNavigation_...`).
+- `/diag` calls every external service live (`Features/Diagnostics/ServiceProbes.cs`, cached 60 s;
+  Google Maps 15 min); a service switched off on purpose is `Off` (grey, not counted in the banner
+  or the overall status). `/health`, `/health/json` and `/api/diag` share ONE health report
+  (`Infrastructure/CachedHealthReport.cs`, 60 s, each check times out after 5 s).
 - On phones (<=768px) the `vYYMMDD` stamp is static, after the page content.
 
 ## 2. Concurrent work
@@ -119,19 +128,19 @@ One command sequence verifies the repo (format, build, Unit, Integration, then E
 dotnet format PoTraffic.slnx --verify-no-changes && dotnet build PoTraffic.slnx -c Release && dotnet test tests/PoTraffic.Unit -c Release && dotnet test tests/PoTraffic.Integration -c Release && pwsh scripts/run-e2eui.ps1 -Tier All
 ```
 
-Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
+Every command below was run on 2026-11-23 (PowerShell or bash, repo root).
 
 | What | Command | Needs / skips |
 |---|---|---|
 | Format | `dotnet format PoTraffic.slnx --verify-no-changes` | — |
 | Build | `dotnet build PoTraffic.slnx -c Release` | warnings are errors |
-| Unit | `dotnet test tests/PoTraffic.Unit -c Release` | nothing (87 tests) |
-| Integration | `dotnet test tests/PoTraffic.Integration -c Release` | Docker (Testcontainers Azurite); Docker-dependent tests skip with one message without it (36) |
+| Unit | `dotnet test tests/PoTraffic.Unit -c Release` | nothing (103 tests) |
+| Integration | `dotnet test tests/PoTraffic.Integration -c Release` | Docker (Testcontainers Azurite); Docker-dependent tests skip with one message without it (38) |
 | Azurite for a local run | `docker run -d --rm -p 21000:10000 -p 21001:10001 -p 21002:10002 mcr.microsoft.com/azure-storage/azurite:latest azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose` | Docker |
-| Run locally (Test host: mock traffic, guest sign-in) | `ConnectionStrings__TableStorage="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<Azurite's well-known dev key>;TableEndpoint=http://127.0.0.1:21002/devstoreaccount1;" dotnet run --project src/PoTraffic.Api --launch-profile Test` | → http://localhost:5150 and http://localhost:5150/diag |
-| E2E UI + API on the Release publish | `pwsh scripts/run-e2eui.ps1 -Tier All` | Docker + Playwright Chromium; publishes `-c Release` (the build that deploys), starts its own Azurite + the published Test host on 5150, runs E2EAPI (13) and E2EUI (17), stops everything |
+| Run locally (Test host: mock traffic, fake sign-in URL `/api/auth/guest-login?returnUrl=/dashboard`) | `ConnectionStrings__TableStorage="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<Azurite's well-known dev key>;TableEndpoint=http://127.0.0.1:21002/devstoreaccount1;" dotnet run --project src/PoTraffic.Api --launch-profile Test` | → http://localhost:5150 and http://localhost:5150/diag |
+| E2E UI + API on the Release publish | `pwsh scripts/run-e2eui.ps1 -Tier All` | Docker + Playwright Chromium; publishes `-c Release` (the build that deploys), starts its own Azurite + the published Test host on 5150, runs E2EAPI (13) and E2EUI (18), stops everything |
 | E2E API (against a running host) | `E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EAPI -c Release` | the Test host above; skips without it (13) |
-| E2E UI (against a running host) | `E2E_HEADED=0 E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EUI -c Release` | the Test host + Playwright Chromium; skips with the reason otherwise (17) |
+| E2E UI (against a running host) | `E2E_HEADED=0 E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EUI -c Release` | the Test host + Playwright Chromium; skips with the reason otherwise (18) |
 
 - **Deploy:** push to `master` runs `.github/workflows/deploy.yml` (format, build, Unit, Integration, publish,
   deploy; the `mobile` job builds the Android client beside it). `*.md` changes do not deploy.
@@ -146,7 +155,7 @@ Every command below was run on 2026-11-21 (PowerShell or bash, repo root).
 | Deviation | Why | Commit sha / date | How to undo |
 |---|---|---|---|
 | `/login` brand panel removed: header title only, card h1 and one "Sign in with Microsoft" button. This overrides the owner's `6a24553` ("brand panel reaches the bottom again") | the v3 standard (title + one button) conflicted with the owner's panel | `3ee28fb` 2026-11-21 | `git revert 3ee28fb` (login part) or restore from `6a24553` |
-| Development/Test hosts add "Continue as Guest" on `/login`; Production shows one button | the browser tests sign in with it | `3ee28fb` 2026-11-21 | remove it (tests then need a real account) |
+| Development/Test hosts have a fake sign-in URL (`GET /api/auth/guest-login?returnUrl=`), no button: `/login` shows the one Microsoft button everywhere (disabled with a notice where Microsoft is not configured, e.g. the Test host) | the browser tests sign in through it (v4: one button in every environment replaced the Dev/Test guest button) | 2026-11-23 | — |
 | Radzen exception: read-only `<table>` in `Features/Routes/VolatilityHeatmap.razor` (the only one) | read-only data table, an allowed kind (Profile A) | `3ee28fb` 2026-11-21 | — |
 | /diag: a service switched off on purpose is **Off** (grey, not counted); live today TomTom incidents (no `PoTraffic--TomTom--ApiKey`) and the scheduler on hosts without timed checks | opt-in services left off are not faults | `3ee28fb`, `9c06ec4` 2026-11-21 | add the key to `kv-poshared2` |
 | Phones (<= 768px): stamp static after the page content; bottom nav signed-in only | a fixed stamp and nav covered /diag cards (overrides the older fixed rule) | `3ee28fb` 2026-11-21 | `git revert 3ee28fb` (stamp part) |
@@ -215,7 +224,7 @@ Consolidate functionality and UI into shared components when possible — before
 widget, look for an existing one that does the same job and extend it instead.
 
 The layout shows the version badge `vYYMMDD` (`BuildVersion`, the UTC date of the HEAD commit;
-see the `PoBuildStamp` target in `Directory.Build.props`) as `<span class="po-version">`, bottom-right: fixed on
+see the `PoBuildStamp` target in `Directory.Build.props`) as `<footer class="po-version">`, bottom-right: fixed on
 wide screens, static after the content on phones (<= 768px). Keep it so when changing the layout. The page shell header (app name,
 email or Sign in, settings gear) is on every page; see "Page shell" in docs/development.md.
 

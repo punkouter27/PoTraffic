@@ -5,10 +5,11 @@
    Directory.Build.props (PoBuildStamp), into every assembly's [AssemblyMetadata("BuildVersion")],
    so server and client carry the same value. It names the build of the code actually running
    in this tab, which after a service-worker update can differ from what the server is serving.
-   Decoration only: aria-hidden, and po-tokens.css makes it pointer-events: none. *@
+   It is the page's <footer> (contentinfo landmark where it sits outside <main>), so no text is
+   left outside a landmark (axe "region"); po-tokens.css makes it pointer-events: none. *@
 @if (Stamp is not null)
 {
-    <span class="po-version" aria-hidden="true" title="Build @Stamp">@Stamp</span>
+    <footer class="po-version" title="Build @Stamp">@Stamp</footer>
 }
 
 @code {

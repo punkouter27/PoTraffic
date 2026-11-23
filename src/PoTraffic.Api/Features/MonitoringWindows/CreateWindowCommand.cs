@@ -2,9 +2,7 @@ using PoTraffic.Api.Infrastructure.Time;
 using FluentValidation;
 using PoTraffic.Api.Infrastructure.Storage;
 
-
 using Microsoft.Extensions.Logging;
-
 
 
 using PoTraffic.Shared.Enums;
@@ -48,20 +46,21 @@ public sealed class CreateWindowCommandHandler
 {
     private readonly TableStorageContext _db;
     private readonly ILogger<CreateWindowCommandHandler> _logger;
+    private readonly IValidator<CreateWindowCommand> _validator;
 
     public CreateWindowCommandHandler(
         TableStorageContext db,
-        ILogger<CreateWindowCommandHandler> logger)
+        ILogger<CreateWindowCommandHandler> logger,
+        IValidator<CreateWindowCommand> validator)
     {
         _db = db;
         _logger = logger;
+        _validator = validator;
     }
-
-    private static readonly CreateWindowValidator Validator = new();
 
     public async Task<CreateWindowResult> Handle(CreateWindowCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await _validator.ValidateAndThrowAsync(cmd, ct);
 
         // Verify route ownership
         if (!_db.OwnsRoute(cmd.RouteId, cmd.UserId, excludeDeleted: true))

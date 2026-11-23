@@ -26,7 +26,7 @@ public sealed class SystemSettingsTests
     {
         TableStorageContext db = SeededDb();
         var flags = new FeatureFlags(db, mockProvidersForcedByHost: false);
-        var update = new UpdateSystemConfigurationHandler(db);
+        var update = new UpdateSystemConfigurationHandler(db, new UpdateSystemConfigurationValidator());
 
         flags.UseMockProviders.Should().BeFalse("live providers are the seeded default");
         flags.EnableWeather.Should().BeTrue("weather capture is on by default");
@@ -51,7 +51,7 @@ public sealed class SystemSettingsTests
     public async Task Seeding_CreatesEveryCataloguedRowOnce_AndUpdatesAcceptOnlyValidValuesForThem()
     {
         TableStorageContext db = SeededDb();
-        var update = new UpdateSystemConfigurationHandler(db);
+        var update = new UpdateSystemConfigurationHandler(db, new UpdateSystemConfigurationValidator());
         await update.Handle(new(SystemSettings.DailyQuotaKey, "25"), CancellationToken.None);
 
         db.SeedDefaultConfigurationsIfMissing();

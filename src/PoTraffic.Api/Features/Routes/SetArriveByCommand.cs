@@ -18,13 +18,11 @@ public sealed class SetArriveByValidator : AbstractValidator<SetArriveByCommand>
     }
 }
 
-public sealed class SetArriveByHandler(TableStorageContext db)
+public sealed class SetArriveByHandler(TableStorageContext db, IValidator<SetArriveByCommand> validator)
 {
-    private static readonly SetArriveByValidator Validator = new();
-
     public async Task<bool> Handle(SetArriveByCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         EntityRoute? route = db.GetOwnedRoute(cmd.RouteId, cmd.UserId, excludeDeleted: true);
         if (route is null)

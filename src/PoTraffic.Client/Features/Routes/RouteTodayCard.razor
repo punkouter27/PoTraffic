@@ -5,7 +5,7 @@
 <RadzenCard>
     @* Not pt-mb-0: the canvas draws its "min" axis caption at its own top edge,
        which collided with this heading's descenders. *@
-    <RadzenText TextStyle="TextStyle.H3" class="pt-mb-2 pt-section-heading">Today</RadzenText>
+    <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H2" class="pt-mb-2 pt-section-heading">Today</RadzenText>
 
     <SectionErrorBoundary Label="today's chart">
     <TrendChart Points="@_trendPoints"

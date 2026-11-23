@@ -1,9 +1,11 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.JSInterop;
 using PoTraffic.Client;
+using PoTraffic.Client.Features.Routes;
 using PoTraffic.Client.Services;
 using PoTraffic.Client.Services.Auth;
 using PoTraffic.Client.Services.Http;
@@ -42,6 +44,9 @@ builder.Services.AddScoped<CookieAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
     sp.GetRequiredService<CookieAuthenticationStateProvider>());
 builder.Services.AddAuthorizationCore();
+
+// FluentValidation validators, registered by type (no assembly scanning) and injected into forms.
+builder.Services.AddScoped<IValidator<CreateRouteForm>, CreateRouteFormValidator>();
 
 // Radzen component services (dialogs, tooltips, notifications, context menus)
 builder.Services.AddRadzenComponents();

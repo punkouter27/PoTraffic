@@ -42,7 +42,8 @@ public sealed class CreateSampleRouteValidator : AbstractValidator<CreateSampleR
 /// </summary>
 public sealed class CreateSampleRouteCommandHandler(
     TableStorageContext db,
-    ILogger<CreateSampleRouteCommandHandler> logger)
+    ILogger<CreateSampleRouteCommandHandler> logger,
+    IValidator<CreateSampleRouteCommand> validator)
 {
     // A real Santa Monica → Downtown LA commute: ~24km, and congested enough in the morning
     // that the generated history has something to say.
@@ -60,11 +61,9 @@ public sealed class CreateSampleRouteCommandHandler(
     private const double FreeFlowSeconds = 22 * 60;
     private const int BaseDistanceMetres = 24_000;
 
-    private static readonly CreateSampleRouteValidator Validator = new();
-
     public async Task<RouteDto> Handle(CreateSampleRouteCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         // Idempotent: the dashboard offers this from an empty state that a double-tap can
         // easily submit twice, and two demo routes is a worse outcome than a 200 with the

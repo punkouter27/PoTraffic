@@ -16,13 +16,11 @@ public sealed class SetRouteNameValidator : AbstractValidator<SetRouteNameComman
         RuleFor(c => c.Name).MaximumLength(MaxLength);
 }
 
-public sealed class SetRouteNameHandler(TableStorageContext db)
+public sealed class SetRouteNameHandler(TableStorageContext db, IValidator<SetRouteNameCommand> validator)
 {
-    private static readonly SetRouteNameValidator Validator = new();
-
     public async Task<bool> Handle(SetRouteNameCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         EntityRoute? route = db.GetOwnedRoute(cmd.RouteId, cmd.UserId, excludeDeleted: true);
         if (route is null)

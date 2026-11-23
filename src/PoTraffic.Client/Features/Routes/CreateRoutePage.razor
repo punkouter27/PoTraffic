@@ -6,6 +6,7 @@
 @using PoTraffic.Client.Features.MonitoringWindows
 @inject PoTrafficApiClient Api
 @inject NavigationManager Nav
+@inject IValidator<CreateRouteForm> FormValidator
 
 <PageTitle>New commute · PoTraffic</PageTitle>
 
@@ -20,7 +21,7 @@
 
     <SectionErrorBoundary Label="the form">
     <RadzenTemplateForm TItem="CreateRouteForm" Data="@_form" Submit="@SaveAsync" InvalidSubmit="@(_ => ShowValidationErrors())">
-        <FluentValidationValidator TModel="CreateRouteForm" Validator="@_validator" />
+        <FluentValidationValidator TModel="CreateRouteForm" Validator="@FormValidator" />
         <RadzenFormField Text="From" class="pt-w-100 pt-mb-2">
             <ChildContent>
                 <AddressAutocomplete @bind-Value="_form.OriginAddress"
@@ -73,30 +74,7 @@
 </div>
 
 @code {
-    public sealed class CreateRouteForm
-    {
-        public string OriginAddress { get; set; } = string.Empty;
-        public string DestinationAddress { get; set; } = string.Empty;
-        public byte DayMask { get; set; } = 0x1F;
-    }
-
-    private sealed class CreateRouteFormValidator : AbstractValidator<CreateRouteForm>
-    {
-        public CreateRouteFormValidator()
-        {
-            RuleFor(x => x.OriginAddress)
-                .NotEmpty().WithMessage("Enter an origin address.")
-                .MaximumLength(ValidationConstants.AddressMaxLength);
-            RuleFor(x => x.DestinationAddress)
-                .NotEmpty().WithMessage("Enter a destination address.")
-                .MaximumLength(ValidationConstants.AddressMaxLength);
-            RuleFor(x => x.DayMask)
-                .Must(m => m != 0).WithMessage("Select at least one day to probe.");
-        }
-    }
-
     private readonly CreateRouteForm _form = new();
-    private readonly CreateRouteFormValidator _validator = new();
 
     private string? _originError;
     private string? _destinationError;
@@ -134,7 +112,7 @@
     private bool ShowValidationErrors()
     {
         _form.DayMask = DayMask;
-        FluentValidation.Results.ValidationResult validation = _validator.Validate(_form);
+        FluentValidation.Results.ValidationResult validation = FormValidator.Validate(_form);
         _originError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.OriginAddress))?.ErrorMessage;
         _destinationError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DestinationAddress))?.ErrorMessage;
         _daysError = validation.Errors.FirstOrDefault(e => e.PropertyName == nameof(CreateRouteForm.DayMask))?.ErrorMessage;

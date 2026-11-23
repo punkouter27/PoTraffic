@@ -39,13 +39,12 @@ public sealed class SetRouteAddressesValidator : AbstractValidator<SetRouteAddre
 public sealed class SetRouteAddressesHandler(
     TableStorageContext db,
     ITrafficProvider provider,
-    ILogger<SetRouteAddressesHandler> logger)
+    ILogger<SetRouteAddressesHandler> logger,
+    IValidator<SetRouteAddressesCommand> validator)
 {
-    private static readonly SetRouteAddressesValidator Validator = new();
-
     public async Task<SetRouteAddressesResult> Handle(SetRouteAddressesCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         EntityRoute? route = db.GetOwnedRoute(cmd.RouteId, cmd.UserId, excludeDeleted: true);
         // The sample's addresses are part of its generated story; it is not editable.

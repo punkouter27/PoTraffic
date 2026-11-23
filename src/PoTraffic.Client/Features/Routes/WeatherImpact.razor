@@ -9,7 +9,7 @@
 @if (Impact is { SampleCount: > 0 } impact && impact.Slices.Count > 0)
 {
     <div class="pt-weather">
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">Weather</RadzenText>
+        <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H2" class="pt-mb-1 pt-section-heading">Weather</RadzenText>
         <p class="pt-weather-lede">@Lede(impact)</p>
 
         <ul class="pt-weather-rows">
@@ -58,7 +58,7 @@
 else if (Impact is not null)
 {
     <div class="pt-weather">
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-1 pt-section-heading">Weather</RadzenText>
+        <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H2" class="pt-mb-1 pt-section-heading">Weather</RadzenText>
         <p class="pt-weather-lede">
             No conditions recorded yet. Once this route has been probed through a few different
             kinds of weather, this is where you will see what each one costs you.

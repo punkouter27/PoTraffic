@@ -172,12 +172,7 @@ public sealed class CreateRouteScenarios : PlaywrightTestBase
     [SkipUnlessE2EReady]
     public async Task CreateRouteForm_Empty_ShowsFluentValidationErrorsInline()
     {
-        await Page.GotoAsync($"{BaseUrl}/login");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Continue as Guest" }).ClickAsync();
-        // The guest session is in place once the header shows its email (a client-side navigation, no load event).
-        await Page.Locator(".po-header__email").WaitForAsync(new() { Timeout = 30_000 });
-
-        await Page.GotoAsync($"{BaseUrl}/routes/create");
+        await SignInAsGuestAsync("/routes/create");
         await Page.GetByRole(AriaRole.Button, new() { Name = "Save & start monitoring" }).ClickAsync();
 
         ILocator origin = Page.Locator(".rz-form-field", new() { Has = Page.GetByLabel("From", new() { Exact = true }) })

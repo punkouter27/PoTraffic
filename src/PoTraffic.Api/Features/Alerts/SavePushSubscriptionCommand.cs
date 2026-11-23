@@ -23,13 +23,11 @@ public sealed class SavePushSubscriptionValidator : AbstractValidator<SavePushSu
 }
 
 /// <summary>Registers this browser for push, or refreshes its keys if it is already registered.</summary>
-public sealed class SavePushSubscriptionCommandHandler(TableStorageContext db)
+public sealed class SavePushSubscriptionCommandHandler(TableStorageContext db, IValidator<SavePushSubscriptionCommand> validator)
 {
-    private static readonly SavePushSubscriptionValidator Validator = new();
-
     public async Task Handle(SavePushSubscriptionCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         UserPushSubscription? existing = db.PushSubscriptions
             .FirstOrDefault(s => s.UserId == cmd.UserId && s.Endpoint == cmd.Endpoint);

@@ -7,8 +7,8 @@
 <div class="pt-ac">
     <RadzenTextBox class="pt-plain pt-ac-input" Value="@Value" Placeholder="@Placeholder"
                    aria-label="@AriaLabel" aria-invalid="@(Invalid ? "true" : null)"
-                   aria-autocomplete="list" aria-expanded="@(_open && _suggestions.Count > 0 ? "true" : "false")"
-                   @oninput="OnInput" @onblur="OnBlur" @onkeydown="OnKeyDown" AutoCompleteType="AutoCompleteType.Off" />
+                   role="combobox" aria-autocomplete="list" aria-expanded="@(_open && _suggestions.Count > 0 ? "true" : "false")"
+                   @oninput="OnInput" @onfocus="OnFocus" @onblur="OnBlur" @onkeydown="OnKeyDown" AutoCompleteType="AutoCompleteType.Off" />
     @if (_open && _suggestions.Count > 0)
     {
         <ul class="pt-ac-list" role="listbox">
@@ -36,9 +36,11 @@
     private System.Timers.Timer? _debounce;
     private string _pending = string.Empty;
     private bool _disposed;
+    private bool _focused;
 
     private async Task OnInput(ChangeEventArgs e)
     {
+        _focused = true;   // typing means the field has focus, even if focus fired before render
         string text = e.Value?.ToString() ?? string.Empty;
         Value = text;
         await ValueChanged.InvokeAsync(text);
@@ -80,7 +82,9 @@
         {
             List<PlaceSuggestionDto>? results = await Api.SearchPlacesAsync(q);
             _suggestions = results ?? [];
-            _open = _suggestions.Count > 0;
+            // Answers that arrive after the user has tabbed away stay closed: an open list
+            // under a field the user left covered the next field (the "To" box).
+            _open = _focused && _suggestions.Count > 0;
         }
         catch
         {
@@ -105,8 +109,16 @@
             _open = false;
     }
 
-    // Delay close so a mousedown on a suggestion still registers.
-    private void OnBlur() => _open = false;
+    private void OnFocus() => _focused = true;
+
+    // A mousedown on a suggestion fires before blur, so Pick still registers. Leaving the field
+    // closes the list and cancels a pending lookup.
+    private void OnBlur()
+    {
+        _focused = false;
+        _open = false;
+        _debounce?.Stop();
+    }
 
     public void Dispose()
     {

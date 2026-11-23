@@ -6,8 +6,8 @@ using PoTraffic.Shared.DTOs.Auth;
 namespace PoTraffic.Api.Features.Auth;
 
 /// <summary>
-/// GUEST login bypass of OAuth — shown as "Continue as Guest" in Development
-/// (Rule 4.4 split view) and used headlessly by integration/E2E tests in Testing.
+/// GUEST login bypass of OAuth on Development/Test hosts only (no button on /login: POST for API
+/// clients and tests, GET ?returnUrl= as the fake sign-in URL for browsers and browser tests).
 /// Each call creates a unique GUEST user (e.g. guest46344343@potraffic.dev) so
 /// that parallel test runs or manual sessions do not collide in the database.
 /// The session is issued as the standard BFF cookie.
@@ -51,8 +51,41 @@ public static class GuestAuthExtensions
         .ExcludeFromDescription() // Hide from OpenAPI
         .AllowAnonymous();
 
+        // The dev-only fake sign-in URL: /login shows ONE "Sign in with Microsoft" button in every
+        // environment, so a person or a browser test on a Development/Test host opens
+        // /api/auth/guest-login?returnUrl=/dashboard instead of clicking a guest button. Same
+        // session as the POST above, then a redirect to a local path only (no open redirect).
+        app.MapGet("/api/auth/guest-login", async (
+            HttpContext httpContext,
+            GuestLoginCommandHandler handler,
+            IWebHostEnvironment env,
+            string? returnUrl) =>
+        {
+            if (!env.IsEnvironment("Test") && !env.IsDevelopment())
+            {
+                return Results.NotFound();
+            }
+
+            GuestLoginResult result = await handler.Handle(new GuestLoginCommand(), CancellationToken.None);
+            if (!result.IsSuccess || result.User is null)
+                return Results.BadRequest(new { error = result.ErrorCode });
+
+            await CookieSignIn.SignInAsync(httpContext, result.User);
+            return Results.LocalRedirect(SafeReturnUrl(returnUrl));
+        })
+        .WithTags("Auth")
+        .WithName("GuestLoginRedirect")
+        .ExcludeFromDescription()
+        .AllowAnonymous();
+
         return app;
     }
+
+    /// <summary>A local path such as <c>/dashboard</c>; anything else (absolute, <c>//host</c>, <c>/\host</c>) becomes <c>/dashboard</c>.</summary>
+    internal static string SafeReturnUrl(string? returnUrl) =>
+        returnUrl is { Length: > 0 } url && url[0] == '/' && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'))
+            ? url
+            : "/dashboard";
 }
 
 public sealed record GuestLoginCommand;

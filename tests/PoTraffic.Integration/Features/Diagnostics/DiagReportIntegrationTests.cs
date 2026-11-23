@@ -84,6 +84,29 @@ public sealed class DiagReportIntegrationTests : BaseIntegrationTest
         AssertNoSecrets(body, "/health/json");
     }
 
+    /// <summary>
+    /// /health/json and /api/diag read ONE cached health report (CachedHealthReport, 60 s): two
+    /// /diag loads in a row carry the same checkedAt, and the storage timing /health/json shows
+    /// is the one the report shows (a fresh run would measure a different duration).
+    /// </summary>
+    [SkipUnlessAzuriteAvailable]
+    public async Task Health_and_diag_share_one_cached_report()
+    {
+        HttpClient client = CreateClient();
+        using JsonDocument first = JsonDocument.Parse(await client.GetStringAsync("/api/diag"));
+        using JsonDocument health = JsonDocument.Parse(await client.GetStringAsync("/health/json"));
+        using JsonDocument second = JsonDocument.Parse(await client.GetStringAsync("/api/diag"));
+
+        second.RootElement.GetProperty("checkedAt").GetDateTimeOffset()
+            .Should().Be(first.RootElement.GetProperty("checkedAt").GetDateTimeOffset());
+
+        double healthStorageMs = health.RootElement.GetProperty("entries").EnumerateArray()
+            .Single(e => e.GetProperty("name").GetString() == "storage").GetProperty("durationMs").GetDouble();
+        double diagStorageMs = second.RootElement.GetProperty("checks").EnumerateArray()
+            .Single(c => c.GetProperty("name").GetString() == "storage").GetProperty("latencyMs").GetDouble();
+        diagStorageMs.Should().Be(Math.Round(healthStorageMs, 1));
+    }
+
     private static void AssertNoSecrets(string body, string route)
     {
         foreach (string s in Forbidden)

@@ -24,13 +24,11 @@ public sealed class SetTimeZoneValidator : AbstractValidator<SetTimeZoneCommand>
     }
 }
 
-public sealed class SetTimeZoneHandler(TableStorageContext db)
+public sealed class SetTimeZoneHandler(TableStorageContext db, IValidator<SetTimeZoneCommand> validator)
 {
-    private static readonly SetTimeZoneValidator Validator = new();
-
     public async Task<bool> Handle(SetTimeZoneCommand command, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(command, ct);
+        await validator.ValidateAndThrowAsync(command, ct);
 
         User? user = db.Users.FirstOrDefault(u => u.Id == command.UserId);
         if (user is null)

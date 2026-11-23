@@ -10,30 +10,47 @@
 @* First tab stop skips the nav straight to the page's own content. *@
 <a class="skip-link" href="#main-content">Skip to main content</a>
 
+@* The app's ONE layout (AGENTS.md, Components). The sign-in page (/login) gets the same shell in
+   its sign-in form: the header shows the app title only and the page is one centred card with the
+   title and the one sign-in button. *@
 <div class="page">
     @* Po shell header: app name, email or Sign in, settings gear (Po web standard). *@
-    <PoHeader />
+    <PoHeader TitleOnly="@IsSignInPage" />
 
-    <main id="main-content" tabindex="-1">
-        <article class="content">
-            @* Page-level containment: a page that throws keeps the shell and gets a
-               Retry. Its own sections carry their own boundaries inside this one. *@
-            <SectionErrorBoundary @ref="_pageBoundary" Label="this page">
-                @Body
-            </SectionErrorBoundary>
-            @* Build stamp vYYMMDD (AGENTS.md standing requirement): fixed bottom-right on wide
-               screens; on phones po-tokens.css makes it static, so it sits after the page
-               content and above the bottom nav's reserved space. Keep it here. *@
-            <BuildVersion />
-        </article>
-    </main>
+    @if (IsSignInPage)
+    {
+        <main class="auth-shell" id="main-content" tabindex="-1">
+            <div class="auth-card">
+                <SectionErrorBoundary @ref="_pageBoundary" Label="the sign-in form">
+                    @Body
+                </SectionErrorBoundary>
+            </div>
+        </main>
+        <BuildVersion />
+    }
+    else
+    {
+        <main id="main-content" tabindex="-1">
+            <article class="content">
+                @* Page-level containment: a page that throws keeps the shell and gets a
+                   Retry. Its own sections carry their own boundaries inside this one. *@
+                <SectionErrorBoundary @ref="_pageBoundary" Label="this page">
+                    @Body
+                </SectionErrorBoundary>
+                @* Build stamp vYYMMDD (AGENTS.md standing requirement): fixed bottom-right on wide
+                   screens; on phones po-tokens.css makes it static, so it sits after the page
+                   content and above the bottom nav's reserved space. Keep it here. *@
+                <BuildVersion />
+            </article>
+        </main>
 
-    @* Every bottom-nav destination needs an account, so signed-out visitors don't get the bar. *@
-    <AuthorizeView>
-        <Authorized>
-            <BottomNav />
-        </Authorized>
-    </AuthorizeView>
+        @* Every bottom-nav destination needs an account, so signed-out visitors don't get the bar. *@
+        <AuthorizeView>
+            <Authorized>
+                <BottomNav />
+            </Authorized>
+        </AuthorizeView>
+    }
 </div>
 
 @* Global overlay — one instance, above the page so it survives navigation.
@@ -55,6 +72,10 @@
 
 @code {
     private SectionErrorBoundary? _pageBoundary;
+
+    /// <summary>The sign-in page: title-only header, one centred card, no bottom nav.</summary>
+    private bool IsSignInPage => Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0]
+        .Equals("login", StringComparison.OrdinalIgnoreCase);
 
     protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
 

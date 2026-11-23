@@ -6,16 +6,17 @@ namespace PoTraffic.E2EUI.Scenarios;
 
 /// <summary>
 /// The Po page shell (AGENTS.md, Page shell) at desktop and phone widths: title top-left, the
-/// signed-in email top-right (through a real test sign-in: the guest button), the vYYMMDD stamp
-/// bottom-right on desktop and after the page content on phones, nothing in the header or the
-/// stamp overlapping content, the sign-in page reduced to the title and its sign-in button, and
-/// no bottom nav for a signed-out visitor.
+/// signed-in email top-right, exactly (through a real test sign-in: the dev-only fake sign-in URL),
+/// the vYYMMDD stamp as a <footer> bottom-right on desktop and after the page content on phones,
+/// nothing in the header or the stamp overlapping content, an h1 on every page, the sign-in page
+/// reduced to the title and its one Microsoft button, no navigation for a signed-out visitor, and
+/// Radzen's CSS loaded once, before the app's own.
 /// </summary>
 public sealed class PageShellScenarios : PlaywrightTestBase
 {
     private static readonly (int Width, int Height)[] Sizes = [(1366, 800), (390, 844)];
-    private static readonly string[] SignInButtons = ["Sign in with Microsoft", "Continue as Guest"];
-    private static readonly string[] SignedInRoutes = ["/dashboard", "/diag", "/settings"];
+    private static readonly string[] SignedInRoutes = ["/dashboard", "/routes/create", "/diag", "/settings"];
+    private static readonly string[] SignedOutRoutes = ["/login", "/diag", "/settings", "/no-such-page"];
 
     /// <summary>Text-bearing leaf elements in main that the header or the stamp covers, at every scroll position.</summary>
     private const string OverlapScript = """
@@ -48,10 +49,7 @@ public sealed class PageShellScenarios : PlaywrightTestBase
     [SkipUnlessE2EReady]
     public async Task SignedIn_Header_ShowsTitleLeft_EmailRight_AndStampNeverCoversContent()
     {
-        await Page.GotoAsync($"{BaseUrl}/login");
-        await Page.GetByRole(AriaRole.Button, new() { Name = "Continue as Guest" }).ClickAsync();
-        // The guest session is in place once the header shows its email (a client-side navigation, no load event).
-        await Page.Locator(".po-header__email").WaitForAsync(new() { Timeout = 30_000 });
+        string signedInEmail = await SignInAsGuestAsync();
 
         foreach ((int width, int height) in Sizes)
         {
@@ -63,7 +61,8 @@ public sealed class PageShellScenarios : PlaywrightTestBase
                 await email.WaitForAsync(new() { Timeout = 30_000 });
                 await Page.WaitForTimeoutAsync(500);
 
-                Assert.Contains("@", await email.InnerTextAsync());
+                Assert.Equal(signedInEmail, (await email.InnerTextAsync()).Trim());
+                await AssertOneH1Async(route);
                 LocatorBoundingBoxResult title = (await Page.Locator(".po-header__title").BoundingBoxAsync())!;
                 LocatorBoundingBoxResult emailBox = (await email.BoundingBoxAsync())!;
                 Assert.Equal("PoTraffic", (await Page.Locator(".po-header__title").InnerTextAsync()).Trim());
@@ -78,16 +77,24 @@ public sealed class PageShellScenarios : PlaywrightTestBase
     }
 
     [SkipUnlessE2EReady]
-    public async Task SignedOut_HasNoBottomNav_AndTheSignInPageIsTitlePlusButton()
+    public async Task SignedOut_HasNoNavigation_AndTheSignInPageIsTitlePlusOneMicrosoftButton()
     {
         foreach ((int width, int height) in Sizes)
         {
             await Page.SetViewportSizeAsync(width, height);
 
-            await Page.GotoAsync($"{BaseUrl}/diag");
-            await Page.GetByTestId("diag-banner").WaitForAsync(new() { Timeout = 30_000 });
-            Assert.Equal(0, await Page.Locator(".pt-bottom-nav").CountAsync());
-            await AssertStampAsync(width, "/diag");
+            foreach (string route in SignedOutRoutes)
+            {
+                await Page.GotoAsync($"{BaseUrl}{route}");
+                await Page.Locator("main h1").WaitForAsync(new() { Timeout = 30_000 });
+                await Page.WaitForTimeoutAsync(500);
+                // Navigation is for signed-in users only: no bottom nav, no <nav> at all, no email.
+                Assert.Equal(0, await Page.Locator(".pt-bottom-nav").CountAsync());
+                Assert.Equal(0, await Page.Locator("nav").CountAsync());
+                Assert.Equal(0, await Page.Locator(".po-header__email").CountAsync());
+                await AssertOneH1Async(route);
+                await AssertStampAsync(width, route);
+            }
 
             await Page.GotoAsync($"{BaseUrl}/login");
             ILocator buttons = Page.Locator("main button");
@@ -96,20 +103,66 @@ public sealed class PageShellScenarios : PlaywrightTestBase
             Assert.Equal("PoTraffic", (await Page.Locator("main h1").InnerTextAsync()).Trim());
             Assert.Equal(0, await Page.Locator(".po-header__actions").CountAsync());
             Assert.Equal(0, await Page.Locator("main p").CountAsync());
-            // One sign-in button. The guest button exists only on Development/Test hosts, where it
-            // replaces the Microsoft one unless Microsoft sign-in is configured too.
+            // Exactly one button, the Microsoft one, in every environment (no guest button: the
+            // browser tests sign in through the dev-only fake sign-in URL instead).
             string[] names = [.. (await buttons.AllInnerTextsAsync()).Select(t => t.Trim())];
-            Assert.NotEmpty(names);
-            Assert.All(names, n => Assert.Contains(n, SignInButtons));
-            Assert.True(names.Count(n => n != "Continue as Guest") <= 1, string.Join(", ", names));
-            await AssertStampAsync(width, "/login");
+            Assert.Equal(["Sign in with Microsoft"], names);
         }
+    }
+
+    /// <summary>
+    /// Radzen's theme loads once, first: the first stylesheet in &lt;head&gt; is css/vendor.css, which
+    /// imports Radzen's default.css (into the vendor layer) before any app CSS; no other copy
+    /// (no &lt;RadzenTheme&gt;, no second link). A pt-plain Radzen button still wears the app look.
+    /// </summary>
+    [SkipUnlessE2EReady]
+    public async Task Radzen_Css_Loads_Once_Before_The_App_Css()
+    {
+        await Page.GotoAsync($"{BaseUrl}/login");
+        await Page.Locator("main h1").WaitForAsync(new() { Timeout = 30_000 });
+
+        string[] links = await Page.EvaluateAsync<string[]>(
+            "() => [...document.head.querySelectorAll('link[rel=stylesheet]')].map(l => l.getAttribute('href'))");
+        Assert.Equal("css/vendor.css", links[0]);
+        int app = Array.FindIndex(links, l => l is "css/po-tokens.css" or "css/app.css" or "PoTraffic.Client.bundle.scp.css");
+        Assert.True(app > 0, string.Join(", ", links));
+        Assert.DoesNotContain(links, l => l.Contains("Radzen.Blazor", StringComparison.Ordinal));
+
+        string[] radzen = await Page.EvaluateAsync<string[]>("""
+            () => {
+                const found = [];
+                const walk = (sheet, path) => {
+                    let rules = [];
+                    try { rules = [...sheet.cssRules]; } catch { return; }
+                    for (const r of rules) if (r.styleSheet) {
+                        if ((r.href || '').includes('Radzen.Blazor/css/')) found.push(path + ' > ' + r.href);
+                        walk(r.styleSheet, path + ' > ' + r.href);
+                    }
+                };
+                for (const s of document.styleSheets) {
+                    if ((s.href || '').includes('Radzen.Blazor/css/')) found.push(s.href);
+                    walk(s, s.href || 'inline');
+                }
+                return found;
+            }
+            """);
+        string only = Assert.Single(radzen);
+        Assert.Contains("/css/vendor.css > ../_content/Radzen.Blazor/css/default.css", only);
+    }
+
+    private async Task AssertOneH1Async(string route)
+    {
+        Assert.True(await Page.Locator("h1").CountAsync() == 1, $"{route} must have exactly one h1");
+        Assert.False(string.IsNullOrWhiteSpace(await Page.Locator("h1").InnerTextAsync()), $"{route} h1 is empty");
     }
 
     private async Task AssertStampAsync(int width, string route)
     {
         ILocator stamp = Page.Locator(".po-version");
         Assert.Matches(new Regex(@"^v\d{6}$"), (await stamp.InnerTextAsync()).Trim());
+        // A <footer>, not a hidden span: no text is left outside a landmark (axe "region").
+        Assert.Equal("FOOTER", await stamp.EvaluateAsync<string>("e => e.tagName"));
+        Assert.Null(await stamp.GetAttributeAsync("aria-hidden"));
         string position = await stamp.EvaluateAsync<string>("e => getComputedStyle(e).position");
         Assert.Equal(width <= 768 ? "static" : "fixed", position);
 

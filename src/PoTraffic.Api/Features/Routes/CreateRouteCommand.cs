@@ -3,11 +3,9 @@ using FluentValidation;
 using PoTraffic.Api.Infrastructure.Logging;
 using PoTraffic.Api.Infrastructure.Storage;
 
-
 using Microsoft.Extensions.DependencyInjection;
 
 using Microsoft.Extensions.Logging;
-
 
 
 using PoTraffic.Api.Infrastructure.Providers;
@@ -81,13 +79,12 @@ public sealed class CreateRouteValidator : AbstractValidator<CreateRouteCommand>
 public sealed class CreateRouteCommandHandler(
     TableStorageContext db,
     ITrafficProvider provider,
-    ILogger<CreateRouteCommandHandler> logger)
+    ILogger<CreateRouteCommandHandler> logger,
+    IValidator<CreateRouteCommand> validator)
 {
-    private static readonly CreateRouteValidator Validator = new();
-
     public async Task<CreateRouteResult> Handle(CreateRouteCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         // A GeocodingConfigurationException (server misconfiguration, e.g. a missing Maps key)
         // is deliberately NOT caught here — GlobalExceptionHandler maps it to the same 422 +

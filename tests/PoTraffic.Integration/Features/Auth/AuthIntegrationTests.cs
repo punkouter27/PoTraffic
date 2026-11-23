@@ -53,6 +53,25 @@ public sealed class AuthIntegrationTests : BaseIntegrationTest
             "the session cookie must be invalidated by logout (anonymous sentinel)");
     }
 
+    /// <summary>
+    /// The dev-only fake sign-in URL that replaces a guest button on /login: it signs in a fresh
+    /// guest and redirects to the local return path only.
+    /// </summary>
+    [SkipUnlessAzuriteAvailable]
+    public async Task FakeSignInUrl_SignsInAGuest_AndReturnsToALocalPathOnly()
+    {
+        HttpClient client = CreateClientNoRedirect();
+
+        HttpResponseMessage response = await client.GetAsync("/api/auth/guest-login?returnUrl=/routes/create");
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.Should().Be("/routes/create");
+        response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? cookies).Should().BeTrue();
+        cookies!.Should().Contain(c => c.StartsWith("PoTraffic.Auth="));
+
+        HttpResponseMessage offsite = await client.GetAsync("/api/auth/guest-login?returnUrl=//evil.example");
+        offsite.Headers.Location!.OriginalString.Should().Be("/dashboard");
+    }
+
     [SkipUnlessAzuriteAvailable]
     public async Task ExternalMicrosoftLogin_StartAndCallback_SignsInAndRedirectsToReturnUrl()
     {

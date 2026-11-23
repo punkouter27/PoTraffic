@@ -109,49 +109,52 @@ public sealed class TableStorageContext
     /// </summary>
     public void MarkVolatile() => _durable = false;
 
+    // Each set is a SNAPSHOT taken under the lock: the query runs after the lock is released, and
+    // enumerating the live list there threw "Collection was modified" whenever a write (a sign-in,
+    // a poll) landed mid-query (E2EAPI: GET /api/admin/users 500 during parallel guest sign-ins).
     public IQueryable<User> Users
     {
-        get { lock (_gate) return _users.AsQueryable(); }
+        get { lock (_gate) return _users.ToArray().AsQueryable(); }
     }
 
     public IQueryable<EntityRoute> Routes
     {
-        get { lock (_gate) return _routes.AsQueryable(); }
+        get { lock (_gate) return _routes.ToArray().AsQueryable(); }
     }
 
     public IQueryable<MonitoringWindow> Windows
     {
-        get { lock (_gate) return _windows.AsQueryable(); }
+        get { lock (_gate) return _windows.ToArray().AsQueryable(); }
     }
 
     public IQueryable<MonitoringSession> Sessions
     {
-        get { lock (_gate) return _sessions.AsQueryable(); }
+        get { lock (_gate) return _sessions.ToArray().AsQueryable(); }
     }
 
     public IQueryable<PollRecord> Polls
     {
-        get { lock (_gate) return _polls.AsQueryable(); }
+        get { lock (_gate) return _polls.ToArray().AsQueryable(); }
     }
 
     public IQueryable<SystemConfiguration> Configurations
     {
-        get { lock (_gate) return _configs.AsQueryable(); }
+        get { lock (_gate) return _configs.ToArray().AsQueryable(); }
     }
 
     public IQueryable<Alert> Alerts
     {
-        get { lock (_gate) return _alerts.AsQueryable(); }
+        get { lock (_gate) return _alerts.ToArray().AsQueryable(); }
     }
 
     public IQueryable<UserPushSubscription> PushSubscriptions
     {
-        get { lock (_gate) return _pushSubscriptions.AsQueryable(); }
+        get { lock (_gate) return _pushSubscriptions.ToArray().AsQueryable(); }
     }
 
     public IQueryable<ProviderUsage> ProviderUsages
     {
-        get { lock (_gate) return _providerUsage.AsQueryable(); }
+        get { lock (_gate) return _providerUsage.ToArray().AsQueryable(); }
     }
 
     // ── Legacy aliases (post-refactor) ──────────────────────────────────────

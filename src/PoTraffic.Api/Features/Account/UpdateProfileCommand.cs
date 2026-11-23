@@ -2,7 +2,6 @@ using FluentValidation;
 using PoTraffic.Api.Infrastructure.Storage;
 
 
-
 using PoTraffic.Shared.DTOs.Account;
 
 namespace PoTraffic.Api.Features.Account;
@@ -25,14 +24,17 @@ public sealed class UpdateProfileValidator : AbstractValidator<UpdateProfileComm
 public sealed class UpdateProfileHandler
 {
     private readonly TableStorageContext _db;
+    private readonly IValidator<UpdateProfileCommand> _validator;
 
-    public UpdateProfileHandler(TableStorageContext db) => _db = db;
-
-    private static readonly UpdateProfileValidator Validator = new();
+    public UpdateProfileHandler(TableStorageContext db, IValidator<UpdateProfileCommand> validator)
+    {
+        _db = db;
+        _validator = validator;
+    }
 
     public async Task<ProfileDto?> Handle(UpdateProfileCommand command, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(command, ct);
+        await _validator.ValidateAndThrowAsync(command, ct);
 
         User? user = _db.Users
             .FirstOrDefault(u => u.Id == command.UserId);

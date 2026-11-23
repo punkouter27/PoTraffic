@@ -1,18 +1,15 @@
 @page "/login"
 @attribute [AllowAnonymous]
-@layout AuthLayout
 @using PoTraffic.Client.Layout
-@using PoTraffic.Client.Services.Auth
-@using Microsoft.AspNetCore.Components.Authorization
 @inject PoTrafficApiClient Api
 @inject NavigationManager Nav
-@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Sign in · PoTraffic</PageTitle>
 
-@* Po web standard: the sign-in page shows the title and one sign-in button. The guest button
-   exists only on Development/Test hosts (the browser tests sign in with it); an alert appears
-   only when sign-in failed or is not configured. *@
+@* Po web standard: the sign-in page shows the title and ONE "Sign in with Microsoft" button, in
+   every environment. Development/Test hosts have a fake sign-in URL instead of a second button
+   (GET /api/auth/guest-login?returnUrl=/dashboard, docs/development.md). An alert appears only
+   when sign-in failed or Microsoft sign-in is not configured on this server. *@
 <RadzenCard class="pt-p-6 auth-card-body">
     <h1 class="auth-title">PoTraffic</h1>
 
@@ -21,37 +18,23 @@
         <RadzenAlert AlertStyle="AlertStyle.Danger" class="pt-mb-3">@_error</RadzenAlert>
     }
 
-    @if (_providersLoaded && !_microsoftConfigured && !_guestEnabled)
+    @if (_providersLoaded && !_microsoftConfigured)
     {
         <RadzenAlert AlertStyle="AlertStyle.Warning" AllowClose="false" class="pt-mb-3">
             Microsoft sign-in is not configured on this server.
         </RadzenAlert>
     }
 
-    @if (!_providersLoaded || _microsoftConfigured || !_guestEnabled)
-    {
-        <RadzenButton Text="Sign in with Microsoft" ButtonStyle="ButtonStyle.Primary"
-                      class="pt-w-100 auth-social-btn"
-                      Click='() => StartExternalLogin("microsoft")'
-                      Disabled="@(_loading || (_providersLoaded && !_microsoftConfigured))" />
-    }
-
-    @if (_guestEnabled)
-    {
-        <RadzenButton Text="Continue as Guest" ButtonStyle="ButtonStyle.Secondary"
-                      class="pt-w-100 pt-mt-3 auth-social-btn"
-                      Click="@GuestLoginAsync"
-                      IsBusy="@_guestLoading"
-                      Disabled="@_loading" />
-    }
+    <RadzenButton Text="Sign in with Microsoft" ButtonStyle="ButtonStyle.Primary"
+                  class="pt-w-100 auth-social-btn"
+                  Click='() => StartExternalLogin("microsoft")'
+                  Disabled="@(_loading || (_providersLoaded && !_microsoftConfigured))" />
 </RadzenCard>
 
 @code {
     private string _error = "";
     private bool _loading;
-    private bool _guestLoading;
     private bool _providersLoaded;
-    private bool _guestEnabled;
     private List<string> _availableProviders = [];
     private bool _microsoftConfigured => _availableProviders.Contains("microsoft");
 
@@ -70,10 +53,7 @@
         {
             ProvidersResponse? result = await Api.GetAuthProvidersAsync();
             if (result is not null)
-            {
                 _availableProviders = result.Providers;
-                _guestEnabled = result.GuestEnabled;
-            }
         }
         catch
         {
@@ -90,33 +70,5 @@
         _loading = true;
         string encodedReturnUrl = Uri.EscapeDataString("/dashboard");
         Nav.NavigateTo($"/api/auth/external/{provider}/start?returnUrl={encodedReturnUrl}", forceLoad: true);
-    }
-
-    private async Task GuestLoginAsync()
-    {
-        _guestLoading = true;
-        _error = "";
-        try
-        {
-            HttpResponseMessage resp = await Api.GuestLoginAsync();
-            if (resp.IsSuccessStatusCode)
-            {
-                if (AuthStateProvider is CookieAuthenticationStateProvider cookieProvider)
-                    cookieProvider.Refresh();
-                Nav.NavigateTo("/dashboard");
-            }
-            else
-            {
-                _error = "Guest sign-in failed. Please try again.";
-            }
-        }
-        catch
-        {
-            _error = "Unable to connect. Please try again.";
-        }
-        finally
-        {
-            _guestLoading = false;
-        }
     }
 }

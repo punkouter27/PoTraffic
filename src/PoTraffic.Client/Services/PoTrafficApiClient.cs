@@ -22,9 +22,6 @@ public sealed class PoTrafficApiClient(HttpClient http)
     public Task<ProvidersResponse?> GetAuthProvidersAsync(CancellationToken ct = default) =>
         http.GetFromJsonAsync("/api/auth/providers", AppJsonContext.Default.ProvidersResponse, ct);
 
-    public Task<HttpResponseMessage> GuestLoginAsync(CancellationToken ct = default) =>
-        http.PostAsync("/api/auth/guest-login", content: null, ct);
-
     public Task<HttpResponseMessage> GetAuthMeAsync(CancellationToken ct = default) =>
         http.GetAsync("/api/auth/me", ct);
 

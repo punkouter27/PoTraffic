@@ -78,5 +78,8 @@ public sealed class ProductionAuthMatrixTests : BaseIntegrationTest
         (await client.PostAsync("/api/auth/guest-login", content: null)).StatusCode
             .Should().BeOneOf([HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed],
                 "the guest endpoint must not be registered in Production");
+        // Nor the fake sign-in URL (GET ?returnUrl=): /api/{**rest} answers 404.
+        (await client.GetAsync("/api/auth/guest-login?returnUrl=/dashboard")).StatusCode
+            .Should().Be(HttpStatusCode.NotFound, "the fake sign-in URL must not exist in Production");
     }
 }

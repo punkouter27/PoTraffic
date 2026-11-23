@@ -61,7 +61,7 @@ public sealed class RouteSettingsHandlerTests
     public async Task CreateWindow_ReplacingTheActiveWindow_SwapsItInOneSave()
     {
         (TableStorageContext db, EntityRoute route, MonitoringWindow old) = await SeedAsync();
-        var handler = new CreateWindowCommandHandler(db, NullLogger<CreateWindowCommandHandler>.Instance);
+        var handler = new CreateWindowCommandHandler(db, NullLogger<CreateWindowCommandHandler>.Instance, new CreateWindowValidator());
 
         CreateWindowResult result = await handler.Handle(new CreateWindowCommand(
             route.Id, route.UserId, new TimeOnly(3, 0), TimeOnly.MinValue, 0x7F, null, old.Id), CancellationToken.None);
@@ -76,7 +76,7 @@ public sealed class RouteSettingsHandlerTests
     public async Task CreateWindow_RejectedReplacement_LeavesTheOldScheduleActive()
     {
         (TableStorageContext db, EntityRoute route, MonitoringWindow old) = await SeedAsync();
-        var handler = new CreateWindowCommandHandler(db, NullLogger<CreateWindowCommandHandler>.Instance);
+        var handler = new CreateWindowCommandHandler(db, NullLogger<CreateWindowCommandHandler>.Instance, new CreateWindowValidator());
 
         // Start == End is rejected by the validator — before this fix the client had
         // already deleted the old window by then, leaving the route with no schedule.
@@ -125,7 +125,7 @@ public sealed class RouteSettingsHandlerTests
         (TableStorageContext db, EntityRoute route, _) = await SeedAsync();
         ITrafficProvider provider = Substitute.For<ITrafficProvider>();
         provider.GeocodeAsync("9 Oak Ave", Arg.Any<CancellationToken>()).Returns("3.0,3.0");
-        var handler = new SetRouteAddressesHandler(db, provider, NullLogger<SetRouteAddressesHandler>.Instance);
+        var handler = new SetRouteAddressesHandler(db, provider, NullLogger<SetRouteAddressesHandler>.Instance, new SetRouteAddressesValidator());
 
         SetRouteAddressesResult result = await handler.Handle(
             new SetRouteAddressesCommand(route.Id, route.UserId, "1 Main St", "9 Oak Ave"), CancellationToken.None);
@@ -144,7 +144,7 @@ public sealed class RouteSettingsHandlerTests
         (TableStorageContext db, EntityRoute route, _) = await SeedAsync();
         ITrafficProvider provider = Substitute.For<ITrafficProvider>();
         provider.GeocodeAsync("1 Main Street", Arg.Any<CancellationToken>()).Returns("2.0,2.0");
-        var handler = new SetRouteAddressesHandler(db, provider, NullLogger<SetRouteAddressesHandler>.Instance);
+        var handler = new SetRouteAddressesHandler(db, provider, NullLogger<SetRouteAddressesHandler>.Instance, new SetRouteAddressesValidator());
 
         SetRouteAddressesResult result = await handler.Handle(
             new SetRouteAddressesCommand(route.Id, route.UserId, "1 Main Street", "2 Main St"), CancellationToken.None);

@@ -74,27 +74,20 @@ public sealed class AuthScenarios : PlaywrightTestBase
         Assert.Contains("mock data", await mockBanner.InnerTextAsync(), StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// The dev-only fake sign-in URL establishes the cookie session, and the header shows EXACTLY
+    /// the signed-in account's email (the address the server issued), top-right.
+    /// </summary>
     [SkipUnlessE2EReady]
-    public async Task GuestLogin_BypassesOAuth_EstablishesCookieSession_AndHeaderShowsGuestEmail()
+    public async Task FakeSignInUrl_EstablishesCookieSession_AndHeaderShowsExactlyTheSignedInEmail()
     {
-        // Guest login must happen inside the browser so the HttpOnly session
-        // cookie lands in the Playwright context.
-        await Page.GotoAsync($"{BaseUrl}/login");
-        await Page.EvaluateAsync(
-            @"async () => {
-                const resp = await fetch('/api/auth/guest-login', { method: 'POST' });
-                if (!resp.ok) throw new Error('guest-login failed: ' + resp.status);
-            }");
+        string email = await SignInAsGuestAsync("/dashboard");
 
-        await Page.GotoAsync($"{BaseUrl}/dashboard");
-
-        // The Po shell header shows the signed-in EMAIL (.po-header__email) top-right; a guest
-        // session's address is guest12345678@potraffic.dev.
-        Microsoft.Playwright.ILocator email = Page.Locator(".po-header .po-header__email");
-        await email.WaitForAsync(new() { Timeout = 30_000 });
-        string emailText = await email.InnerTextAsync();
-
-        Assert.Matches(new Regex(@"^guest\d{8}@potraffic\.dev$", RegexOptions.IgnoreCase), emailText.Trim());
+        Assert.Matches(new Regex(@"^guest\d{8}@potraffic\.dev$"), email);
+        Microsoft.Playwright.ILocator header = Page.Locator(".po-header .po-header__actions .po-header__email");
+        Assert.Equal(email, (await header.InnerTextAsync()).Trim());
+        Assert.Equal(email, await header.GetAttributeAsync("title"));
+        Assert.EndsWith("/dashboard", Page.Url);
     }
 
     [SkipUnlessE2EReady]

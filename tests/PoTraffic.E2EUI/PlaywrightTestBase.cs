@@ -142,6 +142,19 @@ public abstract class PlaywrightTestBase : IAsyncLifetime
         await targetPage.GotoAsync($"{BaseUrl}{destination}");
     }
 
+    /// <summary>
+    /// Signs in through the dev-only fake sign-in URL (no guest button exists on /login: it shows
+    /// one "Sign in with Microsoft" button in every environment), waits for the header email and
+    /// returns the account's email as the server knows it (<c>/api/auth/me</c>).
+    /// </summary>
+    protected async Task<string> SignInAsGuestAsync(string destination = "/dashboard", IPage? page = null)
+    {
+        IPage targetPage = page ?? Page;
+        await targetPage.GotoAsync($"{BaseUrl}/api/auth/guest-login?returnUrl={Uri.EscapeDataString(destination)}");
+        await targetPage.Locator(".po-header__email").WaitForAsync(new() { Timeout = 30_000 });
+        return await targetPage.EvaluateAsync<string>("async () => (await (await fetch('/api/auth/me')).json()).email");
+    }
+
     private static string? FindCachedChromiumExecutable()
     {
         string localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

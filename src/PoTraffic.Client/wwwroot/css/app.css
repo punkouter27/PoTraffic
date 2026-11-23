@@ -1102,7 +1102,7 @@ code {
 .pt-sample-chip {
     background: var(--pt-bg-tint-strong);
     border-radius: var(--pt-radius-full);
-    color: var(--pt-fg-muted);
+    color: var(--pt-fg-body); /* muted failed 4.5:1 on the tint (axe color-contrast) */
     font-size: var(--pt-text-xs);
     font-weight: var(--pt-weight-semibold);
     letter-spacing: 0.02em;

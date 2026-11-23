@@ -112,8 +112,10 @@ no feature (`/`, `/not-found`, `/access-denied`). The `/diag` page lives in `Fea
 Handlers are plain classes. Endpoints and jobs take the concrete handler as a parameter and
 call `Handle(request, ct)` directly — there is no mediator. `Program.cs` registers every
 `*Handler` class under `Features/` by assembly scan, so a new slice needs no DI wiring. A
-handler with a validator runs it first (`Validator.ValidateAndThrowAsync`, a static
-instance); the resulting `ValidationException` maps to 422 in `GlobalExceptionHandler`.
+handler with a validator takes its `IValidator<TCommand>` in the constructor and runs it first
+(`validator.ValidateAndThrowAsync`); validators are registered by type in
+`Infrastructure/ValidationExtensions.cs` (`AddScoped<IValidator<X>, XValidator>()`, no assembly
+scan; add a new one there). The resulting `ValidationException` maps to 422 in `GlobalExceptionHandler`.
 Read endpoints pass `RequestAborted`; writes pass `CancellationToken.None` so a closed tab
 cannot cancel a billed provider call mid-write.
 
@@ -207,8 +209,8 @@ boundary. Do not introduce raw `Guid` parameters for entity identity.
 Every page, signed in and out, carries the same shell (AGENTS.md, Page shell), styled by
 `wwwroot/css/po-tokens.css` (this repo's own copy of the Po conventions):
 
-- **Header** `Layout/PoHeader.razor` (`.po-header`), rendered by `MainLayout`, `AuthLayout`,
-  `BareLayout` and the root error boundary: the app name top-left (links to `/`); top-right the
+- **Header** `Layout/PoHeader.razor` (`.po-header`), rendered by `MainLayout` (the one layout) and the
+  root error boundary: the app name top-left (links to `/`); top-right the
   signed-in email (`.po-header__email`) or the Sign in button (`po-link-btn filled small`), then the one settings gear
   (`.po-header__settings`, `/settings`). The bell and the mock-data chip sit in the same cluster.
 - **Settings** `/settings` (`/account/settings` is an alias) is anonymous: theme note and build
@@ -217,14 +219,17 @@ Every page, signed in and out, carries the same shell (AGENTS.md, Page shell), s
   tokens (`--pt-*`, `wwwroot/css/pt-tokens.css`) alias the `--po-*` estate tokens: indigo
   accent, Inter body text, Space Grotesk headings (self-hosted in `wwwroot/fonts/`).
   Material Symbols is the only Google Fonts load (icon font).
-- **Version badge** `<span class="po-version">vYYMMDD</span>` (`Layout/BuildVersion.razor`), the
+- **Version badge** `<footer class="po-version">vYYMMDD</footer>` (`Layout/BuildVersion.razor`), the
   UTC date of the HEAD commit, stamped once as `BuildVersion` by the `PoBuildStamp` target in
   `Directory.Build.props` for every assembly; `/api/diag` reports the same value. Fixed bottom-right
   on wide screens; at <=768px it is static and rendered last in the page column, so it sits after
   the content and never covers it. The bottom nav (all its destinations need an account) is shown
   to signed-in users only.
-- **Sign-in page** `/login` (`AuthLayout`): the header shows the title only; the page shows the
-  title and the one "Sign in with Microsoft" button (plus "Continue as Guest" on Development/Test hosts).
+- **Sign-in page** `/login` (`MainLayout` in its sign-in form): the header shows the title only; the
+  page shows the h1 title and exactly one "Sign in with Microsoft" button in every environment.
+  Development/Test hosts also answer `GET /api/auth/guest-login?returnUrl=/dashboard`, a fake
+  sign-in URL (no button) that signs in a fresh `guestNNNNNNNN@potraffic.dev` account; the browser
+  tests use it. Production never maps it.
 - **/diag** "System status": banner, then API / Data / Services as `.po-diag__card`s with `.po-badge--ok|warn|bad|off`.
 - **Tab window**: Tab with nothing focused opens `/po-dev.html` (`js/po-devwindow.js`,
   `js/po-dev.js`): `/health/live` + `X-Commit`, and the checks from `GET /api/diag`. `App.razor` only moves focus to the h1 after the user has

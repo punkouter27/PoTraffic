@@ -17,14 +17,12 @@ public sealed class SetUserDailyQuotaValidator : AbstractValidator<SetUserDailyQ
             .When(c => c.DailySessionQuota is not null);
 }
 
-public sealed class SetUserDailyQuotaHandler(TableStorageContext db)
+public sealed class SetUserDailyQuotaHandler(TableStorageContext db, IValidator<SetUserDailyQuotaCommand> validator)
 {
-    private static readonly SetUserDailyQuotaValidator Validator = new();
-
     /// <summary>False when the user does not exist.</summary>
     public async Task<bool> Handle(SetUserDailyQuotaCommand cmd, CancellationToken ct)
     {
-        await Validator.ValidateAndThrowAsync(cmd, ct);
+        await validator.ValidateAndThrowAsync(cmd, ct);
 
         User? user = db.Users.FirstOrDefault(u => u.Id == cmd.UserId);
         if (user is null)

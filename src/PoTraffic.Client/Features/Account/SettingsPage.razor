@@ -28,7 +28,7 @@
 <RadzenCard class="pt-card-pad">
     <SectionErrorBoundary Label="the appearance settings">
     <section class="pt-settings-section">
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Appearance</RadzenText>
+        <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H2" class="pt-mb-3 pt-section-heading">Appearance</RadzenText>
         <div class="pt-settings-grid">
             <div>
                 <span class="pt-settings-field-label">Theme</span>
@@ -54,7 +54,7 @@
     </SectionErrorBoundary>
 
     <section class="pt-settings-section" data-testid="settings-account">
-        <RadzenText TextStyle="TextStyle.H3" class="pt-mb-3 pt-section-heading">Account</RadzenText>
+        <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H2" class="pt-mb-3 pt-section-heading">Account</RadzenText>
         @if (_id.IsAuthenticated)
         {
             <div class="pt-settings-grid">

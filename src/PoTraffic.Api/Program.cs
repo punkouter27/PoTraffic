@@ -73,6 +73,9 @@ try
         builder.Services.AddScoped(handler);
     }
 
+    // Their FluentValidation validators, registered by type (Infrastructure/ValidationExtensions.cs).
+    builder.Services.AddPoTrafficValidators();
+
     // Hybrid cache (L1 in-proc, optional distributed L2). HTTP resilience pipelines are
     // registered per-client via ResiliencePipelineExtensions.AddResilienceHandler(name).
     builder.Services.AddPoTrafficHybridCache();

@@ -1,19 +1,20 @@
 using System.Reflection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using PoTraffic.Api.Infrastructure;
 using PoTraffic.Api.Infrastructure.Scheduling;
 using PoTraffic.Shared.DTOs.Admin;
 
 namespace PoTraffic.Api.Features.Diagnostics;
 
 /// <summary>
-/// Builds the anonymous <c>GET /api/diag</c> report (<see cref="DiagReportDto"/>): the registered
-/// health checks (storage, scheduler) plus the live <see cref="ServiceProbes"/> rows. Everything
+/// Builds the anonymous <c>GET /api/diag</c> report (<see cref="DiagReportDto"/>): the shared, 60 s
+/// cached health report (<see cref="CachedHealthReport"/>: storage, scheduler) plus the live <see cref="ServiceProbes"/> rows. Everything
 /// in it is fixed text from <see cref="Describe"/> or the probes plus status and timing: a health
 /// check's own description (which can name config keys or accounts) is never copied, nor is an
 /// exception. Rows that are <see cref="ServiceProbes.Off"/> (switched off on purpose) are shown
 /// but left out of the overall status.
 /// </summary>
-public sealed class DiagReportHandler(HealthCheckService healthChecks, ServiceProbes probes, IServiceProvider services, IHostEnvironment env)
+public sealed class DiagReportHandler(CachedHealthReport health, ServiceProbes probes, IServiceProvider services, IHostEnvironment env)
 {
     private static readonly TimeProvider Clock = TimeProvider.System;
 
@@ -26,7 +27,9 @@ public sealed class DiagReportHandler(HealthCheckService healthChecks, ServicePr
     {
         long started = Clock.GetTimestamp();
         Task<DiagCheckDto[]> serviceRows = probes.RunAsync(ct);
-        HealthReport report = await healthChecks.CheckHealthAsync(ct);
+        // The same cached report /health and /health/json serve (CachedHealthReport, 60 s).
+        CachedHealthReport.Snapshot snapshot = await health.GetAsync(ct);
+        HealthReport report = snapshot.Report;
 
         List<DiagCheckDto> checks =
         [
@@ -69,7 +72,7 @@ public sealed class DiagReportHandler(HealthCheckService healthChecks, ServicePr
             overall.ToString(),
             env.EnvironmentName,
             Version,
-            Clock.GetUtcNow(),
+            snapshot.CheckedAt,
             Math.Round(Clock.GetElapsedTime(started).TotalMilliseconds, 1),
             [.. checks]);
     }
