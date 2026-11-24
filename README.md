@@ -190,3 +190,5 @@ See [AGENTS.md](AGENTS.md) for the full coding-agent contract.
 - [AGENTS.md](AGENTS.md) — the Po web app standard this repo follows, plus the working rules.
 - [docs/development.md](docs/development.md) — commands, test tiers, architecture and conventions.
 - [infra/README.md](infra/README.md) — Azure resources and how they are applied.
+- `SCREENSHOTS/` — before/after pages of UI changes (`{YYMMDD}-{feature}.html` + one annotated `.png`), made by
+  `pwsh scripts/screenshots.ps1 -Feature <name>`. Git-ignored: local review aids, not committed.

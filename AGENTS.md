@@ -139,6 +139,7 @@ Every command below was run on 2026-11-23 (PowerShell or bash, repo root).
 | Azurite for a local run | `docker run -d --rm -p 21000:10000 -p 21001:10001 -p 21002:10002 mcr.microsoft.com/azure-storage/azurite:latest azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck --loose` | Docker |
 | Run locally (Test host: mock traffic, fake sign-in URL `/api/auth/guest-login?returnUrl=/dashboard`) | `ConnectionStrings__TableStorage="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=<Azurite's well-known dev key>;TableEndpoint=http://127.0.0.1:21002/devstoreaccount1;" dotnet run --project src/PoTraffic.Api --launch-profile Test` | → http://localhost:5150 and http://localhost:5150/diag |
 | E2E UI + API on the Release publish | `pwsh scripts/run-e2eui.ps1 -Tier All` | Docker + Playwright Chromium; publishes `-c Release` (the build that deploys), starts its own Azurite + the published Test host on 5150, runs E2EAPI (13) and E2EUI (18), stops everything |
+| Before/after page (UI changes) | `pwsh scripts/screenshots.ps1 -Feature <kebab-name>` (`-Before <ref>`, default `HEAD~1`; `-After <ref>`, default the working tree; or `-BeforeDir <folder of PNGs>`; `-Screens name=in:/route,...`; `-Notes "..."`) | Docker + Playwright Chromium. Publishes each side locally (Release, Test host, mock traffic, its own Azurite, http://localhost:5159; never the live site), shoots every screen at 1366x768 and 390x844, writes `SCREENSHOTS/{YYMMDD}-{feature}.html` and one annotated `.png` (changed areas boxed red, <= ~300 KB), stops what it started. `SCREENSHOTS/` is git-ignored: give the two paths |
 | E2E API (against a running host) | `E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EAPI -c Release` | the Test host above; skips without it (13) |
 | E2E UI (against a running host) | `E2E_HEADED=0 E2E_BASE_URL=http://localhost:5150 dotnet test tests/PoTraffic.E2EUI -c Release` | the Test host + Playwright Chromium; skips with the reason otherwise (18) |
 
@@ -211,6 +212,7 @@ secrets in Azure Key Vault (`KeyVault:Uri`) when one exists.
 4. **UI changes get a before/after comparison**: an annotated HTML page pointing out what
    changed, saved to `SCREENSHOTS/{YYMMDD}-{feature}.html`, plus a single annotated PNG
    showing before and after side by side with notes (`SCREENSHOTS/{YYMMDD}-{feature}.png`).
+   One command makes both: `pwsh scripts/screenshots.ps1 -Feature <feature>` (section 3).
    Give the user both absolute paths.
 
 Keep test files themselves correct and up to date when a change invalidates them.
